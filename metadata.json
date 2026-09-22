@@ -1,0 +1,6 @@
+{
+  "name": "Khetat Billing Cloud",
+  "description": "Enterprise B2B billing cloud with ZATCA Phase 2 e-invoicing, sales orders, quotations, customer aging ledgers, and official payment vouchers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
