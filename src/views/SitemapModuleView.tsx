@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
+import { UsersAndRolesSettings } from '../components/UsersAndRolesSettings';
+import { ResponsiveChatSystem } from '../components/ResponsiveChatSystem';
+import {
+  MultichannelDispatchModal,
+  RecipientProfile,
+  CommunicationChannel,
+} from '../components/MultichannelDispatchModal';
 import {
   Users,
   Building,
   Shield,
   MessageSquare,
+  Mail,
+  Smartphone,
   Package,
   Layers,
   ShoppingBag,
@@ -73,15 +82,17 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
       ],
     },
     messaging: {
-      title: 'Messaging & Guest Concierge',
-      titleAr: 'المراسلات والكونسيرج الذكي',
-      desc: 'Official WhatsApp business notifications, ZATCA e-invoice dispatch, and guest check-in automation.',
-      descAr: 'خدمات واتساب للأعمال، إرسال الفواتير الضريبية للنزلاء، وتنبيهات أرقام أقفال الفلل الذكية.',
+      title: 'Messaging & Team Operations Chat',
+      titleAr: 'المراسلات ومجموعات العمل الفندقية',
+      desc: 'Normal text chat, operational group channels across properties, and official WhatsApp concierge.',
+      descAr: 'محادثات نصية مباشرة، مجموعات عمل تشغيلية للفنادق، وكونسيرج الواتساب المعتمد للنزلاء.',
       icon: MessageSquare,
       tabs: [
-        { id: 'inbox', name: 'Guest Conversations', nameAr: 'محادثات النزلاء', count: '14' },
-        { id: 'templates', name: 'ZATCA Invoice SMS', nameAr: 'قوالب رسائل الفواتير' },
-        { id: 'broadcast', name: 'Front Desk Broadcasts', nameAr: 'تنبيهات الاستقبال' },
+        { id: 'inbox', name: 'All Chats', nameAr: 'كافة المحادثات', count: '18' },
+        { id: 'groups', name: 'Group Chats', nameAr: 'مجموعات العمل', count: '5' },
+        { id: 'direct', name: 'Direct Messages', nameAr: 'المحادثات المباشرة', count: '10' },
+        { id: 'guests', name: 'Guest Concierge', nameAr: 'كونسيرج النزلاء', count: '3' },
+        { id: 'templates', name: 'ZATCA SMS & Templates', nameAr: 'قوالب رسائل الفواتير' },
       ],
     },
     products: {
@@ -190,6 +201,109 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
   const [activeTab, setActiveTab] = useState<string>(
     subTab || currentConfig.tabs[0]?.id || ''
   );
+
+  // Dispatch Modal state for profiles and messaging
+  const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
+  const [dispatchChannel, setDispatchChannel] = useState<CommunicationChannel>('whatsapp');
+  const [preselectedContactIds, setPreselectedContactIds] = useState<string[]>([]);
+  const [dispatchNotification, setDispatchNotification] = useState<string | null>(null);
+
+  // Signatory & Customer Contact Profiles
+  const [contactProfiles] = useState<RecipientProfile[]>([
+    {
+      id: 'cp-1',
+      name: 'Sheikh Mansour Al-Harbi',
+      nameAr: 'الشيخ منصور الحربي',
+      company: 'Khetat Hospitality Hub HQ',
+      companyAr: 'المقر الرئيسي لمجموعة خطط للضيافة',
+      role: 'Executive Director',
+      email: 'm.harbi@khetat.sa',
+      phone: '+966 50 442 8899',
+      outstandingBalance: 142500,
+      smartPin: '4910#',
+      city: 'Riyadh',
+    },
+    {
+      id: 'cp-2',
+      name: 'Eng. Tariq Mansoor',
+      nameAr: 'م. طارق منصور',
+      company: 'Western Operations Hub',
+      companyAr: 'عمليات القطاع الغربي - جدة',
+      role: 'Hospitality Solutions Lead',
+      email: 'tariq@khetat.sa',
+      phone: '+966 55 993 1122',
+      outstandingBalance: 28400,
+      smartPin: '3012#',
+      city: 'Jeddah',
+    },
+    {
+      id: 'cp-3',
+      name: 'Layla Al-Otaibi, SOCPA',
+      nameAr: 'أ. ليلى العتيبي (محاسب قانوني)',
+      company: 'Saudi Hospitality Central Cluster',
+      companyAr: 'المجمع الفندقي المركزي بالرياض',
+      role: 'Financial Controller',
+      email: 'layla@khetat.sa',
+      phone: '+966 54 812 9011',
+      outstandingBalance: 85200,
+      smartPin: '8841#',
+      city: 'Riyadh',
+    },
+    {
+      id: 'cp-4',
+      name: 'H.E. Sheikh Fahad Al-Saud',
+      nameAr: 'معالي الشيخ فهد آل سعود',
+      company: 'The Chedi Hegra AlUla (Villa 08)',
+      companyAr: 'منتجع الشيدي الحجر بالعلا (فيلا 08)',
+      role: 'Royal Delegation Guest',
+      email: 'fahad.saud@alriyadh.sa',
+      phone: '+966 50 119 4433',
+      outstandingBalance: 45000,
+      smartPin: '4910#',
+      city: 'AlUla',
+    },
+    {
+      id: 'cp-5',
+      name: 'Dr. Bandar Al-Husseini',
+      nameAr: 'د. بندر الحسيني',
+      company: 'Dar Al-Taqwa Suites Madinah',
+      companyAr: 'أجنحة دار التقوى الفندقية بالمدينة',
+      role: 'Managing Partner',
+      email: 'bandar@alhusseini.com.sa',
+      phone: '+966 50 662 3311',
+      outstandingBalance: 64800,
+      smartPin: '5521#',
+      city: 'Madinah',
+    },
+  ]);
+
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>(['cp-1', 'cp-2']);
+
+  const handleToggleContact = (id: string) => {
+    setSelectedContactIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllContacts = () => {
+    if (selectedContactIds.length === contactProfiles.length) {
+      setSelectedContactIds([]);
+    } else {
+      setSelectedContactIds(contactProfiles.map((c) => c.id));
+    }
+  };
+
+  const handleOpenDispatch = (channel: CommunicationChannel, recipientIds?: string[]) => {
+    setDispatchChannel(channel);
+    setPreselectedContactIds(
+      recipientIds && recipientIds.length > 0
+        ? recipientIds
+        : selectedContactIds.length > 0
+        ? selectedContactIds
+        : contactProfiles.map((c) => c.id)
+    );
+    setIsDispatchModalOpen(true);
+  };
 
   React.useEffect(() => {
     if (subTab) {
@@ -313,35 +427,223 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
             </div>
 
             <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
-              <h3 className="text-sm font-bold text-[#161c27] mb-3">
-                Authorized Signatories & Nafath Verified Contacts
-              </h3>
+              {/* Header and Multichannel Action Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-[#161c27]">
+                      {isArabic
+                        ? 'جهات الاتصال والمفوضين المعتمدين عبر نفاذ'
+                        : 'Authorized Signatories & Nafath Verified Contacts'}
+                    </h3>
+                    <span className="text-[10px] font-semibold bg-[#e8eeff] text-[#004a60] px-2 py-0.5 rounded-full">
+                      {contactProfiles.length} {isArabic ? 'جهات اتصال' : 'Contacts'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#70787d] mt-0.5">
+                    {isArabic
+                      ? 'إرسال بريد إلكتروني، رسائل نصية قصيرة SMS، أو واتساب فردي أو جماعي (Batch) مع قوالب وتخصيص.'
+                      : 'Send regular email, SMS, or WhatsApp to individual or batch contacts with custom templates.'}
+                  </p>
+                </div>
+
+                {/* Multichannel Dispatch Action Buttons */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDispatch('whatsapp')}
+                    className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'واتساب' : 'WhatsApp'}</span>
+                    {selectedContactIds.length > 0 && (
+                      <span className="bg-emerald-800/60 text-white text-[10px] px-1.5 py-0.2 rounded-full">
+                        {selectedContactIds.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDispatch('email')}
+                    className="flex items-center gap-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'بريد' : 'Email'}</span>
+                    {selectedContactIds.length > 0 && (
+                      <span className="bg-sky-800/60 text-white text-[10px] px-1.5 py-0.2 rounded-full">
+                        {selectedContactIds.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDispatch('sms')}
+                    className="flex items-center gap-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                  >
+                    <Smartphone className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'رسالة SMS' : 'SMS'}</span>
+                    {selectedContactIds.length > 0 && (
+                      <span className="bg-amber-800/60 text-white text-[10px] px-1.5 py-0.2 rounded-full">
+                        {selectedContactIds.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDispatch('whatsapp')}
+                    className="flex items-center gap-1.5 rounded-lg bg-[#004a60] hover:bg-[#074e64] text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'إرسال جماعي' : 'Batch Send'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Notification Banner */}
+              {dispatchNotification && (
+                <div className="mb-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>{dispatchNotification}</span>
+                  </div>
+                  <button
+                    onClick={() => setDispatchNotification(null)}
+                    className="text-emerald-700 hover:text-emerald-900 text-[11px] font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {/* Selection Summary Pill Bar */}
+              <div className="mb-2 py-1.5 px-3 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9] flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedContactIds.length === contactProfiles.length &&
+                      contactProfiles.length > 0
+                    }
+                    onChange={handleSelectAllContacts}
+                    className="rounded text-[#004a60] focus:ring-[#004a60] cursor-pointer"
+                  />
+                  <span className="font-semibold text-[#161c27]">
+                    {selectedContactIds.length === contactProfiles.length
+                      ? isArabic
+                        ? 'تم تحديد كافة جهات الاتصال'
+                        : 'All contacts selected'
+                      : isArabic
+                      ? `تم تحديد ${selectedContactIds.length} من أصل ${contactProfiles.length}`
+                      : `${selectedContactIds.length} of ${contactProfiles.length} selected`}
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#70787d]">
+                  {selectedContactIds.length > 0
+                    ? isArabic
+                      ? 'جاهز للإرسال الفردي أو الجماعي'
+                      : 'Ready for individual or batch messaging'
+                    : isArabic
+                    ? 'حدد جهة اتصال أو أكثر للإرسال'
+                    : 'Select one or more to dispatch'}
+                </div>
+              </div>
+
+              {/* Contacts Table */}
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
                   <thead>
-                    <tr className="border-b border-[#e3e8f9] text-[#70787d] text-[10px] uppercase font-bold">
-                      <th className="py-2 px-3">Name</th>
-                      <th className="py-2 px-3">Role</th>
-                      <th className="py-2 px-3">National ID / Iqama</th>
-                      <th className="py-2 px-3">Email & Phone</th>
-                      <th className="py-2 px-3">Nafath Verification</th>
+                    <tr className="border-b border-[#e3e8f9] text-[#70787d] text-[10px] uppercase font-bold bg-[#f9f9ff]">
+                      <th className="py-2.5 px-3 w-8">
+                        <span className="sr-only">Select</span>
+                      </th>
+                      <th className="py-2.5 px-3">{isArabic ? 'الاسم والمنشأة' : 'Name & Entity'}</th>
+                      <th className="py-2.5 px-3">{isArabic ? 'الصفة / المنصب' : 'Role & Branch'}</th>
+                      <th className="py-2.5 px-3">{isArabic ? 'البريد والهاتف' : 'Email & Phone'}</th>
+                      <th className="py-2.5 px-3">{isArabic ? 'كود القفل والرصيد' : 'Key PIN & Balance'}</th>
+                      <th className="py-2.5 px-3 text-center">{isArabic ? 'إرسال فوري' : 'Quick Dispatch'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#e3e8f9]">
-                    <tr>
-                      <td className="py-2.5 px-3 font-semibold text-[#161c27]">Sheikh Mansour Al-Harbi</td>
-                      <td className="py-2.5 px-3 text-[#70787d]">Executive Director</td>
-                      <td className="py-2.5 px-3 font-mono">108849****</td>
-                      <td className="py-2.5 px-3 text-[#40484d]">m.harbi@khetat.sa • +966 50 442 8899</td>
-                      <td className="py-2.5 px-3 text-emerald-700 font-bold">Verified via Nafath</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-3 font-semibold text-[#161c27]">Eng. Tariq Mansoor</td>
-                      <td className="py-2.5 px-3 text-[#70787d]">Hospitality Solutions Lead</td>
-                      <td className="py-2.5 px-3 font-mono">102941****</td>
-                      <td className="py-2.5 px-3 text-[#40484d]">tariq@khetat.sa • +966 55 993 1122</td>
-                      <td className="py-2.5 px-3 text-emerald-700 font-bold">Verified via Nafath</td>
-                    </tr>
+                    {contactProfiles.map((cp) => {
+                      const isSelected = selectedContactIds.includes(cp.id);
+                      return (
+                        <tr
+                          key={cp.id}
+                          className={`transition-colors hover:bg-[#f1f3ff]/50 ${
+                            isSelected ? 'bg-[#e8eeff]/40' : ''
+                          }`}
+                        >
+                          <td className="py-2.5 px-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleContact(cp.id)}
+                              className="rounded text-[#004a60] focus:ring-[#004a60] cursor-pointer"
+                            />
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-semibold text-[#161c27]">
+                              {isArabic ? cp.nameAr || cp.name : cp.name}
+                            </div>
+                            <div className="text-[10px] text-[#70787d]">
+                              {isArabic ? cp.companyAr || cp.company : cp.company}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-[#40484d]">
+                            <div className="font-medium">{cp.role}</div>
+                            <div className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                              <ShieldCheck className="h-3 w-3" />
+                              <span>Nafath Verified</span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-[#40484d]">
+                            <div>{cp.email}</div>
+                            <div className="text-[10px] text-[#70787d] font-mono">{cp.phone}</div>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-bold text-[#004a60] bg-[#e8eeff] px-1.5 py-0.2 rounded text-[10px]">
+                                PIN: {cp.smartPin || '4910#'}
+                              </span>
+                              <span className="text-[10px] text-[#70787d]">
+                                SAR {(cp.outstandingBalance || 0).toLocaleString()}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                title="Send WhatsApp"
+                                onClick={() => handleOpenDispatch('whatsapp', [cp.id])}
+                                className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-colors cursor-pointer"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Send Regular Email"
+                                onClick={() => handleOpenDispatch('email', [cp.id])}
+                                className="p-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-600 hover:text-white transition-colors cursor-pointer"
+                              >
+                                <Mail className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Send SMS"
+                                onClick={() => handleOpenDispatch('sms', [cp.id])}
+                                className="p-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white transition-colors cursor-pointer"
+                              >
+                                <Smartphone className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -352,51 +654,66 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
         {/* MESSAGING MODULE */}
         {module === 'messaging' && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-emerald-600" />
-                    <span className="text-xs font-bold text-[#161c27]">
-                      WhatsApp Business Official API
+            {activeTab === 'templates' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-emerald-600" />
+                      <span className="text-xs font-bold text-[#161c27]">
+                        WhatsApp Business Official API
+                      </span>
+                    </div>
+                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      Connected
                     </span>
                   </div>
-                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    Connected
-                  </span>
-                </div>
-                <p className="text-xs text-[#70787d] mb-4">
-                  Direct dispatch of ZATCA Phase 2 QR-code invoices and smart room key PINs to guests via WhatsApp upon check-in and check-out.
-                </p>
-                <div className="space-y-2 text-xs">
-                  <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9] flex items-center justify-between">
-                    <span className="font-semibold text-[#161c27]">Smart Door PIN Dispatch</span>
-                    <span className="text-emerald-700 font-bold">Auto-Triggered</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9] flex items-center justify-between">
-                    <span className="font-semibold text-[#161c27]">ZATCA Tax Folio PDF</span>
-                    <span className="text-emerald-700 font-bold">Delivered & Read (98.4%)</span>
+                  <p className="text-xs text-[#70787d] mb-4">
+                    Direct dispatch of ZATCA Phase 2 QR-code invoices and smart room key PINs to guests via WhatsApp upon check-in and check-out.
+                  </p>
+                  <div className="space-y-2 text-xs">
+                    <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9] flex items-center justify-between">
+                      <span className="font-semibold text-[#161c27]">Smart Door PIN Dispatch</span>
+                      <span className="text-emerald-700 font-bold">Auto-Triggered</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9] flex items-center justify-between">
+                      <span className="font-semibold text-[#161c27]">ZATCA Tax Folio PDF</span>
+                      <span className="text-emerald-700 font-bold">Delivered & Read (98.4%)</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
-                <h3 className="text-xs font-bold text-[#161c27] mb-2">Live WhatsApp Message Preview</h3>
-                <div className="rounded-xl bg-[#e5ddd5] p-3 text-xs text-[#111]">
-                  <div className="bg-white rounded-lg p-3 shadow-xs max-w-sm ml-auto space-y-1">
-                    <div className="font-bold text-[#004a60]">The Chedi Hegra AlUla</div>
-                    <p className="text-[11px] text-gray-800">
-                      مرحباً بكم في منتجع الشيدي الحجر. تم تأكيد إقامتكم في فيلا رقم 08.
-                      رقم القفل الذكي: <span className="font-mono font-bold text-red-600">4910#</span>
-                    </p>
-                    <div className="text-[10px] text-emerald-700 font-medium pt-1 border-t border-gray-100 flex items-center gap-1">
-                      <ShieldCheck className="h-3 w-3" />
-                      <span>فاتورة ZATCA الضريبية المعتمدة مرفقة مع رمز QR.</span>
+                <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
+                  <h3 className="text-xs font-bold text-[#161c27] mb-2">Live WhatsApp Message Preview</h3>
+                  <div className="rounded-xl bg-[#e5ddd5] p-3 text-xs text-[#111]">
+                    <div className="bg-white rounded-lg p-3 shadow-xs max-w-sm ml-auto space-y-1">
+                      <div className="font-bold text-[#004a60]">The Chedi Hegra AlUla</div>
+                      <p className="text-[11px] text-gray-800">
+                        مرحباً بكم في منتجع الشيدي الحجر. تم تأكيد إقامتكم في فيلا رقم 08.
+                        رقم القفل الذكي: <span className="font-mono font-bold text-red-600">4910#</span>
+                      </p>
+                      <div className="text-[10px] text-emerald-700 font-medium pt-1 border-t border-gray-100 flex items-center gap-1">
+                        <ShieldCheck className="h-3 w-3" />
+                        <span>فاتورة ZATCA الضريبية المعتمدة مرفقة مع رمز QR.</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <ResponsiveChatSystem
+                isArabic={isArabic}
+                initialTab={
+                  activeTab === 'groups'
+                    ? 'group'
+                    : activeTab === 'direct'
+                    ? 'direct'
+                    : activeTab === 'guests'
+                    ? 'guest'
+                    : 'all'
+                }
+              />
+            )}
           </div>
         )}
 
@@ -572,28 +889,175 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
         {/* SETTINGS MODULE */}
         {module === 'settings' && (
           <div className="space-y-4">
-            <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs space-y-4">
-              <h3 className="text-xs font-bold text-[#161c27]">
-                Saudi Hospitality Platform & Compliance Configuration
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="p-3 rounded-lg border border-[#e3e8f9] bg-[#f9f9ff]">
-                  <span className="font-bold text-[#161c27]">ZATCA Phase 2 Production Onboarding</span>
-                  <p className="text-[11px] text-[#70787d] mt-1">
-                    CSID cryptographic keys, CSR generation, and Fatoora compliance validation active.
-                  </p>
+            {activeTab === 'users' && <UsersAndRolesSettings isArabic={isArabic} />}
+
+            {activeTab === 'company' && (
+              <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#e3e8f9]">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#161c27]">
+                      {isArabic ? 'بيانات المنشأة الفندقية والترخيص' : 'Hospitality Entity & Tourism Licensing'}
+                    </h3>
+                    <p className="text-xs text-[#70787d]">
+                      {isArabic
+                        ? 'السجل التجاري، ترخيص وزارة السياحة، والعنوان الوطني المعتمد.'
+                        : 'Commercial registration, Ministry of Tourism license, and verified National Address.'}
+                    </p>
+                  </div>
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Verified CR
+                  </span>
                 </div>
-                <div className="p-3 rounded-lg border border-[#e3e8f9] bg-[#f9f9ff]">
-                  <span className="font-bold text-[#161c27]">Payment Gateway Integration</span>
-                  <p className="text-[11px] text-[#70787d] mt-1">
-                    Mada direct debit, Apple Pay, HyperPay, and SADAD Bill Presentment connected.
-                  </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="p-3.5 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
+                    <span className="text-[#70787d] text-[10px] uppercase font-bold">CR Number (السجل التجاري)</span>
+                    <div className="font-bold text-[#161c27] text-sm mt-0.5">1010992812</div>
+                    <span className="text-[11px] text-emerald-700 font-semibold mt-1 block">Riyadh Chamber of Commerce</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
+                    <span className="text-[#70787d] text-[10px] uppercase font-bold">Ministry of Tourism License</span>
+                    <div className="font-bold text-[#161c27] text-sm mt-0.5">MOT-KSA-2024-8841</div>
+                    <span className="text-[11px] text-emerald-700 font-semibold mt-1 block">5-Star Luxury & Serviced Accommodation</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
+                    <span className="text-[#70787d] text-[10px] uppercase font-bold">VAT Identification (الرقم الضريبي)</span>
+                    <div className="font-mono font-bold text-[#004a60] text-sm mt-0.5">310294819200003</div>
+                    <span className="text-[11px] text-[#70787d] mt-1 block">ZATCA Phase 2 Fatoora Registered</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
+                    <span className="text-[#70787d] text-[10px] uppercase font-bold">National Address (العنوان الوطني)</span>
+                    <div className="font-bold text-[#161c27] text-xs mt-0.5">7421 King Fahd Road, Al-Olaya, Riyadh 12214-3810</div>
+                    <span className="text-[11px] text-[#70787d] mt-1 block">Short Code: RNKA7421</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {activeTab === 'tax_financial' && (
+              <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#e3e8f9]">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#161c27]">
+                      {isArabic ? 'إعدادات الضرائب والربط مع ZATCA' : 'Tax & ZATCA Phase 2 Cryptographic Config'}
+                    </h3>
+                    <p className="text-xs text-[#70787d]">
+                      {isArabic
+                        ? 'مفاتيح CSID المشفرة، ضريبة القيمة المضافة 15%، ورسوم السياحة والبلدية 5%.'
+                        : 'Production CSID compliance, cryptographic timestamps, and tourism fee tax engines.'}
+                    </p>
+                  </div>
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                    CSID Active
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="p-3 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
+                    <span className="text-[#70787d]">Standard VAT</span>
+                    <div className="text-base font-bold text-[#161c27] mt-1">15.0%</div>
+                    <span className="text-[10px] text-emerald-700 font-semibold">Standard KSA Rate</span>
+                  </div>
+                  <div className="p-3 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
+                    <span className="text-[#70787d]">Municipal & Tourism Tax</span>
+                    <div className="text-base font-bold text-[#004a60] mt-1">5.0%</div>
+                    <span className="text-[10px] text-[#70787d]">Applied to Accommodation Folios</span>
+                  </div>
+                  <div className="p-3 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
+                    <span className="text-[#70787d]">SADAD Biller Code</span>
+                    <div className="text-base font-bold text-purple-700 mt-1">204</div>
+                    <span className="text-[10px] text-emerald-700 font-semibold">Direct Debit Connected</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'numbering' && (
+              <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs space-y-4">
+                <h3 className="text-sm font-bold text-[#161c27]">
+                  {isArabic ? 'تسلسل ترقيم الفواتير والسندات' : 'Document Numbering Sequences'}
+                </h3>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-[#f9f9ff] border border-[#e3e8f9]">
+                    <span className="font-bold text-[#161c27]">ZATCA Tax Invoices</span>
+                    <span className="font-mono text-[#004a60] font-bold">INV-2026-{'[00000]'}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-[#f9f9ff] border border-[#e3e8f9]">
+                    <span className="font-bold text-[#161c27]">Guest Room Folios</span>
+                    <span className="font-mono text-[#004a60] font-bold">FOLIO-2026-{'[00000]'}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-[#f9f9ff] border border-[#e3e8f9]">
+                    <span className="font-bold text-[#161c27]">Receipt Vouchers</span>
+                    <span className="font-mono text-[#004a60] font-bold">RCP-2026-{'[00000]'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'templates' && (
+              <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs space-y-3">
+                <h3 className="text-sm font-bold text-[#161c27]">
+                  {isArabic ? 'هوية الفواتير وقوالب الطباعة' : 'Branding & Bilingual Folio Templates'}
+                </h3>
+                <p className="text-xs text-[#70787d]">
+                  Bilingual English/Arabic layouts with cryptographic QR code compliant with ZATCA Phase 2 resolution.
+                </p>
+              </div>
+            )}
+
+            {activeTab === 'notifications' && (
+              <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs space-y-3">
+                <h3 className="text-sm font-bold text-[#161c27]">
+                  {isArabic ? 'إعدادات التنبيهات والرسائل' : 'WhatsApp & SMS Dispatch Triggers'}
+                </h3>
+                <p className="text-xs text-[#70787d]">
+                  Automatic WhatsApp check-in PIN dispatch, booking confirmations, and ZATCA tax receipt delivery.
+                </p>
+              </div>
+            )}
+
+            {activeTab === 'gateways' && (
+              <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs space-y-4">
+                <h3 className="text-sm font-bold text-[#161c27]">
+                  {isArabic ? 'بوابات الدفع الإلكتروني بالمملكة' : 'Saudi Payment Gateway Integrations'}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="p-3.5 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
+                    <span className="font-bold text-[#161c27]">Mada & Apple Pay (HyperPay / Tap)</span>
+                    <p className="text-[11px] text-[#70787d] mt-1">Instant settlement with local Saudi debit cards and Apple Pay tokens.</p>
+                    <span className="text-emerald-700 font-bold text-[10px] mt-2 block">Live Production Mode</span>
+                  </div>
+                  <div className="p-3.5 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
+                    <span className="font-bold text-[#161c27]">SADAD Bill Presentment & Payment (EBPP)</span>
+                    <p className="text-[11px] text-[#70787d] mt-1">B2B enterprise corporate accounts receive invoice SADAD bill numbers.</p>
+                    <span className="text-emerald-700 font-bold text-[10px] mt-2 block">Connected (Code 204)</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Multichannel Dispatch Modal for Email, SMS, WhatsApp */}
+      <MultichannelDispatchModal
+        isOpen={isDispatchModalOpen}
+        onClose={() => setIsDispatchModalOpen(false)}
+        isArabic={isArabic}
+        initialChannel={dispatchChannel}
+        allRecipients={contactProfiles}
+        initialSelectedRecipientIds={preselectedContactIds}
+        onDispatchSuccess={({ channel, count, templateName }) => {
+          setDispatchNotification(
+            isArabic
+              ? `تم بنجاح إرسال "${templateName}" إلى ${count} جهة اتصال عبر ${channel.toUpperCase()}`
+              : `Dispatched "${templateName}" to ${count} recipient(s) via ${channel.toUpperCase()} successfully.`
+          );
+        }}
+      />
     </div>
   );
 };
