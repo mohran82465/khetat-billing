@@ -11,6 +11,8 @@ import { CustomersView } from './views/CustomersView';
 import { BalancesReportsView } from './views/BalancesReportsView';
 import { ReceiptsView } from './views/ReceiptsView';
 import { ProjectsTasksView } from './views/ProjectsTasksView';
+import { ResponsiveChatSystem } from './components/ResponsiveChatSystem';
+import { CustomerMessagingView } from './views/CustomerMessagingView';
 import { UserProfileModal } from './components/UserProfileModal';
 import {
   CreateSalesOrderModal,
@@ -293,10 +295,24 @@ export function App() {
             />
           )}
 
+          {/* Real-time Hospitality Team & Direct Chat */}
+          {activeView === 'chat' && (
+            <div className="flex-1 p-4 lg:p-6 overflow-hidden flex flex-col min-w-0">
+              <ResponsiveChatSystem isArabic={isArabic} />
+            </div>
+          )}
+
+          {/* Multichannel Customer Messaging (Email, SMS, WhatsApp) */}
+          {['messaging', 'messages'].includes(activeView) && (
+            <CustomerMessagingView
+              isArabic={isArabic}
+              onNavigateToInvoice={handleNavigateToInvoice}
+            />
+          )}
+
           {/* Remaining sitemap modules */}
           {[
             'profiles',
-            'messaging',
             'products',
             'procurement',
             'accounting',

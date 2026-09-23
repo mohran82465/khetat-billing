@@ -72,11 +72,13 @@ export interface ChatThread {
 interface ResponsiveChatSystemProps {
   isArabic: boolean;
   initialTab?: 'all' | 'direct' | 'group' | 'guest';
+  autoOpenNewDirect?: boolean;
 }
 
 export const ResponsiveChatSystem: React.FC<ResponsiveChatSystemProps> = ({
   isArabic,
   initialTab = 'all',
+  autoOpenNewDirect = false,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'direct' | 'group' | 'guest'>(initialTab);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -87,7 +89,21 @@ export const ResponsiveChatSystem: React.FC<ResponsiveChatSystemProps> = ({
 
   // Modals
   const [isNewGroupModalOpen, setIsNewGroupModalOpen] = useState<boolean>(false);
-  const [isNewDirectModalOpen, setIsNewDirectModalOpen] = useState<boolean>(false);
+  const [isNewDirectModalOpen, setIsNewDirectModalOpen] = useState<boolean>(autoOpenNewDirect);
+  const [directModalTab, setDirectModalTab] = useState<'team' | 'custom'>('team');
+  const [customContactName, setCustomContactName] = useState<string>('');
+  const [customContactPhone, setCustomContactPhone] = useState<string>('+966 5');
+  const [customContactRole, setCustomContactRole] = useState<string>('VIP Hotel Guest');
+  const [customInitialMessage, setCustomInitialMessage] = useState<string>('');
+
+  useEffect(() => {
+    if (initialTab) {
+      setFilterType(initialTab);
+    }
+    if (autoOpenNewDirect) {
+      setIsNewDirectModalOpen(true);
+    }
+  }, [initialTab, autoOpenNewDirect]);
 
   // New group form
   const [newGroupName, setNewGroupName] = useState<string>('');
@@ -499,7 +515,7 @@ export const ResponsiveChatSystem: React.FC<ResponsiveChatSystemProps> = ({
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[580px] bg-white rounded-2xl border border-[#e3e8f9] shadow-xs overflow-hidden">
+    <div className="flex flex-col h-full min-h-[580px] bg-white rounded-2xl border border-[#e3e8f9] shadow-xs overflow-hidden">
       {/* Top Main Chat Header / Bar */}
       <div className="bg-[#f9f9ff] border-b border-[#e3e8f9] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -536,10 +552,10 @@ export const ResponsiveChatSystem: React.FC<ResponsiveChatSystemProps> = ({
 
           <button
             onClick={() => setIsNewDirectModalOpen(true)}
-            className="hidden sm:flex items-center gap-1.5 rounded-xl border border-[#e3e8f9] bg-white text-[#161c27] px-3 py-1.5 text-xs font-semibold shadow-2xs hover:bg-[#f1f3ff] transition-all cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl border border-[#004a60] bg-[#e8eeff] text-[#004a60] px-3 py-1.5 text-xs font-bold shadow-2xs hover:bg-[#d8e3ff] transition-all cursor-pointer"
           >
             <UserPlus className="h-3.5 w-3.5 text-[#004a60]" />
-            <span>{isArabic ? 'محادثة فردية' : 'Direct Message'}</span>
+            <span>{isArabic ? 'محادثة شخص آخر' : 'Chat for Another'}</span>
           </button>
         </div>
       </div>
@@ -570,16 +586,16 @@ export const ResponsiveChatSystem: React.FC<ResponsiveChatSystemProps> = ({
               {[
                 { id: 'all', label: 'All', labelAr: 'الكل', count: threads.length },
                 {
+                  id: 'direct',
+                  label: 'Chat for Another',
+                  labelAr: 'محادثة شخص آخر',
+                  count: threads.filter((t) => t.type === 'direct').length,
+                },
+                {
                   id: 'group',
                   label: 'Groups',
                   labelAr: 'المجموعات',
                   count: threads.filter((t) => t.type === 'group').length,
-                },
-                {
-                  id: 'direct',
-                  label: 'Direct',
-                  labelAr: 'المباشرة',
-                  count: threads.filter((t) => t.type === 'direct').length,
                 },
                 {
                   id: 'guest',
@@ -1128,72 +1144,229 @@ export const ResponsiveChatSystem: React.FC<ResponsiveChatSystemProps> = ({
         </div>
       )}
 
-      {/* ================= MODAL: DIRECT MESSAGE PICKER ================= */}
+      {/* ================= MODAL: DIRECT MESSAGE PICKER (CHAT FOR ANOTHER) ================= */}
       {isNewDirectModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl border border-[#e3e8f9] p-6 max-w-sm w-full shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl border border-[#e3e8f9] p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#e3e8f9]">
-              <h3 className="text-sm font-bold text-[#161c27]">
-                {isArabic ? 'بدء محادثة جديدة' : 'Start Direct Message'}
-              </h3>
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-[#e8eeff] flex items-center justify-center text-[#004a60]">
+                  <UserPlus className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#161c27]">
+                    {isArabic ? 'محادثة شخص آخر' : 'Chat for Another'}
+                  </h3>
+                  <p className="text-[10px] text-[#70787d]">
+                    {isArabic ? 'بدء محادثة فورية مع موظف، نزيل، أو جهة خارجية' : 'Start a direct chat with staff, guest, or partner'}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setIsNewDirectModalOpen(false)}
-                className="text-[#70787d] hover:text-[#161c27] cursor-pointer"
+                className="text-[#70787d] hover:text-[#161c27] p-1 rounded-lg hover:bg-[#f1f3ff] cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {availableTeamMembers.map((member) => (
-                <div
-                  key={member.id}
-                  onClick={() => {
-                    const existing = threads.find(
-                      (t) => t.type === 'direct' && t.name.includes(member.name.split(' ')[0])
-                    );
-                    if (existing) {
-                      setActiveThreadId(existing.id);
-                    } else {
-                      const newThreadId = `direct-${Date.now()}`;
+            {/* Sub-tabs */}
+            <div className="grid grid-cols-2 gap-1 bg-[#f9f9ff] p-1 rounded-xl border border-[#e3e8f9]">
+              <button
+                type="button"
+                onClick={() => setDirectModalTab('team')}
+                className={`py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  directModalTab === 'team'
+                    ? 'bg-white text-[#004a60] font-bold shadow-2xs'
+                    : 'text-[#70787d] hover:text-[#161c27]'
+                }`}
+              >
+                {isArabic ? 'فريق العمل والزملاء' : 'Team / Staff'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDirectModalTab('custom')}
+                className={`py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  directModalTab === 'custom'
+                    ? 'bg-white text-[#004a60] font-bold shadow-2xs'
+                    : 'text-[#70787d] hover:text-[#161c27]'
+                }`}
+              >
+                {isArabic ? '+ نزيل أو شخص آخر' : '+ Guest / Another Person'}
+              </button>
+            </div>
+
+            {directModalTab === 'team' ? (
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                {availableTeamMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    onClick={() => {
+                      const existing = threads.find(
+                        (t) => t.type === 'direct' && t.name.includes(member.name.split(' ')[0])
+                      );
+                      if (existing) {
+                        setActiveThreadId(existing.id);
+                      } else {
+                        const newThreadId = `direct-${Date.now()}`;
+                        const directChat: ChatThread = {
+                          id: newThreadId,
+                          type: 'direct',
+                          name: member.name,
+                          nameAr: member.nameAr,
+                          avatar: member.avatar,
+                          badge: member.role,
+                          property: member.property,
+                          propertyAr: member.property,
+                          isOnline: true,
+                          lastMessage: 'Conversation started',
+                          lastMessageAr: 'بدأت المحادثة',
+                          lastMessageTime: 'Just now',
+                          unreadCount: 0,
+                          messages: [],
+                        };
+                        setThreads((prev) => [directChat, ...prev]);
+                        setActiveThreadId(newThreadId);
+                      }
+                      setFilterType('direct');
+                      setMobileShowThread(true);
+                      setIsNewDirectModalOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl border border-[#e3e8f9] hover:bg-[#f1f3ff] hover:border-[#004a60] flex items-center justify-between cursor-pointer transition-all"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src={member.avatar}
+                        alt={member.name}
+                        className="h-8 w-8 rounded-full object-cover"
+                      />
+                      <div>
+                        <div className="font-bold text-xs text-[#161c27]">
+                          {isArabic ? member.nameAr : member.name}
+                        </div>
+                        <div className="text-[10px] text-[#70787d]">{member.role}</div>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-semibold text-[#004a60] bg-[#e8eeff] px-2 py-0.5 rounded-md">
+                      {isArabic ? 'محادثة' : 'Chat'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#161c27] mb-1">
+                    {isArabic ? 'اسم الشخص / النزيل' : 'Full Name / Guest Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={customContactName}
+                    onChange={(e) => setCustomContactName(e.target.value)}
+                    placeholder={isArabic ? 'مثال: عبدالمحسن الشمري' : 'e.g., Abdulmohsen Al-Shammari'}
+                    className="w-full rounded-xl border border-[#e3e8f9] bg-[#f9f9ff] px-3 py-2 text-xs text-[#161c27] focus:border-[#004a60] focus:bg-white focus:outline-hidden"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#161c27] mb-1">
+                      {isArabic ? 'الصفة / الدور' : 'Role / Relation'}
+                    </label>
+                    <input
+                      type="text"
+                      value={customContactRole}
+                      onChange={(e) => setCustomContactRole(e.target.value)}
+                      placeholder={isArabic ? 'نزيل VIP، مورد...' : 'VIP Guest, Contractor...'}
+                      className="w-full rounded-xl border border-[#e3e8f9] bg-[#f9f9ff] px-3 py-2 text-xs text-[#161c27] focus:border-[#004a60] focus:bg-white focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#161c27] mb-1">
+                      {isArabic ? 'الجوال / الواتساب' : 'Mobile / WhatsApp'}
+                    </label>
+                    <input
+                      type="text"
+                      value={customContactPhone}
+                      onChange={(e) => setCustomContactPhone(e.target.value)}
+                      className="w-full rounded-xl border border-[#e3e8f9] bg-[#f9f9ff] px-3 py-2 text-xs text-[#161c27] font-mono focus:border-[#004a60] focus:bg-white focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#161c27] mb-1">
+                    {isArabic ? 'الرسالة الترحيبية الأولى' : 'Initial Message (Optional)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={customInitialMessage}
+                    onChange={(e) => setCustomInitialMessage(e.target.value)}
+                    placeholder={isArabic ? 'مرحباً، يسعدنا تواصلكم مع الضيافة...' : 'Hello, welcome to our hospitality service...'}
+                    className="w-full rounded-xl border border-[#e3e8f9] bg-[#f9f9ff] px-3 py-2 text-xs text-[#161c27] focus:border-[#004a60] focus:bg-white focus:outline-hidden"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#e3e8f9]">
+                  <button
+                    type="button"
+                    onClick={() => setIsNewDirectModalOpen(false)}
+                    className="rounded-xl border border-[#e3e8f9] px-3 py-1.5 text-xs font-semibold text-[#70787d] hover:bg-[#f1f3ff] cursor-pointer"
+                  >
+                    {isArabic ? 'إلغاء' : 'Cancel'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const personName = customContactName.trim() || (isArabic ? 'محادثة شخص آخر' : 'Another Guest');
+                      const newThreadId = `custom-direct-${Date.now()}`;
                       const directChat: ChatThread = {
                         id: newThreadId,
                         type: 'direct',
-                        name: member.name,
-                        nameAr: member.nameAr,
-                        avatar: member.avatar,
-                        badge: member.role,
-                        property: member.property,
-                        propertyAr: member.property,
+                        name: personName,
+                        nameAr: personName,
+                        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                        badge: customContactRole,
+                        property: customContactPhone,
+                        propertyAr: customContactPhone,
                         isOnline: true,
-                        lastMessage: 'Conversation started',
-                        lastMessageAr: 'بدأت المحادثة',
+                        lastMessage: customInitialMessage.trim() || 'Chat initiated',
+                        lastMessageAr: customInitialMessage.trim() || 'بدأت المحادثة',
                         lastMessageTime: 'Just now',
                         unreadCount: 0,
-                        messages: [],
+                        messages: customInitialMessage.trim()
+                          ? [
+                              {
+                                id: `m-${Date.now()}`,
+                                senderId: 'me',
+                                senderName: 'You',
+                                senderNameAr: 'أنت',
+                                senderAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+                                isMe: true,
+                                text: customInitialMessage.trim(),
+                                timestamp: 'Just now',
+                                status: 'sent',
+                              },
+                            ]
+                          : [],
                       };
                       setThreads((prev) => [directChat, ...prev]);
                       setActiveThreadId(newThreadId);
-                    }
-                    setMobileShowThread(true);
-                    setIsNewDirectModalOpen(false);
-                  }}
-                  className="p-2.5 rounded-xl border border-[#e3e8f9] hover:bg-[#f1f3ff] hover:border-[#004a60] flex items-center gap-2.5 cursor-pointer transition-all"
-                >
-                  <img
-                    src={member.avatar}
-                    alt={member.name}
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                  <div>
-                    <div className="font-bold text-xs text-[#161c27]">
-                      {isArabic ? member.nameAr : member.name}
-                    </div>
-                    <div className="text-[10px] text-[#70787d]">{member.role}</div>
-                  </div>
+                      setFilterType('direct');
+                      setMobileShowThread(true);
+                      setIsNewDirectModalOpen(false);
+                      setCustomContactName('');
+                      setCustomInitialMessage('');
+                    }}
+                    className="flex items-center gap-1.5 rounded-xl bg-[#004a60] px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[#074e64] cursor-pointer"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'بدء المحادثة فوراً' : 'Start Chat'}</span>
+                  </button>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ import {
   UserCheck,
   Layers,
   MessageSquare,
+  MessageCircle,
   Package,
   CheckSquare,
   ShoppingBag,
@@ -96,10 +97,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       children: [
         { id: 'subscriptions_plans', name: 'Subscriptions', nameAr: 'باقات الاشتراك' },
         { id: 'subscriptions_cycles', name: 'Billing Cycles', nameAr: 'دورات الفوترة' },
-        { id: 'subscriptions_active', name: 'Active Subscriptions', nameAr: 'الاشتراكات النشطة', badge: '8' },
+        { id: 'subscriptions_active', name: 'Active Subscriptions', nameAr: 'الاشتراكات النشطة' },
         { id: 'subscriptions_coupons', name: 'Coupons & Discounts', nameAr: 'الكوبونات والخصومات' },
         { id: 'subscriptions_lifecycle', name: 'Lifecycle History', nameAr: 'سجل دورة الحياة' },
-        { id: 'subscriptions_reminders', name: 'Renewal Reminders', nameAr: 'تذكيرات التجديد', badge: '4' },
+        { id: 'subscriptions_reminders', name: 'Renewal Reminders', nameAr: 'تذكيرات التجديد' },
       ],
     },
     {
@@ -114,30 +115,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     {
-      id: 'sales',
-      name: 'Sales',
-      nameAr: 'المبيعات',
-      icon: Layers,
-      children: [
-        { id: 'customers', name: 'Customers', nameAr: 'العملاء', badge: '5' },
-        { id: 'quotations', name: 'Quotations', nameAr: 'عروض الأسعار', badge: '5' },
-        { id: 'sales_orders', name: 'Sales Orders', nameAr: 'أوامر البيع', badge: '5' },
-        { id: 'invoices', name: 'Invoices', nameAr: 'فواتير المبيعات', badge: 'ZATCA' },
-        { id: 'receipts', name: 'Receipts', nameAr: 'سندات القبض', badge: '5' },
-        { id: 'balances', name: 'Balances & Reports', nameAr: 'الأرصدة والتقارير' },
-      ],
-    },
-    {
-      id: 'messaging',
-      name: 'Messaging',
-      nameAr: 'المراسلات',
-      icon: MessageSquare,
-      badge: 'WhatsApp',
-    },
-    {
       id: 'products',
-      name: 'Products',
-      nameAr: 'المنتجات والخدمات',
+      name: 'Plans',
+      nameAr: 'الخطط والباقات',
       icon: Package,
       children: [
         { id: 'catalog', name: 'Catalog', nameAr: 'الكتالوج' },
@@ -148,17 +128,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     {
+      id: 'sales',
+      name: 'Sales',
+      nameAr: 'المبيعات',
+      icon: Layers,
+      children: [
+        { id: 'customers', name: 'Customers', nameAr: 'العملاء' },
+        { id: 'quotations', name: 'Quotations', nameAr: 'عروض الأسعار' },
+        { id: 'sales_orders', name: 'Sales Orders', nameAr: 'أوامر البيع' },
+        { id: 'invoices', name: 'Invoices', nameAr: 'فواتير المبيعات', badge: 'ZATCA' },
+        { id: 'receipts', name: 'Receipts', nameAr: 'سندات القبض' },
+        { id: 'balances', name: 'Balances & Reports', nameAr: 'الأرصدة والتقارير' },
+      ],
+    },
+    {
+      id: 'chat',
+      name: 'Chat',
+      nameAr: 'الدردشة',
+      icon: MessageSquare,
+    },
+    {
+      id: 'messaging',
+      name: 'Messages',
+      nameAr: 'الرسائل',
+      icon: MessageCircle,
+      badge: 'WhatsApp/SMS/Email',
+    },
+    {
       id: 'task_manager',
       name: 'Task manger',
       nameAr: 'إدارة المهام',
       icon: CheckSquare,
-      badge: '6',
       children: [
         { id: 'task_list', name: 'task List', nameAr: 'قائمة المهام' },
         { id: 'task_catalog', name: 'Task Catalog', nameAr: 'كتالوج المهام' },
-        { id: 'task_assignment', name: 'Task Assignment', nameAr: 'إسناد المهام' },
-        { id: 'members', name: 'Members', nameAr: 'أعضاء الفريق' },
-        { id: 'billable_work', name: 'Billable Work Tracking', nameAr: 'تتبع العمل المفوتر' },
       ],
     },
     {
@@ -250,6 +253,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     if (['projects', 'tasks', 'task_manager'].includes(view)) {
       return 'task_manager';
+    }
+    if (['chat'].includes(view)) {
+      return 'chat';
+    }
+    if (['messaging', 'messages'].includes(view)) {
+      return 'messaging';
     }
     return view;
   };

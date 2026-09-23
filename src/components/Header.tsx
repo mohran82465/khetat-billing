@@ -93,10 +93,14 @@ export const Header: React.FC<HeaderProps> = ({
         return isArabic ? 'المبيعات / تقارير الأرصدة والتقادم' : 'Sales / Balances & Aging Reports';
       case 'receipts':
         return isArabic ? 'المبيعات / سندات القبض والدفع' : 'Sales / Receipts & Official Vouchers';
+      case 'chat':
+        return isArabic ? 'الدردشة / المحادثات والعمليات ومحادثة شخص آخر' : 'Chat / Operations & Direct Messages';
       case 'messaging':
-        return isArabic ? 'المراسلات / واتساب النزلاء والاستقبال' : 'Messaging / WhatsApp Guest Concierge & Invoices';
+      case 'messages':
+        return isArabic ? 'الرسائل / مراسلات الواتساب والتنبيهات والفواتير' : 'Messages / WhatsApp Concierge & Notifications';
       case 'products':
-        return isArabic ? 'المنتجات والخدمات / كتالوج الفنادق والضرائب' : 'Products / Hospitality Catalog & Tax Rates';
+      case 'plans':
+        return isArabic ? 'الخطط والباقات / كتالوج الفنادق والضرائب' : 'Plans / Hospitality Catalog & Tax Rates';
       case 'projects':
       case 'task_manager':
         return isArabic ? 'إدارة المهام / مشاريع التشغيل الفندقي' : 'Task Manager / Operations & Onboarding';

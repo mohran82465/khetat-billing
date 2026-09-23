@@ -11,6 +11,7 @@ import {
   Building,
   Shield,
   MessageSquare,
+  MessageCircle,
   Mail,
   Smartphone,
   Package,
@@ -40,6 +41,8 @@ interface SitemapModuleViewProps {
   module:
     | 'profiles'
     | 'messaging'
+    | 'messages'
+    | 'chat'
     | 'products'
     | 'procurement'
     | 'accounting'
@@ -82,22 +85,49 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
       ],
     },
     messaging: {
-      title: 'Messaging & Team Operations Chat',
-      titleAr: 'المراسلات ومجموعات العمل الفندقية',
-      desc: 'Normal text chat, operational group channels across properties, and official WhatsApp concierge.',
-      descAr: 'محادثات نصية مباشرة، مجموعات عمل تشغيلية للفنادق، وكونسيرج الواتساب المعتمد للنزلاء.',
+      title: 'Messages & WhatsApp Concierge',
+      titleAr: 'الرسائل ومراسلات الواتساب الرسمية',
+      desc: 'Official WhatsApp Business API, guest concierge messages, real-time dispatch outbox, automated ZATCA folios, and smart room key PINs.',
+      descAr: 'بوابة واتساب الأعمال الرسمية، محادثات ورسائل النزلاء، إشعارات فواتير الزكاة المعتمدة، وتوليد أكواد الأقفال الذكية.',
+      icon: MessageCircle,
+      tabs: [
+        { id: 'inbox', name: 'All Messages', nameAr: 'كافة الرسائل' },
+        { id: 'guests', name: 'Guest WhatsApp', nameAr: 'واتساب النزلاء' },
+        { id: 'direct', name: 'Direct Messages', nameAr: 'الرسائل المباشرة' },
+        { id: 'templates', name: 'ZATCA SMS & Templates', nameAr: 'قوالب رسائل الفواتير والواتساب' },
+        { id: 'outbox', name: 'Dispatched Outbox', nameAr: 'سجل الرسائل المرسلة' },
+      ],
+    },
+    messages: {
+      title: 'Messages & WhatsApp Concierge',
+      titleAr: 'الرسائل ومراسلات الواتساب الرسمية',
+      desc: 'Official WhatsApp Business API, guest concierge messages, real-time dispatch outbox, automated ZATCA folios, and smart room key PINs.',
+      descAr: 'بوابة واتساب الأعمال الرسمية، محادثات ورسائل النزلاء، إشعارات فواتير الزكاة المعتمدة، وتوليد أكواد الأقفال الذكية.',
+      icon: MessageCircle,
+      tabs: [
+        { id: 'inbox', name: 'All Messages', nameAr: 'كافة الرسائل' },
+        { id: 'guests', name: 'Guest WhatsApp', nameAr: 'واتساب النزلاء' },
+        { id: 'direct', name: 'Direct Messages', nameAr: 'الرسائل المباشرة' },
+        { id: 'templates', name: 'ZATCA SMS & Templates', nameAr: 'قوالب رسائل الفواتير والواتساب' },
+        { id: 'outbox', name: 'Dispatched Outbox', nameAr: 'سجل الرسائل المرسلة' },
+      ],
+    },
+    chat: {
+      title: 'Chat & Operations',
+      titleAr: 'الدردشة ومجموعات العمل الفندقية',
+      desc: 'Real-time team chat, operational group channels across properties, and instant chat for another staff or guest.',
+      descAr: 'محادثات نصية مباشرة بين فرق العمل، مجموعات التشغيل الفندقي، وميزة محادثة شخص آخر.',
       icon: MessageSquare,
       tabs: [
-        { id: 'inbox', name: 'All Chats', nameAr: 'كافة المحادثات', count: '18' },
-        { id: 'groups', name: 'Group Chats', nameAr: 'مجموعات العمل', count: '5' },
-        { id: 'direct', name: 'Direct Messages', nameAr: 'المحادثات المباشرة', count: '10' },
-        { id: 'guests', name: 'Guest Concierge', nameAr: 'كونسيرج النزلاء', count: '3' },
-        { id: 'templates', name: 'ZATCA SMS & Templates', nameAr: 'قوالب رسائل الفواتير' },
+        { id: 'inbox', name: 'All Chats', nameAr: 'كافة المحادثات' },
+        { id: 'direct', name: 'Chat for Another', nameAr: 'محادثة شخص آخر' },
+        { id: 'groups', name: 'Group Chats', nameAr: 'مجموعات العمل' },
+        { id: 'guests', name: 'Guest Concierge', nameAr: 'كونسيرج النزلاء' },
       ],
     },
     products: {
-      title: 'Products & Service Catalog',
-      titleAr: 'المنتجات والخدمات الفندقية',
+      title: 'Plans & Service Catalog',
+      titleAr: 'الخطط والباقات والخدمات الفندقية',
       desc: 'Room inventory, hospitality add-on packages, banquet hall rental, and Saudi tourism tax configurations.',
       descAr: 'خدمات الغرف والمرافق، باقات الضيافة، قاعات المناسبات، وضبط ضريبة السياحة 5% وضريبة القيمة المضافة 15%.',
       icon: Package,
@@ -651,67 +681,249 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
           </div>
         )}
 
-        {/* MESSAGING MODULE */}
-        {module === 'messaging' && (
+        {/* CHAT MODULE (REAL-TIME OPERATIONS CHAT) */}
+        {module === 'chat' && (
           <div className="space-y-4">
-            {activeTab === 'templates' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-emerald-600" />
-                      <span className="text-xs font-bold text-[#161c27]">
-                        WhatsApp Business Official API
-                      </span>
-                    </div>
-                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                      Connected
-                    </span>
+            <ResponsiveChatSystem
+              isArabic={isArabic}
+              initialTab={
+                activeTab === 'groups'
+                  ? 'group'
+                  : activeTab === 'direct'
+                  ? 'direct'
+                  : activeTab === 'guests'
+                  ? 'guest'
+                  : 'all'
+              }
+              autoOpenNewDirect={activeTab === 'direct'}
+            />
+          </div>
+        )}
+
+        {/* MESSAGES & WHATSAPP CONCIERGE MODULE */}
+        {(module === 'messaging' || (module as string) === 'messages') && (
+          <div className="space-y-4">
+            {activeTab === 'templates' || activeTab === 'outbox' ? (
+              <>
+                {/* Top Stat Banners */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-2xs flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] text-[#70787d] font-medium">
+                    {isArabic ? 'حالة ربط الواتساب الرسمي' : 'Official WhatsApp API'}
                   </div>
-                  <p className="text-xs text-[#70787d] mb-4">
-                    Direct dispatch of ZATCA Phase 2 QR-code invoices and smart room key PINs to guests via WhatsApp upon check-in and check-out.
-                  </p>
-                  <div className="space-y-2 text-xs">
-                    <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9] flex items-center justify-between">
-                      <span className="font-semibold text-[#161c27]">Smart Door PIN Dispatch</span>
-                      <span className="text-emerald-700 font-bold">Auto-Triggered</span>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9] flex items-center justify-between">
-                      <span className="font-semibold text-[#161c27]">ZATCA Tax Folio PDF</span>
-                      <span className="text-emerald-700 font-bold">Delivered & Read (98.4%)</span>
-                    </div>
+                  <div className="text-base font-bold text-[#161c27] flex items-center gap-1.5 mt-0.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>{isArabic ? 'متصل ونشط' : 'Active & Connected'}</span>
                   </div>
                 </div>
+                <div className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  WA
+                </div>
+              </div>
 
-                <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
-                  <h3 className="text-xs font-bold text-[#161c27] mb-2">Live WhatsApp Message Preview</h3>
-                  <div className="rounded-xl bg-[#e5ddd5] p-3 text-xs text-[#111]">
-                    <div className="bg-white rounded-lg p-3 shadow-xs max-w-sm ml-auto space-y-1">
-                      <div className="font-bold text-[#004a60]">The Chedi Hegra AlUla</div>
-                      <p className="text-[11px] text-gray-800">
-                        مرحباً بكم في منتجع الشيدي الحجر. تم تأكيد إقامتكم في فيلا رقم 08.
-                        رقم القفل الذكي: <span className="font-mono font-bold text-red-600">4910#</span>
-                      </p>
-                      <div className="text-[10px] text-emerald-700 font-medium pt-1 border-t border-gray-100 flex items-center gap-1">
-                        <ShieldCheck className="h-3 w-3" />
-                        <span>فاتورة ZATCA الضريبية المعتمدة مرفقة مع رمز QR.</span>
-                      </div>
+              <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-2xs flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] text-[#70787d] font-medium">
+                    {isArabic ? 'نسبة تسليم فواتير ZATCA' : 'ZATCA Folio Delivery Rate'}
+                  </div>
+                  <div className="text-base font-bold text-emerald-700 mt-0.5">99.2%</div>
+                </div>
+                <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-2xs flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] text-[#70787d] font-medium">
+                    {isArabic ? 'أكواد الأقفال الذكية المرسلة' : 'Smart Door PINs Dispatched'}
+                  </div>
+                  <div className="text-base font-bold text-[#161c27] mt-0.5">1,482 PINs</div>
+                </div>
+                <div className="h-9 w-9 rounded-xl bg-[#e8eeff] text-[#004a60] flex items-center justify-center">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+              </div>
+            </div>
+
+            {/* API Preview & Template Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-bold text-[#161c27]">
+                      WhatsApp Business Official API
+                    </span>
+                  </div>
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Webhook Active
+                  </span>
+                </div>
+                <p className="text-xs text-[#70787d] mb-4">
+                  {isArabic
+                    ? 'إرسال تلقائي لفواتير المرحلة الثانية من هيئة الزكاة والضريبة والجمارك مع رمز الاستجابة السريعة (QR) وأكواد دخول الفلل والغرف الذكية للنزلاء فور تسجيل الوصول والمغادرة.'
+                    : 'Direct automated dispatch of ZATCA Phase 2 QR-code invoices and smart room key PINs to guests via WhatsApp upon check-in and check-out.'}
+                </p>
+                <div className="space-y-2 text-xs">
+                  <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9] flex items-center justify-between">
+                    <span className="font-semibold text-[#161c27]">Smart Door PIN Auto-Dispatch</span>
+                    <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">Enabled</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9] flex items-center justify-between">
+                    <span className="font-semibold text-[#161c27]">ZATCA Cryptographic PDF Attachment</span>
+                    <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">Instant Push</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
+                <h3 className="text-xs font-bold text-[#161c27] mb-2">
+                  {isArabic ? 'معاينة رسائل الواتساب المباشرة' : 'Live WhatsApp Message Preview'}
+                </h3>
+                <div className="rounded-xl bg-[#e5ddd5] p-3 text-xs text-[#111]">
+                  <div className="bg-white rounded-lg p-3 shadow-xs max-w-sm ml-auto space-y-1">
+                    <div className="font-bold text-[#004a60]">The Chedi Hegra AlUla</div>
+                    <p className="text-[11px] text-gray-800">
+                      مرحباً بكم في منتجع الشيدي الحجر. تم تأكيد إقامتكم في فيلا رقم 08.
+                      رقم القفل الذكي: <span className="font-mono font-bold text-red-600">4910#</span>
+                    </p>
+                    <div className="text-[10px] text-emerald-700 font-medium pt-1 border-t border-gray-100 flex items-center gap-1">
+                      <ShieldCheck className="h-3 w-3" />
+                      <span>فاتورة ZATCA الضريبية المعتمدة مرفقة مع رمز QR.</span>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Dispatched Messages Outbox Table */}
+            <div className="bg-white rounded-xl border border-[#e3e8f9] shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-[#e3e8f9] flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-bold text-[#161c27]">
+                    {isArabic ? 'سجل الرسائل المرسلة للنزلاء والعملاء' : 'Guest Dispatched Outbox'}
+                  </h3>
+                  <p className="text-[11px] text-[#70787d]">
+                    {isArabic ? 'تتبع الإرسال التلقائي عبر بوابة الواتساب والرسائل القصيرة' : 'Real-time transmission logs across WhatsApp & SMS gateways'}
+                  </p>
+                </div>
+                <span className="text-xs font-semibold text-[#004a60] bg-[#e8eeff] px-2.5 py-1 rounded-lg">
+                  {isArabic ? 'تحديث لحظي' : 'Live Gateway'}
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#f9f9ff] text-[11px] text-[#70787d] font-semibold border-b border-[#e3e8f9]">
+                    <tr>
+                      <th className="px-4 py-2.5">{isArabic ? 'النزيل / المستلم' : 'Recipient Guest'}</th>
+                      <th className="px-4 py-2.5">{isArabic ? 'رقم الجوال' : 'Mobile'}</th>
+                      <th className="px-4 py-2.5">{isArabic ? 'القناة' : 'Channel'}</th>
+                      <th className="px-4 py-2.5">{isArabic ? 'نوع الرسالة' : 'Template Type'}</th>
+                      <th className="px-4 py-2.5">{isArabic ? 'الحالة' : 'Status'}</th>
+                      <th className="px-4 py-2.5">{isArabic ? 'الوقت' : 'Time'}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e3e8f9]">
+                    {[
+                      {
+                        name: 'Sheikh Fahad Al-Otaibi',
+                        nameAr: 'الشيخ فهد العتيبي',
+                        phone: '+966 50 119 2831',
+                        channel: 'WhatsApp Business',
+                        template: 'Smart Lock PIN #4910 + ZATCA Folio',
+                        templateAr: 'كود القفل #4910 + فاتورة ZATCA',
+                        status: 'Read',
+                        statusAr: 'تمت القراءة',
+                        time: '2 mins ago',
+                      },
+                      {
+                        name: 'Dr. Sarah Al-Ghamdi',
+                        nameAr: 'د. سارة الغامدي',
+                        phone: '+966 55 832 9910',
+                        channel: 'WhatsApp Business',
+                        template: 'Booking Confirmation & Check-in QR',
+                        templateAr: 'تأكيد الحجز ورمز QR للوصول',
+                        status: 'Delivered',
+                        statusAr: 'تم التسليم',
+                        time: '18 mins ago',
+                      },
+                      {
+                        name: 'Eng. Tariq Mansoor',
+                        nameAr: 'م. طارق منصور',
+                        phone: '+966 54 991 4420',
+                        channel: 'SMS Gateway',
+                        template: 'Monthly Statement & ZATCA Receipt',
+                        templateAr: 'كشف الحساب وسند قبض ZATCA',
+                        status: 'Sent',
+                        statusAr: 'تم الإرسال',
+                        time: '1 hour ago',
+                      },
+                      {
+                        name: 'Sultan Al-Qahtani',
+                        nameAr: 'سلطان القحطاني',
+                        phone: '+966 56 312 8871',
+                        channel: 'WhatsApp Business',
+                        template: 'Checkout Folio #INV-2026-081',
+                        templateAr: 'فاتورة المغادرة #INV-2026-081',
+                        status: 'Read',
+                        statusAr: 'تمت القراءة',
+                        time: '3 hours ago',
+                      },
+                    ].map((row, idx) => (
+                      <tr key={idx} className="hover:bg-[#f1f3ff]/50 transition-colors">
+                        <td className="px-4 py-3 font-semibold text-[#161c27]">
+                          {isArabic ? row.nameAr : row.name}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-gray-600">{row.phone}</td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              row.channel.includes('WhatsApp')
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}
+                          >
+                            {row.channel}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {isArabic ? row.templateAr : row.template}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`font-semibold ${
+                              row.status === 'Read'
+                                ? 'text-blue-600'
+                                : row.status === 'Delivered'
+                                ? 'text-emerald-600'
+                                : 'text-gray-600'
+                            }`}
+                          >
+                            ✓✓ {isArabic ? row.statusAr : row.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-[11px] text-[#70787d]">{row.time}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            </>
             ) : (
               <ResponsiveChatSystem
                 isArabic={isArabic}
                 initialTab={
-                  activeTab === 'groups'
-                    ? 'group'
+                  activeTab === 'guests'
+                    ? 'guest'
                     : activeTab === 'direct'
                     ? 'direct'
-                    : activeTab === 'guests'
-                    ? 'guest'
                     : 'all'
                 }
+                autoOpenNewDirect={activeTab === 'direct'}
               />
             )}
           </div>
