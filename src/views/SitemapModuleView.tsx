@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UsersAndRolesSettings } from '../components/UsersAndRolesSettings';
 import { ResponsiveChatSystem } from '../components/ResponsiveChatSystem';
+import { PlansCatalogManager } from '../components/PlansCatalogManager';
 import {
   MultichannelDispatchModal,
   RecipientProfile,
@@ -126,17 +127,17 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
       ],
     },
     products: {
-      title: 'Plans & Service Catalog',
-      titleAr: 'الخطط والباقات والخدمات الفندقية',
-      desc: 'Room inventory, hospitality add-on packages, banquet hall rental, and Saudi tourism tax configurations.',
-      descAr: 'خدمات الغرف والمرافق، باقات الضيافة، قاعات المناسبات، وضبط ضريبة السياحة 5% وضريبة القيمة المضافة 15%.',
+      title: 'Choose Your Plan - Plans & Catalog',
+      titleAr: 'اختر باقتك - الخطط والكتالوج',
+      desc: 'Select the plan that matches your property size and needs: Building Plans (Hotels, Serviced Apartments: 150 SAR up to 20, 3,000 SAR for 20+), Home Plans, and Chalet Plans.',
+      descAr: 'حدد الباقة التي تناسب حجم واحتياجات عقاراتك: باقات المباني (150 ر.س حتى 20 عقار، و 3,000 ر.س لما زاد)، باقات المنازل، وباقات الشاليهات.',
       icon: Package,
       tabs: [
-        { id: 'catalog', name: 'Catalog', nameAr: 'الكتالوج', count: '24' },
-        { id: 'categories', name: 'Categories', nameAr: 'التصنيفات' },
+        { id: 'catalog', name: 'Catalog (Choose Plan)', nameAr: 'الكتالوج (اختر باقتك)', count: '3' },
+        { id: 'categories', name: 'Categories (3 Plans)', nameAr: 'التصنيفات (3 باقات)', count: '3' },
+        { id: 'pricing', name: 'Pricing & Tier Matrix', nameAr: 'الأسعار وسقف الخصم' },
         { id: 'uom', name: 'Units of Measure', nameAr: 'وحدات القياس' },
-        { id: 'pricing', name: 'Pricing', nameAr: 'هياكل الأسعار' },
-        { id: 'tax_config', name: 'Tax Configuration', nameAr: 'التهيئة الضريبية (ZATCA)' },
+        { id: 'tax_config', name: 'Tax Configuration (ZATCA)', nameAr: 'التهيئة الضريبية' },
       ],
     },
     procurement: {
@@ -929,29 +930,13 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
           </div>
         )}
 
-        {/* PRODUCTS MODULE */}
+        {/* PRODUCTS / PLANS MODULE */}
         {module === 'products' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[
-                { name: 'Hotel Enterprise OS License', code: 'HOSP-PMS-01', rate: 'SAR 42 / key / mo', tax: '15% VAT + 5% Tourism' },
-                { name: 'Luxury Villa Smart Lock IoT Add-on', code: 'HOSP-IOT-02', rate: 'SAR 120 / villa / mo', tax: '15% VAT' },
-                { name: 'Unified OTA Channel Manager', code: 'HOSP-OTA-03', rate: 'SAR 450 / property / mo', tax: '15% VAT' },
-                { name: 'Banquet & Events Folio Module', code: 'HOSP-BNQ-04', rate: 'SAR 850 / month', tax: '15% VAT + 5% Municipality' },
-                { name: 'Direct Booking Engine Widget (0%)', code: 'HOSP-BKG-05', rate: 'SAR 300 / month', tax: '15% VAT' },
-                { name: 'ZATCA Cloud HSM Cryptographic Node', code: 'HOSP-HSM-06', rate: 'SAR 500 / month', tax: '15% VAT' },
-              ].map((prod, idx) => (
-                <div key={idx} className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-xs">
-                  <div className="flex items-center justify-between text-[10px] font-mono text-[#70787d] mb-1">
-                    <span>{prod.code}</span>
-                    <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">{prod.tax}</span>
-                  </div>
-                  <h4 className="text-xs font-bold text-[#161c27]">{prod.name}</h4>
-                  <div className="mt-3 text-sm font-bold text-[#004a60]">{prod.rate}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <PlansCatalogManager
+            isArabic={isArabic}
+            activeSubTab={activeTab}
+            onNavigateToSubTab={(tab) => setActiveTab(tab)}
+          />
         )}
 
         {/* PROCUREMENT MODULE */}
