@@ -80,7 +80,8 @@ export const Header: React.FC<HeaderProps> = ({
       case 'subscriptions':
         return isArabic ? 'الاشتراكات / باقات الضيافة والفوترة' : 'Subscriptions / Hospitality OS Plans & Billing';
       case 'profiles':
-        return isArabic ? 'الملفات التعريفية / الفروع والمنشآت' : 'Profiles / Hospitality Branches & Signatories';
+      case 'organization':
+        return isArabic ? 'المؤسسة والمنشآت / الفروع والجهات المعتمدة' : 'Organization / Hospitality Branches & Signatories';
       case 'sales_orders':
         return isArabic ? 'المبيعات / أوامر البيع' : 'Sales / Sales Orders';
       case 'invoices':
@@ -88,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'quotations':
         return isArabic ? 'المبيعات / عروض الأسعار' : 'Sales / Quotations Pipeline';
       case 'customers':
-        return isArabic ? 'المبيعات / إدارة العملاء والمنشآت' : 'Sales / Customers & Accounts';
+        return isArabic ? 'المؤسسة والمنشآت / إدارة العملاء والحسابات' : 'Organization / Customers & Accounts';
       case 'balances':
         return isArabic ? 'المبيعات / تقارير الأرصدة والتقادم' : 'Sales / Balances & Aging Reports';
       case 'receipts':
@@ -103,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
         return isArabic ? 'الخطط والباقات / كتالوج الفنادق والضرائب' : 'Plans / Hospitality Catalog & Tax Rates';
       case 'projects':
       case 'task_manager':
-        return isArabic ? 'إدارة المهام / مشاريع التشغيل الفندقي' : 'Task Manager / Operations & Onboarding';
+        return isArabic ? 'إدارة المهام / كتالوج وقوالب المهام الفندقية' : 'Task Manager / Task Catalog & Sprint Board';
       case 'procurement':
         return isArabic ? 'المشتريات / توريد المستلزمات والأقفال' : 'Procurement / Hotel Supplies & Hardware';
       case 'accounting':

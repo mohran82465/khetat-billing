@@ -2,6 +2,24 @@ import React, { useState } from 'react';
 import { UsersAndRolesSettings } from '../components/UsersAndRolesSettings';
 import { ResponsiveChatSystem } from '../components/ResponsiveChatSystem';
 import { PlansCatalogManager } from '../components/PlansCatalogManager';
+import { CustomersView } from './CustomersView';
+import { SuppliersView } from './SuppliersView';
+import { PurchaseOrdersView } from './PurchaseOrdersView';
+import { SupplierBillsView } from './SupplierBillsView';
+import { AddSupplierModal } from '../components/AddSupplierModal';
+import { CreatePurchaseOrderModal } from '../components/CreatePurchaseOrderModal';
+import { CreateStandardBillModal } from '../components/CreateStandardBillModal';
+import { RaiseBillNoPOModal } from '../components/RaiseBillNoPOModal';
+import {
+  Customer,
+  INITIAL_CUSTOMERS,
+  Supplier,
+  INITIAL_SUPPLIERS,
+  PurchaseOrder,
+  INITIAL_PURCHASE_ORDERS,
+  SupplierBill,
+  INITIAL_SUPPLIER_BILLS,
+} from '../data/mockData';
 import {
   MultichannelDispatchModal,
   RecipientProfile,
@@ -10,6 +28,7 @@ import {
 import {
   Users,
   Building,
+  Building2,
   Shield,
   MessageSquare,
   MessageCircle,
@@ -36,11 +55,14 @@ import {
   FileText,
   DollarSign,
   TrendingUp,
+  MapPin,
+  ExternalLink,
 } from 'lucide-react';
 
 interface SitemapModuleViewProps {
   module:
     | 'profiles'
+    | 'organization'
     | 'messaging'
     | 'messages'
     | 'chat'
@@ -54,13 +76,146 @@ interface SitemapModuleViewProps {
   subTab?: string;
   isArabic: boolean;
   onNavigateToInvoice?: (id: string) => void;
+  customers?: Customer[];
+  onOpenCreateCustomer?: () => void;
+  onCreateOrderForCustomer?: (customer: Customer) => void;
+  onNavigateToCustomerMaster?: () => void;
+  suppliers?: Supplier[];
+  onAddSupplier?: (supplier: Supplier) => void;
+  onUpdateSupplier?: (supplier: Supplier) => void;
+  onDeleteSupplier?: (id: string) => void;
+  purchaseOrders?: PurchaseOrder[];
+  onAddPurchaseOrder?: (po: PurchaseOrder) => void;
+  onUpdatePurchaseOrder?: (po: PurchaseOrder) => void;
+  onDeletePurchaseOrder?: (id: string) => void;
+  bills?: SupplierBill[];
+  onAddBill?: (bill: SupplierBill) => void;
+  onUpdateBill?: (bill: SupplierBill) => void;
+  onDeleteBill?: (id: string) => void;
 }
 
 export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
   module,
   subTab,
   isArabic,
+  customers = INITIAL_CUSTOMERS,
+  onOpenCreateCustomer,
+  onCreateOrderForCustomer,
+  onNavigateToCustomerMaster,
+  suppliers,
+  onAddSupplier,
+  onUpdateSupplier,
+  onDeleteSupplier,
+  purchaseOrders,
+  onAddPurchaseOrder,
+  onUpdatePurchaseOrder,
+  onDeletePurchaseOrder,
+  bills,
+  onAddBill,
+  onUpdateBill,
+  onDeleteBill,
 }) => {
+  const [internalSuppliers, setInternalSuppliers] = useState<Supplier[]>(
+    suppliers || INITIAL_SUPPLIERS
+  );
+
+  const activeSuppliers = suppliers || internalSuppliers;
+
+  const handleAddSup = (sup: Supplier) => {
+    if (onAddSupplier) {
+      onAddSupplier(sup);
+    } else {
+      setInternalSuppliers((prev) => [sup, ...prev]);
+    }
+  };
+
+  const handleUpdateSup = (sup: Supplier) => {
+    if (onUpdateSupplier) {
+      onUpdateSupplier(sup);
+    } else {
+      setInternalSuppliers((prev) =>
+        prev.map((s) => (s.id === sup.id ? sup : s))
+      );
+    }
+  };
+
+  const handleDeleteSup = (id: string) => {
+    if (onDeleteSupplier) {
+      onDeleteSupplier(id);
+    } else {
+      setInternalSuppliers((prev) => prev.filter((s) => s.id !== id));
+    }
+  };
+
+  const [internalPurchaseOrders, setInternalPurchaseOrders] = useState<PurchaseOrder[]>(
+    purchaseOrders || INITIAL_PURCHASE_ORDERS
+  );
+
+  const activePurchaseOrders = purchaseOrders || internalPurchaseOrders;
+
+  const handleAddPO = (po: PurchaseOrder) => {
+    if (onAddPurchaseOrder) {
+      onAddPurchaseOrder(po);
+    } else {
+      setInternalPurchaseOrders((prev) => [po, ...prev]);
+    }
+  };
+
+  const handleUpdatePO = (po: PurchaseOrder) => {
+    if (onUpdatePurchaseOrder) {
+      onUpdatePurchaseOrder(po);
+    } else {
+      setInternalPurchaseOrders((prev) =>
+        prev.map((p) => (p.id === po.id ? po : p))
+      );
+    }
+  };
+
+  const handleDeletePO = (id: string) => {
+    if (onDeletePurchaseOrder) {
+      onDeletePurchaseOrder(id);
+    } else {
+      setInternalPurchaseOrders((prev) => prev.filter((p) => p.id !== id));
+    }
+  };
+
+  const [internalBills, setInternalBills] = useState<SupplierBill[]>(
+    bills || INITIAL_SUPPLIER_BILLS
+  );
+
+  const activeBills = bills || internalBills;
+
+  const handleAddBillAction = (bill: SupplierBill) => {
+    if (onAddBill) {
+      onAddBill(bill);
+    } else {
+      setInternalBills((prev) => [bill, ...prev]);
+    }
+  };
+
+  const handleUpdateBillAction = (bill: SupplierBill) => {
+    if (onUpdateBill) {
+      onUpdateBill(bill);
+    } else {
+      setInternalBills((prev) =>
+        prev.map((b) => (b.id === bill.id ? bill : b))
+      );
+    }
+  };
+
+  const handleDeleteBillAction = (id: string) => {
+    if (onDeleteBill) {
+      onDeleteBill(id);
+    } else {
+      setInternalBills((prev) => prev.filter((b) => b.id !== id));
+    }
+  };
+
+  const [isHeaderAddSupplierOpen, setIsHeaderAddSupplierOpen] = useState(false);
+  const [isHeaderCreatePOOpen, setIsHeaderCreatePOOpen] = useState(false);
+  const [isHeaderCreateBillOpen, setIsHeaderCreateBillOpen] = useState(false);
+  const [isHeaderRaiseBillNoPOOpen, setIsHeaderRaiseBillNoPOOpen] = useState(false);
+
   // Define tabs for each module strictly matching user's sitemap
   const moduleConfigs: Record<
     string,
@@ -74,15 +229,29 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     }
   > = {
     profiles: {
-      title: 'Profiles & Entities',
-      titleAr: 'الملفات التعريفية والمنشآت',
-      desc: 'Hospitality company records, branches across Saudi Arabia, and contact directories.',
-      descAr: 'سجلات المنشآت الفندقية، فروع المشغلين في المملكة، ودليل جهات الاتصال المعتمدة.',
-      icon: Users,
+      title: 'Organization & Hospitality Entities',
+      titleAr: 'المؤسسة والمنشآت الفندقية',
+      desc: 'Organization master profile, customer accounts directory, branches across Saudi Arabia, and contact directories.',
+      descAr: 'سجلات المؤسسة الرسمية، دليل حسابات العملاء، فروع المشغلين في المملكة، ودليل جهات الاتصال المعتمدة.',
+      icon: Building2,
       tabs: [
+        { id: 'organization', name: 'Organization', nameAr: 'المؤسسة والترخيص' },
+        { id: 'customers', name: 'Customers', nameAr: 'العملاء', count: customers.length.toString() },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: '18' },
         { id: 'branches', name: 'Branchs', nameAr: 'الفروع', count: '6' },
+      ],
+    },
+    organization: {
+      title: 'Organization & Hospitality Entities',
+      titleAr: 'المؤسسة والمنشآت الفندقية',
+      desc: 'Organization master profile, customer accounts directory, branches across Saudi Arabia, and contact directories.',
+      descAr: 'سجلات المؤسسة الرسمية، دليل حسابات العملاء، فروع المشغلين في المملكة، ودليل جهات الاتصال المعتمدة.',
+      icon: Building2,
+      tabs: [
         { id: 'organization', name: 'Organization', nameAr: 'المؤسسة والترخيص' },
+        { id: 'customers', name: 'Customers', nameAr: 'العملاء', count: customers.length.toString() },
+        { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: '18' },
+        { id: 'branches', name: 'Branchs', nameAr: 'الفروع', count: '6' },
       ],
     },
     messaging: {
@@ -147,8 +316,8 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
       descAr: 'موردي المستلزمات الفندقية، المفروشات، أجهزة الأقفال الذكية، وأوامر الشراء المعتمدة.',
       icon: ShoppingBag,
       tabs: [
-        { id: 'suppliers', name: 'Suppliers', nameAr: 'الموردون', count: '12' },
-        { id: 'purchase_orders', name: 'Purchase Orders', nameAr: 'أوامر الشراء', count: '8' },
+        { id: 'suppliers', name: 'Suppliers', nameAr: 'الموردون', count: activeSuppliers.length.toString() },
+        { id: 'purchase_orders', name: 'Purchase Orders', nameAr: 'أوامر الشراء', count: activePurchaseOrders.length.toString() },
         { id: 'supplier_bills', name: 'Supplier Bills', nameAr: 'فواتير الموردين' },
         { id: 'supplier_payments', name: 'Supplier Payments', nameAr: 'سندات صرف الموردين' },
       ],
@@ -375,9 +544,33 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
               <Download className="h-3.5 w-3.5" />
               <span>{isArabic ? 'تصدير' : 'Export'}</span>
             </button>
-            <button className="flex items-center gap-1.5 rounded-lg bg-[#004a60] px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#074e64]">
+            <button
+              type="button"
+              onClick={() => {
+                if (module === 'procurement' && activeTab === 'purchase_orders') {
+                  setIsHeaderCreatePOOpen(true);
+                } else if (module === 'procurement') {
+                  setIsHeaderAddSupplierOpen(true);
+                } else if (module === 'profiles' && activeTab === 'customers' && onOpenCreateCustomer) {
+                  onOpenCreateCustomer();
+                }
+              }}
+              className="flex items-center gap-1.5 rounded-lg bg-[#004a60] px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#074e64] cursor-pointer"
+            >
               <Plus className="h-3.5 w-3.5" />
-              <span>{isArabic ? 'إضافة سجل' : 'New Record'}</span>
+              <span>
+                {module === 'procurement' && activeTab === 'purchase_orders'
+                  ? isArabic
+                    ? 'إنشاء أمر شراء (Create PO)'
+                    : 'Create PO'
+                  : module === 'procurement' && activeTab === 'suppliers'
+                  ? isArabic
+                    ? 'إضافة مورد جديد'
+                    : 'Add Supplier'
+                  : isArabic
+                  ? 'إضافة سجل'
+                  : 'New Record'}
+              </span>
             </button>
           </div>
         </div>
@@ -416,48 +609,257 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
 
       {/* Module Content */}
       <div className="p-4 lg:p-6 max-w-7xl mx-auto w-full flex-1">
-        {/* PROFILES MODULE */}
-        {module === 'profiles' && (
+        {/* ORGANIZATION / PROFILES MODULE */}
+        {(module === 'profiles' || (module as string) === 'organization') && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-xs">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#70787d]">
-                  Riyadh Headquarters
+            {/* SUB-TAB 1: CUSTOMERS (Directly embedded in Organization) */}
+            {activeTab === 'customers' && (
+              <div className="space-y-4">
+                <CustomersView
+                  customers={customers}
+                  isArabic={isArabic}
+                  onOpenCreateCustomer={onOpenCreateCustomer || (() => {})}
+                  onCreateOrderForCustomer={onCreateOrderForCustomer || (() => {})}
+                />
+              </div>
+            )}
+
+            {/* SUB-TAB 2: ORGANIZATION PROFILE & CUSTOMER OVERVIEW */}
+            {activeTab === 'organization' && (
+              <div className="space-y-4">
+                {/* Organization Master Info Banner */}
+                <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="h-14 w-14 rounded-2xl bg-linear-to-br from-[#004a60] to-[#0a6582] text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <Building2 className="h-7 w-7" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-200">
+                            {isArabic ? 'سجل تجاري رئيسي نشط' : 'Active Primary Commercial Entity'}
+                          </span>
+                          <span className="text-[10px] font-semibold bg-[#e8eeff] text-[#004a60] px-2 py-0.5 rounded-md">
+                            ZATCA Phase 2 Certified
+                          </span>
+                        </div>
+                        <h2 className="text-lg font-bold text-[#161c27] mt-1">
+                          {isArabic ? 'شركة خطط للضيافة وتقنية المعلومات (المقر الرئيسي)' : 'Khetat Hospitality Hub HQ & Operator'}
+                        </h2>
+                        <p className="text-xs text-[#70787d] mt-0.5 flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-[#004a60]" />
+                          <span>{isArabic ? 'طريق الملك فهد، حي العليا، الرياض 12214، المملكة العربية السعودية' : 'King Fahd Road, Al-Olaya District, Riyadh 12214, Kingdom of Saudi Arabia'}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 lg:pt-0 border-t lg:border-t-0 border-[#e3e8f9]">
+                      <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9]">
+                        <div className="text-[10px] text-[#70787d] font-medium">{isArabic ? 'السجل التجاري (CR)' : 'CR Number'}</div>
+                        <div className="text-xs font-bold text-[#161c27] font-mono mt-0.5">1010992812</div>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9]">
+                        <div className="text-[10px] text-[#70787d] font-medium">{isArabic ? 'الرقم الضريبي (TRN)' : 'ZATCA TRN'}</div>
+                        <div className="text-xs font-bold text-[#161c27] font-mono mt-0.5">310199281200003</div>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9]">
+                        <div className="text-[10px] text-[#70787d] font-medium">{isArabic ? 'ترخيص السياحة' : 'Tourism License'}</div>
+                        <div className="text-xs font-bold text-[#004a60] font-mono mt-0.5">MTL-44091-RYD</div>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9]">
+                        <div className="text-[10px] text-[#70787d] font-medium">{isArabic ? 'رأس المال المكتتب' : 'Paid-up Capital'}</div>
+                        <div className="text-xs font-bold text-emerald-700 mt-0.5">10,000,000 SAR</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-sm font-bold text-[#161c27] mt-1">Khetat Hospitality Hub HQ</div>
-                <p className="text-xs text-[#70787d] mt-1">King Fahd Road, Al-Olaya, Riyadh 12214</p>
-                <div className="mt-3 flex items-center justify-between text-xs pt-2 border-t border-[#e3e8f9]">
-                  <span className="text-emerald-700 font-semibold">Active Primary Entity</span>
-                  <span className="text-[#70787d]">CR: 1010992812</span>
+
+                {/* Organization Customers Section */}
+                <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-[#161c27]">
+                          {isArabic ? 'عملاء وحسابات المنشآت الفندقية بالمؤسسة' : 'Organization Customers & Property Accounts'}
+                        </h3>
+                        <span className="text-[10px] font-semibold bg-[#e8eeff] text-[#004a60] px-2 py-0.5 rounded-full">
+                          {customers.length} {isArabic ? 'عملاء معتمدون' : 'Active Clients'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#70787d] mt-0.5">
+                        {isArabic
+                          ? 'إدارة حسابات المشغلين الفندقيين، السجلات التجارية، وسقوف الائتمان ضمن المؤسسة.'
+                          : 'Hospitality operators, hotel groups, and commercial lodging entities registered under this organization.'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('customers')}
+                        className="flex items-center gap-1.5 rounded-lg bg-[#004a60] hover:bg-[#074e64] text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                      >
+                        <Users className="h-3.5 w-3.5" />
+                        <span>{isArabic ? 'عرض دليل العملاء الكامل' : 'Open Full Customer Master'}</span>
+                      </button>
+                      {onOpenCreateCustomer && (
+                        <button
+                          type="button"
+                          onClick={onOpenCreateCustomer}
+                          className="flex items-center gap-1.5 rounded-lg border border-[#e3e8f9] hover:bg-[#f1f3ff] text-[#161c27] px-3 py-1.5 text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                        >
+                          <Plus className="h-3.5 w-3.5 text-[#004a60]" />
+                          <span>{isArabic ? 'إضافة عميل جديد' : 'Add New Customer'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Customer Preview Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-[#e3e8f9] text-[#70787d] text-[10px] uppercase font-bold bg-[#f9f9ff]">
+                          <th className="py-2.5 px-3">{isArabic ? 'اسم العميل / المنشأة' : 'Customer / Property Name'}</th>
+                          <th className="py-2.5 px-3">{isArabic ? 'السجل والمدينة' : 'CR & City'}</th>
+                          <th className="py-2.5 px-3">{isArabic ? 'العقارات / المفاتيح' : 'Properties / Keys'}</th>
+                          <th className="py-2.5 px-3">{isArabic ? 'التصنيف' : 'Tier'}</th>
+                          <th className="py-2.5 px-3">{isArabic ? 'الرصيد القائم' : 'Outstanding Balance'}</th>
+                          <th className="py-2.5 px-3 text-center">{isArabic ? 'الإجراء' : 'Action'}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#e3e8f9]">
+                        {customers.map((c) => (
+                          <tr key={c.id} className="hover:bg-[#f9f9ff]/60 transition-colors">
+                            <td className="py-3 px-3">
+                              <div className="font-bold text-[#161c27]">{isArabic ? c.nameAr : c.name}</div>
+                              <div className="text-[10px] text-[#70787d]">{c.primaryContact.name} • {c.primaryContact.phone}</div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="font-mono text-xs text-[#161c27]">{c.crNumber}</div>
+                              <div className="text-[10px] text-[#70787d]">{c.city}</div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-[#004a60]">{c.activeSubscriptions?.length || 1}</span>{' '}
+                              <span className="text-[10px] text-[#70787d]">{isArabic ? 'باقة / عقار' : 'Properties / Plans'}</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                c.tier === 'Enterprise'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {c.tier}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="font-bold text-[#161c27] font-mono">
+                                SAR {c.outstandingBalance.toLocaleString()}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab('customers')}
+                                className="px-2.5 py-1 rounded-md bg-[#e8eeff] hover:bg-[#d5e0ff] text-[#004a60] text-xs font-semibold transition-colors cursor-pointer"
+                              >
+                                {isArabic ? 'تفاصيل العميل' : 'View Details'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Branches Preview Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-xs">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#70787d]">
+                      Riyadh Headquarters
+                    </div>
+                    <div className="text-sm font-bold text-[#161c27] mt-1">Khetat Hospitality Hub HQ</div>
+                    <p className="text-xs text-[#70787d] mt-1">King Fahd Road, Al-Olaya, Riyadh 12214</p>
+                    <div className="mt-3 flex items-center justify-between text-xs pt-2 border-t border-[#e3e8f9]">
+                      <span className="text-emerald-700 font-semibold">Active Primary Entity</span>
+                      <span className="text-[#70787d]">CR: 1010992812</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-xs">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#70787d]">
+                      Western Branch
+                    </div>
+                    <div className="text-sm font-bold text-[#161c27] mt-1">Jeddah Waterfront Operations</div>
+                    <p className="text-xs text-[#70787d] mt-1">Corniche District, Jeddah 23511</p>
+                    <div className="mt-3 flex items-center justify-between text-xs pt-2 border-t border-[#e3e8f9]">
+                      <span className="text-emerald-700 font-semibold">Hospitality Support Hub</span>
+                      <span className="text-[#70787d]">CR: 4030118291</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-xs">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#70787d]">
+                      AlUla Heritage Hub
+                    </div>
+                    <div className="text-sm font-bold text-[#161c27] mt-1">AlUla Desert & Resort Node</div>
+                    <p className="text-xs text-[#70787d] mt-1">Wadi Al-Qura, AlUla 43512</p>
+                    <div className="mt-3 flex items-center justify-between text-xs pt-2 border-t border-[#e3e8f9]">
+                      <span className="text-emerald-700 font-semibold">Desert Luxury Liaison</span>
+                      <span className="text-[#70787d]">CR: 3550182910</span>
+                    </div>
+                  </div>
                 </div>
               </div>
+            )}
 
-              <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-xs">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#70787d]">
-                  Western Branch
-                </div>
-                <div className="text-sm font-bold text-[#161c27] mt-1">Jeddah Waterfront Operations</div>
-                <p className="text-xs text-[#70787d] mt-1">Corniche District, Jeddah 23511</p>
-                <div className="mt-3 flex items-center justify-between text-xs pt-2 border-t border-[#e3e8f9]">
-                  <span className="text-emerald-700 font-semibold">Hospitality Support Hub</span>
-                  <span className="text-[#70787d]">CR: 4030118291</span>
+            {/* SUB-TAB 3: BRANCHES */}
+            {activeTab === 'branches' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-xs">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#70787d]">
+                      Riyadh Headquarters
+                    </div>
+                    <div className="text-sm font-bold text-[#161c27] mt-1">Khetat Hospitality Hub HQ</div>
+                    <p className="text-xs text-[#70787d] mt-1">King Fahd Road, Al-Olaya, Riyadh 12214</p>
+                    <div className="mt-3 flex items-center justify-between text-xs pt-2 border-t border-[#e3e8f9]">
+                      <span className="text-emerald-700 font-semibold">Active Primary Entity</span>
+                      <span className="text-[#70787d]">CR: 1010992812</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-xs">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#70787d]">
+                      Western Branch
+                    </div>
+                    <div className="text-sm font-bold text-[#161c27] mt-1">Jeddah Waterfront Operations</div>
+                    <p className="text-xs text-[#70787d] mt-1">Corniche District, Jeddah 23511</p>
+                    <div className="mt-3 flex items-center justify-between text-xs pt-2 border-t border-[#e3e8f9]">
+                      <span className="text-emerald-700 font-semibold">Hospitality Support Hub</span>
+                      <span className="text-[#70787d]">CR: 4030118291</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-xs">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#70787d]">
+                      AlUla Heritage Hub
+                    </div>
+                    <div className="text-sm font-bold text-[#161c27] mt-1">AlUla Desert & Resort Node</div>
+                    <p className="text-xs text-[#70787d] mt-1">Wadi Al-Qura, AlUla 43512</p>
+                    <div className="mt-3 flex items-center justify-between text-xs pt-2 border-t border-[#e3e8f9]">
+                      <span className="text-emerald-700 font-semibold">Desert Luxury Liaison</span>
+                      <span className="text-[#70787d]">CR: 3550182910</span>
+                    </div>
+                  </div>
                 </div>
               </div>
+            )}
 
-              <div className="bg-white rounded-xl border border-[#e3e8f9] p-4 shadow-xs">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#70787d]">
-                  AlUla Heritage Hub
-                </div>
-                <div className="text-sm font-bold text-[#161c27] mt-1">AlUla Desert & Resort Node</div>
-                <p className="text-xs text-[#70787d] mt-1">Wadi Al-Qura, AlUla 43512</p>
-                <div className="mt-3 flex items-center justify-between text-xs pt-2 border-t border-[#e3e8f9]">
-                  <span className="text-emerald-700 font-semibold">Desert Luxury Liaison</span>
-                  <span className="text-[#70787d]">CR: 3550182910</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
+            {/* SUB-TAB 4: CONTACTS */}
+            {activeTab === 'contacts' && (
+              <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
               {/* Header and Multichannel Action Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                 <div>
@@ -679,6 +1081,7 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
                 </table>
               </div>
             </div>
+            )}
           </div>
         )}
 
@@ -942,32 +1345,93 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
         {/* PROCUREMENT MODULE */}
         {module === 'procurement' && (
           <div className="space-y-4">
-            <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
-              <h3 className="text-xs font-bold text-[#161c27] mb-3">Approved Hospitality Vendors & Purchase Orders</h3>
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9]">
-                  <div>
-                    <div className="font-bold text-[#161c27]">Assa Abloy Hospitality ME (VingCard RFID & BLE)</div>
-                    <div className="text-[11px] text-[#70787d]">PO-HOSP-2026-091 • 500 RFID keycards & IoT gateways</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-[#161c27]">SAR 48,200</div>
-                    <span className="text-emerald-700 font-semibold text-[10px]">Delivered & Matched</span>
-                  </div>
-                </div>
+            {activeTab === 'suppliers' && (
+              <SuppliersView
+                suppliers={activeSuppliers}
+                isArabic={isArabic}
+                onAddSupplier={handleAddSup}
+                onUpdateSupplier={handleUpdateSup}
+                onDeleteSupplier={handleDeleteSup}
+              />
+            )}
 
-                <div className="flex items-center justify-between p-3 rounded-lg bg-[#f9f9ff] border border-[#e3e8f9]">
-                  <div>
-                    <div className="font-bold text-[#161c27]">Al-Fozan Luxury Hotel Textiles & Linen</div>
-                    <div className="text-[11px] text-[#70787d]">PO-HOSP-2026-092 • 5-Star Egyptian cotton sheets for AlUla resort</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-[#161c27]">SAR 112,500</div>
-                    <span className="text-amber-700 font-semibold text-[10px]">Payment Pending</span>
+            {activeTab === 'purchase_orders' && (
+              <PurchaseOrdersView
+                purchaseOrders={activePurchaseOrders}
+                suppliers={activeSuppliers}
+                isArabic={isArabic}
+                onAddPurchaseOrder={handleAddPO}
+                onUpdatePurchaseOrder={handleUpdatePO}
+                onDeletePurchaseOrder={handleDeletePO}
+              />
+            )}
+
+            {activeTab === 'supplier_bills' && (
+              <div className="space-y-4">
+                <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs">
+                  <h3 className="text-sm font-bold text-[#161c27] mb-1">
+                    {isArabic ? 'فواتير الموردين والربط الضريبي ZATCA' : 'Supplier Invoices & ZATCA e-Bills'}
+                  </h3>
+                  <p className="text-xs text-[#70787d] mb-4">
+                    {isArabic
+                      ? 'مطابقة فواتير المشتريات الضريبية الثلاثية (3-Way Matching: PO, Delivery Note, Tax Invoice)'
+                      : 'Three-way matching: PO, Delivery Note, and Supplier Tax Invoice with ZATCA QR code verification.'}
+                  </p>
+
+                  <div className="space-y-2.5 text-xs">
+                    {activeSuppliers.slice(0, 3).map((sup) => (
+                      <div
+                        key={sup.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-[#f9f9ff] border border-[#e3e8f9] gap-2"
+                      >
+                        <div>
+                          <div className="font-bold text-[#161c27]">{sup.name}</div>
+                          <div className="text-[11px] text-[#70787d] flex items-center gap-2 mt-0.5">
+                            <span>Tax ID: {sup.taxId}</span>
+                            <span>•</span>
+                            <span className="font-mono">GL: {sup.payableCode}</span>
+                          </div>
+                        </div>
+                        <div className="sm:text-right">
+                          <div className="font-mono font-bold text-sm text-[#004a60]">
+                            SAR {(sup.currentBalanceSar ?? sup.payableOpeningBalance).toLocaleString()}
+                          </div>
+                          <span className="text-emerald-700 text-[10px] font-semibold">ZATCA Verified</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {activeTab === 'supplier_payments' && (
+              <div className="space-y-4">
+                <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs">
+                  <h3 className="text-sm font-bold text-[#161c27] mb-1">
+                    {isArabic ? 'سندات صرف الموردين والتحويلات البنكية ساريع' : 'Supplier Payment Vouchers & SARIE Wire'}
+                  </h3>
+                  <p className="text-xs text-[#70787d] mb-4">
+                    {isArabic
+                      ? 'إصدار سندات الصرف والتحويل عبر النظام البنكي السعودي SARIE والخصم من حساب الدائنين GL: 2101'
+                      : 'Disbursements via SARIE B2B bank wire, clearing Trade Payables (GL: 2101) and Supplier Advances (GL: 1204).'}
+                  </p>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-[#f9f9ff] border border-[#e3e8f9] gap-2">
+                      <div>
+                        <div className="font-bold text-[#161c27]">PV-2026-081 • Assa Abloy Hospitality ME</div>
+                        <div className="text-[11px] text-[#70787d]">SARIE Wire Ref: SR-99482104 • Alinma Bank Corporate</div>
+                      </div>
+                      <div className="sm:text-right">
+                        <div className="font-mono font-bold text-sm text-emerald-700">SAR 48,200.00</div>
+                        <span className="text-[10px] text-gray-500">Paid on 20 Sep 2026</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1254,6 +1718,23 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
               : `Dispatched "${templateName}" to ${count} recipient(s) via ${channel.toUpperCase()} successfully.`
           );
         }}
+      />
+
+      {/* Header Add Supplier Modal */}
+      <AddSupplierModal
+        isOpen={isHeaderAddSupplierOpen}
+        onClose={() => setIsHeaderAddSupplierOpen(false)}
+        isArabic={isArabic}
+        onAddSupplier={handleAddSup}
+      />
+
+      {/* Header Create Purchase Order Modal */}
+      <CreatePurchaseOrderModal
+        isOpen={isHeaderCreatePOOpen}
+        onClose={() => setIsHeaderCreatePOOpen(false)}
+        isArabic={isArabic}
+        suppliers={activeSuppliers}
+        onAddPurchaseOrder={handleAddPO}
       />
     </div>
   );

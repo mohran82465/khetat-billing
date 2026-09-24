@@ -29,6 +29,7 @@ import {
   INITIAL_ACCOUNT_LEDGER,
   INITIAL_RECEIPTS,
   INITIAL_TASKS,
+  INITIAL_SUPPLIERS,
   SalesOrder,
   Invoice,
   Quotation,
@@ -36,6 +37,9 @@ import {
   ReceiptVoucher,
   AccountLedger,
   TaskItem,
+  Supplier,
+  PurchaseOrder,
+  INITIAL_PURCHASE_ORDERS,
 } from './data/mockData';
 import {
   LayoutDashboard,
@@ -67,6 +71,8 @@ export function App() {
   const [ledgers, setLedgers] = useState<AccountLedger[]>(INITIAL_ACCOUNT_LEDGER);
   const [receipts, setReceipts] = useState<ReceiptVoucher[]>(INITIAL_RECEIPTS);
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(INITIAL_SUPPLIERS);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(INITIAL_PURCHASE_ORDERS);
 
   // Modals
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
@@ -185,6 +191,34 @@ export function App() {
     );
   };
 
+  const handleAddSupplier = (newSupplier: Supplier) => {
+    setSuppliers((prev) => [newSupplier, ...prev]);
+  };
+
+  const handleUpdateSupplier = (updatedSupplier: Supplier) => {
+    setSuppliers((prev) =>
+      prev.map((s) => (s.id === updatedSupplier.id ? updatedSupplier : s))
+    );
+  };
+
+  const handleDeleteSupplier = (supplierId: string) => {
+    setSuppliers((prev) => prev.filter((s) => s.id !== supplierId));
+  };
+
+  const handleAddPurchaseOrder = (newPO: PurchaseOrder) => {
+    setPurchaseOrders((prev) => [newPO, ...prev]);
+  };
+
+  const handleUpdatePurchaseOrder = (updatedPO: PurchaseOrder) => {
+    setPurchaseOrders((prev) =>
+      prev.map((p) => (p.id === updatedPO.id ? updatedPO : p))
+    );
+  };
+
+  const handleDeletePurchaseOrder = (poId: string) => {
+    setPurchaseOrders((prev) => prev.filter((p) => p.id !== poId));
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f9f9ff] text-[#161c27] font-sans antialiased">
       {/* Sidebar Navigation matching sitemap */}
@@ -289,6 +323,8 @@ export function App() {
           {(activeView === 'projects' || activeView === 'task_manager') && (
             <ProjectsTasksView
               tasks={tasks}
+              activeSubTab={activeSubTab}
+              onChangeSubTab={(tab) => setActiveSubTab(tab)}
               isArabic={isArabic}
               onAddTask={handleAddTask}
               onUpdateTaskStatus={handleUpdateTaskStatus}
@@ -313,6 +349,7 @@ export function App() {
           {/* Remaining sitemap modules */}
           {[
             'profiles',
+            'organization',
             'products',
             'procurement',
             'accounting',
@@ -322,10 +359,22 @@ export function App() {
             'settings',
           ].includes(activeView) && (
             <SitemapModuleView
-              module={activeView as any}
-              subTab={activeSubTab}
+              module={(activeView === 'organization' ? 'profiles' : activeView) as any}
+              subTab={activeView === 'organization' ? 'organization' : activeSubTab}
               isArabic={isArabic}
               onNavigateToInvoice={handleNavigateToInvoice}
+              customers={customers}
+              onOpenCreateCustomer={() => setIsCreateCustomerOpen(true)}
+              onCreateOrderForCustomer={handleCreateOrderForCustomer}
+              onNavigateToCustomerMaster={() => setActiveView('customers')}
+              suppliers={suppliers}
+              onAddSupplier={handleAddSupplier}
+              onUpdateSupplier={handleUpdateSupplier}
+              onDeleteSupplier={handleDeleteSupplier}
+              purchaseOrders={purchaseOrders}
+              onAddPurchaseOrder={handleAddPurchaseOrder}
+              onUpdatePurchaseOrder={handleUpdatePurchaseOrder}
+              onDeletePurchaseOrder={handleDeletePurchaseOrder}
             />
           )}
         </main>

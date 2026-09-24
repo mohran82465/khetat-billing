@@ -105,13 +105,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'profiles',
-      name: 'Profiles',
-      nameAr: 'الملفات التعريفية',
-      icon: UserCheck,
+      name: 'Organization',
+      nameAr: 'المؤسسة والمنشآت',
+      icon: Building2,
       children: [
+        { id: 'organization', name: 'Organization', nameAr: 'المؤسسة والترخيص' },
+        { id: 'customers', name: 'Customers', nameAr: 'العملاء' },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال' },
         { id: 'branches', name: 'Branchs', nameAr: 'الفروع' },
-        { id: 'organization', name: 'Organization', nameAr: 'المؤسسة والترخيص' },
       ],
     },
     {
@@ -133,7 +134,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       nameAr: 'المبيعات',
       icon: Layers,
       children: [
-        { id: 'customers', name: 'Customers', nameAr: 'العملاء' },
         { id: 'quotations', name: 'Quotations', nameAr: 'عروض الأسعار' },
         { id: 'sales_orders', name: 'Sales Orders', nameAr: 'أوامر البيع' },
         { id: 'invoices', name: 'Invoices', nameAr: 'فواتير المبيعات', badge: 'ZATCA' },
@@ -156,11 +156,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'task_manager',
-      name: 'Task manger',
+      name: 'Task Manager',
       nameAr: 'إدارة المهام',
       icon: CheckSquare,
       children: [
-        { id: 'task_list', name: 'task List', nameAr: 'قائمة المهام' },
+        { id: 'task_list', name: 'Task List', nameAr: 'قائمة المهام' },
         { id: 'task_catalog', name: 'Task Catalog', nameAr: 'كتالوج المهام' },
       ],
     },
@@ -248,7 +248,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Map sub-views to their parent section
   const getParentSectionId = (view: string): string => {
-    if (['sales_orders', 'invoices', 'quotations', 'customers', 'receipts', 'balances'].includes(view)) {
+    if (['customers'].includes(view)) {
+      return 'profiles';
+    }
+    if (['sales_orders', 'invoices', 'quotations', 'receipts', 'balances'].includes(view)) {
       return 'sales';
     }
     if (['projects', 'tasks', 'task_manager'].includes(view)) {
@@ -268,7 +271,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     subscriptions: true,
     sales: true,
     task_manager: false,
-    profiles: false,
+    profiles: true,
     products: false,
     procurement: false,
     accounting: false,
@@ -297,7 +300,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       if (section.id === 'subscriptions') {
         onSelectView('subscriptions', 'subscriptions_active');
       } else if (section.id === 'sales') {
-        onSelectView('sales_orders');
+        onSelectView('quotations');
+      } else if (section.id === 'profiles') {
+        onSelectView('profiles', 'organization');
       } else if (section.id === 'task_manager') {
         onSelectView('projects', 'task_list');
       } else {
@@ -310,6 +315,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (sectionId === 'sales') {
       // Direct sales views
       onSelectView(childId);
+    } else if (sectionId === 'profiles') {
+      if (childId === 'customers') {
+        onSelectView('customers');
+      } else {
+        onSelectView('profiles', childId);
+      }
     } else if (sectionId === 'task_manager') {
       onSelectView('projects', childId);
     } else {
