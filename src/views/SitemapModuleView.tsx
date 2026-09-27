@@ -229,26 +229,26 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     }
   > = {
     profiles: {
-      title: 'Organization & Hospitality Entities',
-      titleAr: 'المؤسسة والمنشآت الفندقية',
-      desc: 'Organization master profile, customer accounts directory, branches across Saudi Arabia, and contact directories.',
-      descAr: 'سجلات المؤسسة الرسمية، دليل حسابات العملاء، فروع المشغلين في المملكة، ودليل جهات الاتصال المعتمدة.',
+      title: 'Profile & Hospitality Entities',
+      titleAr: 'الملف التعريفي والمنشآت الفندقية',
+      desc: 'Master organization profile, customer accounts directory, branches across Saudi Arabia, and contact directories.',
+      descAr: 'الملف التعريفي الرئيسي، دليل حسابات العملاء، فروع المشغلين في المملكة، ودليل جهات الاتصال المعتمدة.',
       icon: Building2,
       tabs: [
-        { id: 'organization', name: 'Organization', nameAr: 'المؤسسة والترخيص' },
+        { id: 'organization', name: 'Profile', nameAr: 'الملف التعريفي' },
         { id: 'customers', name: 'Customers', nameAr: 'العملاء', count: customers.length.toString() },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: '18' },
         { id: 'branches', name: 'Branchs', nameAr: 'الفروع', count: '6' },
       ],
     },
     organization: {
-      title: 'Organization & Hospitality Entities',
-      titleAr: 'المؤسسة والمنشآت الفندقية',
-      desc: 'Organization master profile, customer accounts directory, branches across Saudi Arabia, and contact directories.',
-      descAr: 'سجلات المؤسسة الرسمية، دليل حسابات العملاء، فروع المشغلين في المملكة، ودليل جهات الاتصال المعتمدة.',
+      title: 'Profile & Hospitality Entities',
+      titleAr: 'الملف التعريفي والمنشآت الفندقية',
+      desc: 'Master organization profile, customer accounts directory, branches across Saudi Arabia, and contact directories.',
+      descAr: 'الملف التعريفي الرئيسي، دليل حسابات العملاء، فروع المشغلين في المملكة، ودليل جهات الاتصال المعتمدة.',
       icon: Building2,
       tabs: [
-        { id: 'organization', name: 'Organization', nameAr: 'المؤسسة والترخيص' },
+        { id: 'organization', name: 'Profile', nameAr: 'الملف التعريفي' },
         { id: 'customers', name: 'Customers', nameAr: 'العملاء', count: customers.length.toString() },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: '18' },
         { id: 'branches', name: 'Branchs', nameAr: 'الفروع', count: '6' },

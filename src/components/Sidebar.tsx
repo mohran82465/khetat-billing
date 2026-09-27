@@ -95,9 +95,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: CreditCard,
       badge: 'Hotels',
       children: [
-        { id: 'subscriptions_plans', name: 'Subscriptions', nameAr: 'باقات الاشتراك' },
+        { id: 'subscriptions_active', name: 'Subscriptions', nameAr: 'الاشتراكات' },
         { id: 'subscriptions_cycles', name: 'Billing Cycles', nameAr: 'دورات الفوترة' },
-        { id: 'subscriptions_active', name: 'Active Subscriptions', nameAr: 'الاشتراكات النشطة' },
         { id: 'subscriptions_coupons', name: 'Coupons & Discounts', nameAr: 'الكوبونات والخصومات' },
         { id: 'subscriptions_lifecycle', name: 'Lifecycle History', nameAr: 'سجل دورة الحياة' },
         { id: 'subscriptions_reminders', name: 'Renewal Reminders', nameAr: 'تذكيرات التجديد' },
@@ -105,11 +104,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'profiles',
-      name: 'Organization',
-      nameAr: 'المؤسسة والمنشآت',
+      name: 'Profile',
+      nameAr: 'الملف التعريفي',
       icon: Building2,
       children: [
-        { id: 'organization', name: 'Organization', nameAr: 'المؤسسة والترخيص' },
+        { id: 'organization', name: 'Profile', nameAr: 'الملف التعريفي' },
         { id: 'customers', name: 'Customers', nameAr: 'العملاء' },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال' },
         { id: 'branches', name: 'Branchs', nameAr: 'الفروع' },

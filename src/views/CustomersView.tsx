@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Users,
+  User,
   Search,
   Plus,
   Building,
@@ -25,6 +26,7 @@ import {
   RecipientProfile,
   CommunicationChannel,
 } from '../components/MultichannelDispatchModal';
+import { CustomerProfileModal } from '../components/CustomerProfileModal';
 
 interface CustomersViewProps {
   customers: Customer[];
@@ -40,6 +42,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   onCreateOrderForCustomer,
 }) => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(customers[0] || null);
+  const [profileModalCustomer, setProfileModalCustomer] = useState<Customer | null>(null);
   const [search, setSearch] = useState('');
   const [tierFilter, setTierFilter] = useState<'All' | 'Enterprise' | 'Corporate'>('All');
   const [viewState, setViewState] = useState<'populated' | 'skeleton' | 'empty'>('populated');
@@ -307,6 +310,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                     <th className="p-3">{isArabic ? 'جهة الاتصال' : 'Primary Contact'}</th>
                     <th className="p-3 text-right">{isArabic ? 'الرصيد القائم' : 'Outstanding (SAR)'}</th>
                     <th className="p-3">{isArabic ? 'الحد الائتماني' : 'Credit Facility'}</th>
+                    <th className="p-3 text-center">{isArabic ? 'الملف والرسائل' : 'Profile & Pop'}</th>
                     <th className="p-3 text-center">{isArabic ? 'إرسال سريع' : 'Quick Dispatch'}</th>
                   </tr>
                 </thead>
@@ -336,13 +340,28 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                         </td>
                         <td className="p-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e8eeff] font-bold text-[#004a60]">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setProfileModalCustomer(cust);
+                              }}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e8eeff] hover:bg-[#004a60] hover:text-white font-bold text-[#004a60] transition-colors cursor-pointer"
+                              title={isArabic ? 'فتح الملف التعريفي' : 'Open Customer Profile'}
+                            >
                               {cust.initials}
-                            </div>
+                            </button>
                             <div>
-                              <div className="font-semibold text-[#161c27]">
-                                {isArabic ? cust.nameAr : cust.name}
-                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setProfileModalCustomer(cust);
+                                }}
+                                className="font-semibold text-[#161c27] hover:text-[#004a60] hover:underline text-left cursor-pointer flex items-center gap-1"
+                              >
+                                <span>{isArabic ? cust.nameAr : cust.name}</span>
+                              </button>
                               <div className="text-[10px] text-[#70787d]">
                                 {cust.city}, {cust.country}
                               </div>
@@ -386,6 +405,19 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                             Limit: SAR {cust.creditLimit.toLocaleString()}
                           </div>
                         </td>
+                        {/* Profile & Pop-up Trigger */}
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => setProfileModalCustomer(cust)}
+                            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 bg-[#004a60] text-white hover:bg-[#074e64] text-[11px] font-bold shadow-2xs transition-all cursor-pointer"
+                            title={isArabic ? 'فتح الملف التعريفي والرسائل' : 'View Profile & Sent Messages'}
+                          >
+                            <User className="h-3 w-3 text-emerald-300" />
+                            <span>{isArabic ? 'الملف' : 'Profile'}</span>
+                          </button>
+                        </td>
+                        {/* Quick Dispatch */}
                         <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1">
                             <button
@@ -530,6 +562,16 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
               {/* Actions */}
               <div className="pt-2 space-y-2">
+                {/* Pop-up Customer Profile & Messages Button */}
+                <button
+                  type="button"
+                  onClick={() => setProfileModalCustomer(selectedCustomer)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#003647] to-[#004a60] py-2.5 font-bold text-white hover:from-[#004a60] hover:to-[#074e64] transition-all cursor-pointer shadow-xs"
+                >
+                  <User className="h-4 w-4 text-emerald-400" />
+                  <span>{isArabic ? 'فتح الملف وسجل الرسائل (Pop-up)' : 'Open Profile & Sent Messages Pop-up'}</span>
+                </button>
+
                 <button
                   onClick={() => onCreateOrderForCustomer(selectedCustomer)}
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#004a60] py-2.5 font-semibold text-white hover:bg-[#074e64] transition-all cursor-pointer"
@@ -586,6 +628,15 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           </aside>
         )}
       </div>
+
+      {/* Customer Profile & Sent Messages Pop-up Modal */}
+      <CustomerProfileModal
+        isOpen={!!profileModalCustomer}
+        onClose={() => setProfileModalCustomer(null)}
+        customer={profileModalCustomer}
+        isArabic={isArabic}
+        onCreateSalesOrder={onCreateOrderForCustomer}
+      />
 
       {/* Multichannel Dispatch Modal for Customers */}
       <MultichannelDispatchModal
