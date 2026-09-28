@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   LayoutDashboard,
   CreditCard,
@@ -18,6 +18,7 @@ import {
   ChevronRight,
   ShieldCheck,
   X,
+  Search,
   FileText,
   FileCheck2,
   Receipt,
@@ -278,6 +279,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
     settings: false,
   });
 
+  // State to track search query for routes
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter sections and children based on search query
+  const filteredNavSections = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return navSections;
+
+    return navSections
+      .map((section) => {
+        const sectionMatch =
+          section.name.toLowerCase().includes(q) ||
+          section.nameAr.toLowerCase().includes(q) ||
+          (section.badge && section.badge.toLowerCase().includes(q));
+
+        if (!section.children || section.children.length === 0) {
+          return sectionMatch ? section : null;
+        }
+
+        const matchingChildren = section.children.filter(
+          (child) =>
+            child.name.toLowerCase().includes(q) ||
+            child.nameAr.toLowerCase().includes(q) ||
+            (child.badge && child.badge.toLowerCase().includes(q))
+        );
+
+        if (sectionMatch || matchingChildren.length > 0) {
+          return {
+            ...section,
+            children: sectionMatch && matchingChildren.length === 0 ? section.children : matchingChildren,
+          };
+        }
+
+        return null;
+      })
+      .filter((s): s is NavSection => s !== null);
+  }, [navSections, searchQuery]);
+
   const toggleSection = (sectionId: string) => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -357,21 +396,80 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Close button for mobile */}
           <button
             onClick={onCloseMobile}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#70787d] hover:bg-[#f1f3ff] lg:hidden"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#70787d] hover:bg-[#f1f3ff] lg:hidden cursor-pointer"
             aria-label="Close sidebar"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Route Search Bar */}
+        <div className="px-3 pt-3 pb-2 border-b border-[#e3e8f9]/70 bg-[#fafbff]">
+          <div className="relative flex items-center">
+            <Search className="absolute left-2.5 rtl:right-2.5 rtl:left-auto h-3.5 w-3.5 text-[#70787d] pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={isArabic ? 'بحث في المسارات والقوائم...' : 'Search routes & pages...'}
+              className="w-full rounded-lg border border-[#d8e0f5] bg-white py-1.5 pl-8 pr-7 rtl:pr-8 rtl:pl-7 text-xs text-[#161c27] placeholder:text-[#8a9299] focus:border-[#004a60] focus:ring-1 focus:ring-[#004a60]/20 outline-hidden transition-all shadow-2xs font-medium"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 rtl:left-2 rtl:right-auto text-[#70787d] hover:text-[#161c27] p-0.5 rounded cursor-pointer"
+                title={isArabic ? 'مسح البحث' : 'Clear search'}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <div className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-[#70787d]">
+              <span>
+                {isArabic
+                  ? `${filteredNavSections.length} مسار متطابق`
+                  : `${filteredNavSections.length} routes found`}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="text-[#004a60] hover:underline cursor-pointer font-semibold"
+              >
+                {isArabic ? 'إلغاء' : 'Reset'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Navigation Tree - Sitemap Exact Hierarchy */}
       <div className="px-3 py-3 space-y-1 overflow-y-auto flex-1 text-xs">
-        {navSections.map((section) => {
-          const Icon = section.icon;
-          const hasChildren = section.children && section.children.length > 0;
-          const isExpanded = !!expandedSections[section.id];
-          const isParentActive = currentParentId === section.id;
+        {filteredNavSections.length === 0 ? (
+          <div className="p-4 text-center">
+            <Search className="h-6 w-6 text-[#9ba4b5] mx-auto mb-2 opacity-60" />
+            <p className="text-xs font-semibold text-[#40484d]">
+              {isArabic ? 'لا توجد مسارات مطابقة' : 'No matching routes'}
+            </p>
+            <p className="text-[11px] text-[#70787d] mt-1">
+              {isArabic ? 'جرب البحث بكلمة أخرى' : 'Try a different search term'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="mt-3 text-xs font-bold text-[#004a60] hover:underline cursor-pointer"
+            >
+              {isArabic ? 'عرض كل المسارات' : 'View all routes'}
+            </button>
+          </div>
+        ) : (
+          filteredNavSections.map((section) => {
+            const Icon = section.icon;
+            const hasChildren = section.children && section.children.length > 0;
+            const isSearching = searchQuery.trim().length > 0;
+            const isExpanded = isSearching ? true : !!expandedSections[section.id];
+            const isParentActive = currentParentId === section.id;
 
           return (
             <div key={section.id} className="space-y-0.5">
@@ -484,7 +582,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </div>
           );
-        })}
+        })
+      )}
       </div>
 
       {/* Footer System Status */}
