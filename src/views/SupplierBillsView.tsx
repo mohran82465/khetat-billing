@@ -88,17 +88,44 @@ export const SupplierBillsView: React.FC<SupplierBillsViewProps> = ({
     });
   }, [bills, searchQuery, selectedType, selectedStatus]);
 
-  // Metrics
+  // Metrics matching user specification: Total Bills, Paid, Outstanding, Overdue
   const metrics = useMemo(() => {
     const totalCount = bills.length;
-    const totalPayable = bills.reduce((sum, b) => sum + b.payableToSupplier, 0);
-    const noPOCount = bills.filter((b) => b.billType === 'direct_no_po').length;
-    const rcmTaxSum = bills
-      .filter((b) => b.isForeignVendor)
-      .reduce((sum, b) => sum + b.vatAmount, 0);
-    const pendingPaid = bills.filter((b) => b.status !== 'Paid').length;
+    const totalBillsAmount = bills.reduce(
+      (sum, b) => sum + (b.payableToSupplier ?? b.grandTotal ?? 0),
+      0
+    );
+    const paidBills = bills.filter((b) => b.status === 'Paid');
+    const paidAmount = paidBills.reduce(
+      (sum, b) => sum + (b.payableToSupplier ?? b.grandTotal ?? 0),
+      0
+    );
 
-    return { totalCount, totalPayable, noPOCount, rcmTaxSum, pendingPaid };
+    const todayStr = '2026-09-28';
+    const overdueBills = bills.filter(
+      (b) => b.status !== 'Paid' && ((b.dueDate && b.dueDate < todayStr) || b.status === 'Disputed')
+    );
+    const overdueAmount = overdueBills.reduce(
+      (sum, b) => sum + (b.payableToSupplier ?? b.grandTotal ?? 0),
+      0
+    );
+
+    const outstandingBills = bills.filter((b) => b.status !== 'Paid');
+    const outstandingAmount = outstandingBills.reduce(
+      (sum, b) => sum + (b.payableToSupplier ?? b.grandTotal ?? 0),
+      0
+    );
+
+    return {
+      totalCount,
+      totalBillsAmount,
+      paidAmount,
+      paidCount: paidBills.length,
+      outstandingAmount,
+      outstandingCount: outstandingBills.length,
+      overdueAmount,
+      overdueCount: overdueBills.length,
+    };
   }, [bills]);
 
   const handleStatusChange = (bill: SupplierBill, newStatus: SupplierBill['status']) => {
@@ -183,77 +210,77 @@ export const SupplierBillsView: React.FC<SupplierBillsViewProps> = ({
         </div>
       )}
 
-      {/* Top Metrics Cards */}
+      {/* Top Metrics Cards matching user specification */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Metric 1 */}
+        {/* Total Bills */}
         <div className="bg-white rounded-2xl border border-[#e3e8f9] p-4 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[#70787d] uppercase tracking-wider">
-              {isArabic ? 'إجمالي فواتير الموردين' : 'Total Supplier Bills'}
+              {isArabic ? 'إجمالي الفواتير' : 'Total Bills'}
             </span>
             <div className="p-2 rounded-xl bg-[#e8eeff] text-[#004a60]">
               <FileText className="h-4 w-4" />
             </div>
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono text-[#161c27]">
-            {metrics.totalCount}
+          <div className="mt-2 text-xl sm:text-2xl font-bold font-mono text-[#161c27]">
+            SAR {metrics.totalBillsAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="mt-1 text-[11px] text-[#70787d] flex items-center gap-1">
-            <span className="text-[#004a60] font-semibold">{metrics.noPOCount} {isArabic ? 'بدون أمر شراء (خدمات)' : 'Direct No-PO'}</span>
+            <span className="text-[#004a60] font-semibold">{metrics.totalCount} {isArabic ? 'فاتورة' : 'bills'}</span>
           </div>
         </div>
 
-        {/* Metric 2 */}
+        {/* Paid */}
         <div className="bg-white rounded-2xl border border-[#e3e8f9] p-4 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[#70787d] uppercase tracking-wider">
-              {isArabic ? 'المستحق للموردين' : 'Payable to Suppliers'}
+              {isArabic ? 'المسدد' : 'Paid'}
             </span>
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
-              <DollarSign className="h-4 w-4" />
+              <CheckCircle2 className="h-4 w-4" />
             </div>
           </div>
-          <div className="mt-2 text-xl sm:text-2xl font-bold font-mono text-[#161c27]">
-            SAR {metrics.totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div className="mt-2 text-xl sm:text-2xl font-bold font-mono text-emerald-700">
+            SAR {metrics.paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="mt-1 text-[11px] text-[#70787d]">
-            {isArabic ? `${metrics.pendingPaid} فواتير بانتظار التحويل` : `${metrics.pendingPaid} awaiting settlement`}
+            {isArabic ? `${metrics.paidCount} فواتير مسددة بالكامل` : `${metrics.paidCount} settled bills`}
           </div>
         </div>
 
-        {/* Metric 3 */}
+        {/* Outstanding */}
         <div className="bg-white rounded-2xl border border-[#e3e8f9] p-4 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[#70787d] uppercase tracking-wider">
-              {isArabic ? 'الاحتساب العكسي (RCM ZATCA)' : 'Reverse Charge VAT'}
+              {isArabic ? 'المستحق' : 'Outstanding'}
             </span>
-            <div className="p-2 rounded-xl bg-purple-50 text-purple-700">
-              <Globe className="h-4 w-4" />
+            <div className="p-2 rounded-xl bg-blue-50 text-blue-700">
+              <Clock className="h-4 w-4" />
             </div>
           </div>
-          <div className="mt-2 text-xl sm:text-2xl font-bold font-mono text-purple-700">
-            SAR {metrics.rcmTaxSum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div className="mt-2 text-xl sm:text-2xl font-bold font-mono text-[#004a60]">
+            SAR {metrics.outstandingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="mt-1 text-[11px] text-[#70787d]">
-            {isArabic ? 'ضريبة ذاتية لموردين غير مقيمين' : 'Self-assessed non-resident VAT'}
+            {isArabic ? `${metrics.outstandingCount} فواتير بانتظار السداد` : `${metrics.outstandingCount} pending bills`}
           </div>
         </div>
 
-        {/* Metric 4 */}
+        {/* Overdue */}
         <div className="bg-white rounded-2xl border border-[#e3e8f9] p-4 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[#70787d] uppercase tracking-wider">
-              {isArabic ? 'جاهزية الربط الضريبي' : 'ZATCA Audit Readiness'}
+              {isArabic ? 'المتأخر' : 'Overdue'}
             </span>
-            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
-              <ShieldCheck className="h-4 w-4" />
+            <div className="p-2 rounded-xl bg-red-50 text-red-700">
+              <AlertCircle className="h-4 w-4" />
             </div>
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono text-emerald-700">
-            100%
+          <div className="mt-2 text-xl sm:text-2xl font-bold font-mono text-red-600">
+            SAR {metrics.overdueAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="mt-1 text-[11px] text-[#70787d]">
-            {isArabic ? 'مطابقة قيود اليومية ومراكز التكلفة' : 'Mapped to USALI accounts'}
+            {isArabic ? `${metrics.overdueCount} فواتير تجاوزت موعد الاستحقاق` : `${metrics.overdueCount} past due`}
           </div>
         </div>
       </div>
@@ -270,8 +297,8 @@ export const SupplierBillsView: React.FC<SupplierBillsViewProps> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={
                 isArabic
-                  ? 'بحث برقم الفاتورة، المورد، الحساب المحاسبي، المنشأة أو الصنف...'
-                  : 'Search by bill #, supplier, account, property, or item...'
+                  ? 'بحث في الفواتير (Search Bills)...'
+                  : 'Search Bills'
               }
               className={`w-full rounded-xl border border-[#c3cce6] bg-[#f9f9ff] py-2 text-xs text-[#161c27] focus:bg-white focus:border-[#004a60] focus:ring-1 focus:ring-[#004a60] outline-hidden transition-all ${
                 isArabic ? 'pr-9 pl-3' : 'pl-9 pr-3'
@@ -359,8 +386,8 @@ export const SupplierBillsView: React.FC<SupplierBillsViewProps> = ({
       {filteredBills.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#e3e8f9] p-12 text-center shadow-2xs">
           <FileText className="h-10 w-10 text-[#70787d] mx-auto mb-3 opacity-40" />
-          <h3 className="text-sm font-bold text-[#161c27]">
-            {isArabic ? 'لا توجد فواتير موردين مطابقة' : 'No Supplier Bills Found'}
+          <h3 className="text-base font-bold text-[#161c27]">
+            {isArabic ? 'لا توجد فواتير.' : 'No bills found.'}
           </h3>
           <p className="text-xs text-[#70787d] mt-1 max-w-md mx-auto">
             {isArabic
@@ -393,146 +420,151 @@ export const SupplierBillsView: React.FC<SupplierBillsViewProps> = ({
             <table className="w-full text-xs text-left">
               <thead className="bg-[#f9f9ff] text-[11px] text-[#70787d] font-semibold border-b border-[#e3e8f9]">
                 <tr>
-                  <th className="px-4 py-3">{isArabic ? 'رقم الفاتورة' : 'Bill Number'}</th>
-                  <th className="px-4 py-3">{isArabic ? 'نوع الفاتورة' : 'Type'}</th>
-                  <th className="px-4 py-3">{isArabic ? 'المورد المعتمد' : 'Supplier'}</th>
-                  <th className="px-4 py-3">{isArabic ? 'المنشأة أو الحساب المحاسبي' : 'Property / GL Account'}</th>
-                  <th className="px-4 py-3">{isArabic ? 'تاريخ الإصدار' : 'Issue Date'}</th>
-                  <th className="px-4 py-3">{isArabic ? 'البنود' : 'Items'}</th>
-                  <th className="px-4 py-3 text-right">{isArabic ? 'المستحق للمورد' : 'Payable (SAR)'}</th>
+                  <th className="px-4 py-3">{isArabic ? 'رقم الفاتورة (BILL #)' : 'BILL #'}</th>
+                  <th className="px-4 py-3">{isArabic ? 'رقم الاستلام (GRN #)' : 'GRN #'}</th>
+                  <th className="px-4 py-3">{isArabic ? 'أمر الشراء (PO #)' : 'PO #'}</th>
+                  <th className="px-4 py-3">{isArabic ? 'تاريخ الفاتورة' : 'BILL DATE'}</th>
+                  <th className="px-4 py-3">{isArabic ? 'المورد' : 'Supplier'}</th>
+                  <th className="px-4 py-3 text-center">{isArabic ? 'إجمالي الكمية' : 'TOTAL QTY'}</th>
+                  <th className="px-4 py-3 text-right">{isArabic ? 'القيمة الإجمالية' : 'TOTAL VALUE'}</th>
                   <th className="px-4 py-3 text-center">{isArabic ? 'الحالة' : 'Status'}</th>
                   <th className="px-4 py-3 text-center">{isArabic ? 'الإجراءات' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e3e8f9]">
-                {filteredBills.map((b) => (
-                  <tr key={b.id} className="hover:bg-[#f9f9ff]/70 transition-colors">
-                    {/* Bill Number */}
-                    <td className="px-4 py-3">
-                      <div className="font-mono font-bold text-[#004a60] flex items-center gap-1.5">
-                        <FileText className="h-3.5 w-3.5 text-[#004a60] shrink-0" />
-                        <span>{b.billNumber}</span>
-                      </div>
-                      {b.isForeignVendor && (
-                        <span className="inline-block text-[9px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded-sm mt-0.5">
-                          {isArabic ? 'مورد أجنبي (RCM)' : 'Foreign Vendor (RCM)'}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Type */}
-                    <td className="px-4 py-3">
-                      {b.billType === 'direct_no_po' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                          <Zap className="h-2.5 w-2.5" />
-                          <span>{isArabic ? 'خدمات / برمجيات (No PO)' : 'Direct (No PO)'}</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                          <Package className="h-2.5 w-2.5" />
-                          <span>{isArabic ? 'توريد مستودع فندقي' : 'Warehouse Standard'}</span>
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Supplier */}
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-[#161c27]">
-                        {isArabic && b.supplierNameAr ? b.supplierNameAr : b.supplierName}
-                      </div>
-                    </td>
-
-                    {/* Property / GL Account */}
-                    <td className="px-4 py-3">
-                      {b.postToAccount ? (
-                        <div className="text-[11px] font-mono text-[#004a60] font-semibold flex items-center gap-1">
-                          <BookOpen className="h-3 w-3 text-[#70787d]" />
-                          <span>{b.postToAccount}</span>
+                {filteredBills.map((b) => {
+                  const totalQty = b.items?.reduce((sum, item) => sum + (Number(item.qty) || 0), 0) ?? 0;
+                  const totalValue = b.payableToSupplier ?? b.grandTotal ?? 0;
+                  return (
+                    <tr key={b.id} className="hover:bg-[#f9f9ff]/70 transition-colors">
+                      {/* BILL # */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="font-mono font-bold text-[#004a60] flex items-center gap-1.5">
+                          <FileText className="h-3.5 w-3.5 text-[#004a60] shrink-0" />
+                          <span>{b.billNumber}</span>
                         </div>
-                      ) : (
-                        <div>
-                          <div className="font-medium text-[#161c27] flex items-center gap-1">
-                            <Building2 className="h-3 w-3 text-[#70787d]" />
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {b.billType === 'direct_no_po' ? (
+                            <span className="inline-block text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded-sm whitespace-nowrap">
+                              {isArabic ? 'بدون أمر شراء' : 'No PO'}
+                            </span>
+                          ) : (
+                            <span className="inline-block text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded-sm whitespace-nowrap">
+                              {isArabic ? 'مستودع' : 'Standard'}
+                            </span>
+                          )}
+                          {b.isForeignVendor && (
+                            <span className="inline-block text-[9px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded-sm whitespace-nowrap">
+                              {isArabic ? 'أجنبي (RCM)' : 'RCM'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* GRN # */}
+                      <td className="px-4 py-3 font-mono text-xs text-[#40484d] whitespace-nowrap">
+                        {b.grnNumber ? (
+                          <span className="bg-[#f1f3ff] text-[#004a60] px-2 py-0.5 rounded-md font-semibold text-[11px]">
+                            {b.grnNumber}
+                          </span>
+                        ) : (
+                          <span className="text-[#a0aab5]">—</span>
+                        )}
+                      </td>
+
+                      {/* PO # */}
+                      <td className="px-4 py-3 font-mono text-xs text-[#40484d] whitespace-nowrap">
+                        {b.poNumber ? (
+                          <span className="bg-[#f1f3ff] text-[#004a60] px-2 py-0.5 rounded-md font-semibold text-[11px]">
+                            {b.poNumber}
+                          </span>
+                        ) : (
+                          <span className="text-[#a0aab5]">—</span>
+                        )}
+                      </td>
+
+                      {/* BILL DATE */}
+                      <td className="px-4 py-3 text-[#40484d] whitespace-nowrap font-medium text-xs">
+                        {b.issueDate}
+                      </td>
+
+                      {/* Supplier */}
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-[#161c27]">
+                          {isArabic && b.supplierNameAr ? b.supplierNameAr : b.supplierName}
+                        </div>
+                        {b.propertyName ? (
+                          <div className="text-[10px] text-[#70787d] flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3" />
                             <span>{b.propertyName}</span>
                           </div>
-                          <div className="text-[10px] text-[#70787d] flex items-center gap-1 mt-0.5">
-                            <Warehouse className="h-3 w-3 text-[#70787d]" />
-                            <span>{b.warehouseName}</span>
+                        ) : b.postToAccount ? (
+                          <div className="text-[10px] font-mono text-[#004a60] flex items-center gap-1 mt-0.5">
+                            <BookOpen className="h-3 w-3 text-[#70787d]" />
+                            <span>{b.postToAccount}</span>
                           </div>
+                        ) : null}
+                      </td>
+
+                      {/* TOTAL QTY */}
+                      <td className="px-4 py-3 text-center font-mono font-bold text-[#161c27]">
+                        {totalQty}
+                      </td>
+
+                      {/* TOTAL VALUE */}
+                      <td className="px-4 py-3 text-right font-mono font-bold text-[#161c27] whitespace-nowrap text-xs">
+                        SAR {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {getStatusBadge(b.status, b.statusAr)}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setInspectingBill(b)}
+                            className="p-1.5 rounded-lg text-[#004a60] hover:bg-[#e8eeff] transition-colors cursor-pointer"
+                            title={isArabic ? 'معاينة الفاتورة والطباعة' : 'View Bill Voucher & Print'}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingBill(b);
+                              if (b.billType === 'direct_no_po') {
+                                setIsNoPOModalOpen(true);
+                              } else {
+                                setIsStandardModalOpen(true);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-[#70787d] hover:text-[#161c27] hover:bg-gray-100 transition-colors cursor-pointer"
+                            title={isArabic ? 'تعديل الفاتورة' : 'Edit Bill'}
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(isArabic ? `حذف الفاتورة ${b.billNumber}؟` : `Delete Bill ${b.billNumber}?`)) {
+                                onDeleteBill(b.id);
+                                showNotification(isArabic ? `تم حذف الفاتورة ${b.billNumber}` : `Deleted Bill ${b.billNumber}`);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
+                            title={isArabic ? 'حذف' : 'Delete'}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                      )}
-                    </td>
-
-                    {/* Issue Date */}
-                    <td className="px-4 py-3 text-[#161c27] whitespace-nowrap">
-                      {b.issueDate}
-                    </td>
-
-                    {/* Items */}
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#f1f3ff] text-[#004a60] font-semibold text-[11px]">
-                        <span>{b.items.length} {isArabic ? 'بنود' : 'items'}</span>
-                      </span>
-                    </td>
-
-                    {/* Payable to Supplier */}
-                    <td className="px-4 py-3 text-right">
-                      <div className="font-mono font-bold text-[#161c27] text-sm whitespace-nowrap">
-                        SAR {b.payableToSupplier.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                      <div className="text-[10px] text-[#70787d]">
-                        +{b.vatAmount.toLocaleString()} VAT {b.isForeignVendor ? '(RCM)' : ''}
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                      {getStatusBadge(b.status, b.statusAr)}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setInspectingBill(b)}
-                          className="p-1.5 rounded-lg text-[#004a60] hover:bg-[#e8eeff] transition-colors"
-                          title={isArabic ? 'معاينة الفاتورة والطباعة' : 'View Bill Voucher & Print'}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingBill(b);
-                            if (b.billType === 'direct_no_po') {
-                              setIsNoPOModalOpen(true);
-                            } else {
-                              setIsStandardModalOpen(true);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg text-[#70787d] hover:text-[#161c27] hover:bg-gray-100 transition-colors"
-                          title={isArabic ? 'تعديل الفاتورة' : 'Edit Bill'}
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (window.confirm(isArabic ? `حذف الفاتورة ${b.billNumber}؟` : `Delete Bill ${b.billNumber}?`)) {
-                              onDeleteBill(b.id);
-                              showNotification(isArabic ? `تم حذف الفاتورة ${b.billNumber}` : `Deleted Bill ${b.billNumber}`);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
-                          title={isArabic ? 'حذف' : 'Delete'}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

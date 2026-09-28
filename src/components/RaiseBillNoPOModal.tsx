@@ -86,7 +86,7 @@ export const RaiseBillNoPOModal: React.FC<RaiseBillNoPOModalProps> = ({
   initialData,
 }) => {
   const [supplierId, setSupplierId] = useState('');
-  const [issueDate, setIssueDate] = useState('2026-09-24');
+  const [issueDate, setIssueDate] = useState('2026-09-28');
   const [postToAccount, setPostToAccount] = useState('');
   const [isForeignVendor, setIsForeignVendor] = useState(false);
 
@@ -96,8 +96,8 @@ export const RaiseBillNoPOModal: React.FC<RaiseBillNoPOModalProps> = ({
       id: `SBI-${Date.now()}-1`,
       name: '',
       sku: '',
-      category: 'IT & Telecommunication',
-      uom: 'PCS',
+      category: '',
+      uom: '',
       unitCost: 0,
       qty: 1,
       total: 0,
@@ -136,7 +136,7 @@ export const RaiseBillNoPOModal: React.FC<RaiseBillNoPOModalProps> = ({
       setErrors({});
     } else if (isOpen) {
       setSupplierId('');
-      setIssueDate(new Date().toISOString().split('T')[0] || '2026-09-24');
+      setIssueDate('2026-09-28');
       setPostToAccount('');
       setIsForeignVendor(false);
       setItems([
@@ -144,8 +144,8 @@ export const RaiseBillNoPOModal: React.FC<RaiseBillNoPOModalProps> = ({
           id: `SBI-${Date.now()}-1`,
           name: '',
           sku: '',
-          category: 'IT & Telecommunication',
-          uom: 'PCS',
+          category: '',
+          uom: '',
           unitCost: 0,
           qty: 1,
           total: 0,
@@ -519,14 +519,9 @@ export const RaiseBillNoPOModal: React.FC<RaiseBillNoPOModalProps> = ({
                           type="text"
                           value={item.name}
                           onChange={(e) => handleUpdateItem(idx, 'name', e.target.value)}
-                          placeholder={isArabic ? 'اختر البند أو اكتب اسم الخدمة' : 'Select item or enter name'}
+                          placeholder={isArabic ? 'اختر الصنف' : 'Select item'}
                           className="w-full rounded-lg border border-[#c3cce6] bg-white px-2 py-1 text-xs text-[#161c27] focus:border-[#004a60] outline-hidden"
                         />
-                        {!item.name.trim() && (
-                          <span className="text-[10px] text-red-500 font-semibold block mt-0.5">
-                            {isArabic ? 'مطلوب' : 'Required'}
-                          </span>
-                        )}
                       </td>
                       <td className="p-1.5">
                         <input
@@ -534,15 +529,16 @@ export const RaiseBillNoPOModal: React.FC<RaiseBillNoPOModalProps> = ({
                           value={item.sku}
                           onChange={(e) => handleUpdateItem(idx, 'sku', e.target.value)}
                           placeholder="—"
-                          className="w-full rounded-lg border border-[#c3cce6] bg-white px-2 py-1 text-xs font-mono text-[#161c27] focus:border-[#004a60] outline-hidden"
+                          className="w-full rounded-lg border border-[#c3cce6] bg-white px-2 py-1 text-xs font-mono text-[#161c27] focus:border-[#004a60] outline-hidden text-center"
                         />
                       </td>
                       <td className="p-1.5">
                         <select
                           value={item.category}
                           onChange={(e) => handleUpdateItem(idx, 'category', e.target.value)}
-                          className="w-full rounded-lg border border-[#c3cce6] bg-white px-1.5 py-1 text-xs text-[#161c27] focus:border-[#004a60] outline-hidden"
+                          className="w-full rounded-lg border border-[#c3cce6] bg-white px-1.5 py-1 text-xs text-[#161c27] focus:border-[#004a60] outline-hidden text-center"
                         >
+                          <option value="">—</option>
                           {CATEGORIES.map((c) => (
                             <option key={c.value} value={c.value}>
                               {isArabic ? c.labelAr : c.labelEn}
@@ -555,8 +551,8 @@ export const RaiseBillNoPOModal: React.FC<RaiseBillNoPOModalProps> = ({
                           type="text"
                           value={item.uom}
                           onChange={(e) => handleUpdateItem(idx, 'uom', e.target.value)}
-                          placeholder="PCS"
-                          className="w-full rounded-lg border border-[#c3cce6] bg-white px-1.5 py-1 text-xs text-[#161c27] focus:border-[#004a60] outline-hidden"
+                          placeholder="—"
+                          className="w-full rounded-lg border border-[#c3cce6] bg-white px-1.5 py-1 text-xs text-[#161c27] focus:border-[#004a60] outline-hidden text-center"
                         />
                       </td>
                       <td className="p-1.5">
@@ -564,7 +560,8 @@ export const RaiseBillNoPOModal: React.FC<RaiseBillNoPOModalProps> = ({
                           type="number"
                           min="0"
                           step="0.01"
-                          value={item.unitCost}
+                          value={item.unitCost === 0 ? '' : item.unitCost}
+                          placeholder="—"
                           onChange={(e) => handleUpdateItem(idx, 'unitCost', parseFloat(e.target.value) || 0)}
                           className="w-full rounded-lg border border-[#c3cce6] bg-white px-2 py-1 text-xs font-mono text-right text-[#161c27] focus:border-[#004a60] outline-hidden"
                         />

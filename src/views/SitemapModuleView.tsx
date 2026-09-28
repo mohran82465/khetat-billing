@@ -347,7 +347,7 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
       tabs: [
         { id: 'suppliers', name: 'Suppliers', nameAr: 'الموردون', count: activeSuppliers.length.toString() },
         { id: 'purchase_orders', name: 'Purchase Orders', nameAr: 'أوامر الشراء', count: activePurchaseOrders.length.toString() },
-        { id: 'supplier_bills', name: 'Supplier Bills', nameAr: 'فواتير الموردين' },
+        { id: 'supplier_bills', name: 'Bills', nameAr: 'الفواتير', count: activeBills.length.toString() },
         { id: 'supplier_payments', name: 'Supplier Payments', nameAr: 'سندات صرف الموردين' },
       ],
     },
@@ -579,6 +579,8 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
               onClick={() => {
                 if (module === 'procurement' && activeTab === 'purchase_orders') {
                   setIsHeaderCreatePOOpen(true);
+                } else if (module === 'procurement' && activeTab === 'supplier_bills') {
+                  setIsHeaderCreateBillOpen(true);
                 } else if (module === 'procurement') {
                   setIsHeaderAddSupplierOpen(true);
                 } else if (module === 'products') {
@@ -593,6 +595,10 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
                   ? isArabic
                     ? 'إنشاء أمر شراء (Create PO)'
                     : 'Create PO'
+                  : module === 'procurement' && activeTab === 'supplier_bills'
+                  ? isArabic
+                    ? 'إنشاء فاتورة (Create Bill)'
+                    : 'Create Bill'
                   : module === 'procurement' && activeTab === 'suppliers'
                   ? isArabic
                     ? 'إضافة مورد جديد'
@@ -965,42 +971,14 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
             )}
 
             {activeTab === 'supplier_bills' && (
-              <div className="space-y-4">
-                <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs">
-                  <h3 className="text-sm font-bold text-[#161c27] mb-1">
-                    {isArabic ? 'فواتير الموردين والربط الضريبي ZATCA' : 'Supplier Invoices & ZATCA e-Bills'}
-                  </h3>
-                  <p className="text-xs text-[#70787d] mb-4">
-                    {isArabic
-                      ? 'مطابقة فواتير المشتريات الضريبية الثلاثية (3-Way Matching: PO, Delivery Note, Tax Invoice)'
-                      : 'Three-way matching: PO, Delivery Note, and Supplier Tax Invoice with ZATCA QR code verification.'}
-                  </p>
-
-                  <div className="space-y-2.5 text-xs">
-                    {activeSuppliers.slice(0, 3).map((sup) => (
-                      <div
-                        key={sup.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-[#f9f9ff] border border-[#e3e8f9] gap-2"
-                      >
-                        <div>
-                          <div className="font-bold text-[#161c27]">{sup.name}</div>
-                          <div className="text-[11px] text-[#70787d] flex items-center gap-2 mt-0.5">
-                            <span>Tax ID: {sup.taxId}</span>
-                            <span>•</span>
-                            <span className="font-mono">GL: {sup.payableCode}</span>
-                          </div>
-                        </div>
-                        <div className="sm:text-right">
-                          <div className="font-mono font-bold text-sm text-[#004a60]">
-                            SAR {(sup.currentBalanceSar ?? sup.payableOpeningBalance).toLocaleString()}
-                          </div>
-                          <span className="text-emerald-700 text-[10px] font-semibold">ZATCA Verified</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <SupplierBillsView
+                bills={activeBills}
+                suppliers={activeSuppliers}
+                isArabic={isArabic}
+                onAddBill={handleAddBillAction}
+                onUpdateBill={handleUpdateBillAction}
+                onDeleteBill={handleDeleteBillAction}
+              />
             )}
 
             {activeTab === 'supplier_payments' && (
@@ -1333,6 +1311,15 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
         isArabic={isArabic}
         suppliers={activeSuppliers}
         onAddPurchaseOrder={handleAddPO}
+      />
+
+      {/* Header Create Bill Modal */}
+      <CreateStandardBillModal
+        isOpen={isHeaderCreateBillOpen}
+        onClose={() => setIsHeaderCreateBillOpen(false)}
+        isArabic={isArabic}
+        suppliers={activeSuppliers}
+        onAddBill={handleAddBillAction}
       />
     </div>
   );

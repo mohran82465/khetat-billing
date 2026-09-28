@@ -39,6 +39,8 @@ import {
   Supplier,
   PurchaseOrder,
   INITIAL_PURCHASE_ORDERS,
+  SupplierBill,
+  INITIAL_SUPPLIER_BILLS,
 } from './data/mockData';
 import {
   LayoutDashboard,
@@ -72,6 +74,7 @@ export function App() {
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
   const [suppliers, setSuppliers] = useState<Supplier[]>(INITIAL_SUPPLIERS);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(INITIAL_PURCHASE_ORDERS);
+  const [bills, setBills] = useState<SupplierBill[]>(INITIAL_SUPPLIER_BILLS);
 
   // Modals
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
@@ -223,6 +226,20 @@ export function App() {
     setPurchaseOrders((prev) => prev.filter((p) => p.id !== poId));
   };
 
+  const handleAddBill = (newBill: SupplierBill) => {
+    setBills((prev) => [newBill, ...prev]);
+  };
+
+  const handleUpdateBill = (updatedBill: SupplierBill) => {
+    setBills((prev) =>
+      prev.map((b) => (b.id === updatedBill.id ? updatedBill : b))
+    );
+  };
+
+  const handleDeleteBill = (billId: string) => {
+    setBills((prev) => prev.filter((b) => b.id !== billId));
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f9f9ff] text-[#161c27] font-sans antialiased">
       {/* Sidebar Navigation matching sitemap */}
@@ -366,6 +383,10 @@ export function App() {
               onAddPurchaseOrder={handleAddPurchaseOrder}
               onUpdatePurchaseOrder={handleUpdatePurchaseOrder}
               onDeletePurchaseOrder={handleDeletePurchaseOrder}
+              bills={bills}
+              onAddBill={handleAddBill}
+              onUpdateBill={handleUpdateBill}
+              onDeleteBill={handleDeleteBill}
             />
           )}
         </main>

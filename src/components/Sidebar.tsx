@@ -169,8 +169,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       children: [
         { id: 'suppliers', name: 'Suppliers', nameAr: 'الموردون' },
         { id: 'purchase_orders', name: 'Purchase Orders', nameAr: 'أوامر الشراء' },
-        { id: 'supplier_bills', name: 'Supplier Bills', nameAr: 'فواتير الموردين' },
-        { id: 'supplier_payments', name: 'Supplier Payments', nameAr: 'سندات صرف الموردين' },
+        { id: 'supplier_bills', name: 'Bills', nameAr: 'الفواتير' },
+        { id: 'supplier_payments', name: 'Payments', nameAr: 'المدفوعات' },
       ],
     },
     {

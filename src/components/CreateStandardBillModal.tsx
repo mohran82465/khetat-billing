@@ -100,7 +100,7 @@ export const CreateStandardBillModal: React.FC<CreateStandardBillModalProps> = (
 }) => {
   // Bill Information
   const [billNo, setBillNo] = useState('Auto-generated');
-  const [issueDate, setIssueDate] = useState('2026-09-24');
+  const [issueDate, setIssueDate] = useState('2026-09-28');
   const [supplierId, setSupplierId] = useState('');
   const [propertyId, setPropertyId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
@@ -134,9 +134,8 @@ export const CreateStandardBillModal: React.FC<CreateStandardBillModalProps> = (
       setAttachmentSize(initialData.attachmentSize);
       setErrors({});
     } else if (isOpen) {
-      const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-      setBillNo(`BILL-2026-${randomSuffix}`);
-      setIssueDate(new Date().toISOString().split('T')[0] || '2026-09-24');
+      setBillNo('Auto-generated');
+      setIssueDate('2026-09-28');
       setSupplierId('');
       setPropertyId('');
       setWarehouseId('');

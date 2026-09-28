@@ -1930,6 +1930,8 @@ export interface SupplierBill {
   id: string;
   billNumber: string;
   billType: 'standard' | 'direct_no_po';
+  grnNumber?: string;
+  poNumber?: string;
   issueDate: string;
   dueDate?: string;
   supplierId: string;
@@ -1960,6 +1962,8 @@ export const INITIAL_SUPPLIER_BILLS: SupplierBill[] = [
     id: 'BILL-2026-0001',
     billNumber: 'BILL-2026-0001',
     billType: 'standard',
+    grnNumber: 'GRN-2026-0088',
+    poNumber: 'PO-2026-0001',
     issueDate: '2026-09-24',
     dueDate: '2026-10-24',
     supplierId: 'SUP-001',
@@ -2129,6 +2133,30 @@ export const INITIAL_SUPPLIER_BILLS: SupplierBill[] = [
     createdAt: '2026-09-18',
   },
 ];
+
+export interface SupplierPayment {
+  id: string;
+  paymentNumber: string; // e.g. "PAY-2026-0001"
+  billNumber: string; // e.g. "BILL-2026-0001"
+  billId?: string;
+  supplierId: string;
+  supplierName: string;
+  supplierNameAr?: string;
+  paymentDate: string; // e.g. "2026-09-28"
+  billAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  paymentMethod: string; // 'Bank Wire (SARIE)', 'Corporate Card', 'Cheque', 'Cash', 'SADAD'
+  paymentMethodAr?: string;
+  reference?: string; // SARIE Wire Ref or Cheque #
+  paidFromAccount?: string; // e.g. 'Alinma Bank Corporate (GL: 1102)'
+  notes?: string;
+  status: 'Completed' | 'Pending' | 'Voided';
+  statusAr?: string;
+  createdAt: string;
+}
+
+export const INITIAL_SUPPLIER_PAYMENTS: SupplierPayment[] = [];
 
 
 
