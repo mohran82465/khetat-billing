@@ -33,12 +33,15 @@ import {
   saveStoredPlans,
   calculatePlanCost,
 } from '../data/plansConfig';
+import { CreatePlanFormModal } from './CreatePlanFormModal';
 
 interface PlansCatalogManagerProps {
   isArabic: boolean;
   activeSubTab?: string;
   onNavigateToSubTab?: (tab: string) => void;
   onSelectPlanForSubscription?: (plan: PropertyPlan, propertyCount: number) => void;
+  isCreatePlanOpen?: boolean;
+  onCloseCreatePlan?: () => void;
 }
 
 export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
@@ -46,9 +49,12 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
   activeSubTab = 'catalog',
   onNavigateToSubTab,
   onSelectPlanForSubscription,
+  isCreatePlanOpen = false,
+  onCloseCreatePlan,
 }) => {
   const [plans, setPlans] = useState<PropertyPlan[]>(() => getStoredPlans());
   const [currentTab, setCurrentTab] = useState<string>(activeSubTab);
+  const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
 
   // Sync prop changes
   useEffect(() => {
@@ -132,6 +138,19 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
     );
   };
 
+  const handlePlanCreated = (newPlan: PropertyPlan) => {
+    const updated = [newPlan, ...plans];
+    setPlans(updated);
+    saveStoredPlans(updated);
+    setIsCreatePlanModalOpen(false);
+    if (onCloseCreatePlan) onCloseCreatePlan();
+    triggerSuccessNotice(
+      isArabic
+        ? `تم إنشاء الخطة "${newPlan.nameAr}" بنجاح!`
+        : `Plan "${newPlan.name}" created successfully!`
+    );
+  };
+
   const triggerSuccessNotice = (msg: string) => {
     setSaveSuccessMsg(msg);
     setTimeout(() => {
@@ -184,32 +203,40 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
           </p>
 
           {/* Quick Sub-navigation bar inside Plans */}
-          <div className="flex flex-wrap items-center gap-2 mt-6 pt-5 border-t border-white/15">
-            {[
-              { id: 'catalog', name: 'Catalog (Choose Plan)', nameAr: 'الكتالوج (اختر باقتك)' },
-              { id: 'categories', name: 'Categories (3 Plans)', nameAr: 'التصنيفات (3 باقات)' },
-              { id: 'pricing', name: 'Pricing & Tier Matrix', nameAr: 'الأسعار وسقف الخصم' },
-              { id: 'uom', name: 'Units of Measure', nameAr: 'وحدات القياس' },
-              { id: 'tax_config', name: 'Tax Configuration (ZATCA)', nameAr: 'التهيئة الضريبية' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${
-                  currentTab === tab.id
-                    ? 'bg-white text-[#004a60] shadow-xs'
-                    : 'bg-white/10 text-white/90 hover:bg-white/20'
-                }`}
-              >
-                {isArabic ? tab.nameAr : tab.name}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-6 pt-5 border-t border-white/15">
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { id: 'catalog', name: 'Plans', nameAr: 'الخطط' },
+                { id: 'categories', name: 'Tiers', nameAr: 'المستويات' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    currentTab === tab.id || (tab.id === 'catalog' && (currentTab === 'plans' || (currentTab !== 'categories' && currentTab !== 'tiers')))
+                      ? 'bg-white text-[#004a60] shadow-xs font-bold'
+                      : 'bg-white/10 text-white/90 hover:bg-white/20'
+                  }`}
+                >
+                  {isArabic ? tab.nameAr : tab.name}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsCreatePlanModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 text-xs font-bold shadow-xs transition-all cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>{isArabic ? 'إنشاء خطة جديدة (Form)' : 'Create Plan (Form)'}</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* TAB 1: CATALOG / CHOOSE YOUR PLAN */}
-      {currentTab === 'catalog' && (
+      {/* TAB 1: PLANS (CHOOSE YOUR PLAN) */}
+      {(currentTab === 'catalog' || currentTab === 'plans' || (currentTab !== 'categories' && currentTab !== 'tiers')) && (
         <div className="space-y-6">
           {/* Main 3 Plans Cards Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -649,27 +676,27 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
         </div>
       )}
 
-      {/* TAB 2: CATEGORIES (1 - Building Plans, 2 - Home Plans, 3 - Chalet Plans) */}
-      {currentTab === 'categories' && (
+      {/* TAB 2: TIERS (1 - Building Tiers, 2 - Home Tiers, 3 - Chalet Tiers) */}
+      {(currentTab === 'categories' || currentTab === 'tiers') && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-[#e3e8f9] p-6 shadow-xs">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-bold text-[#161c27]">
-                  {isArabic ? 'تصنيفات الخطط والباقات الثلاث' : 'Plan Categories (3 Core Categories)'}
+                  {isArabic ? 'مستويات وفئات الخطط الثلاث' : 'Plan Tiers (3 Core Tiers)'}
                 </h3>
                 <p className="text-xs text-[#70787d] mt-1">
                   {isArabic
-                    ? '1 - باقات المباني والأبراج (متاحة) | 2 - باقات المنازل (قريباً) | 3 - باقات الشاليهات (قريباً)'
-                    : '1 - Building Plans (Available) | 2 - Home Plans (Coming Soon) | 3 - Chalet Plans (Coming Soon)'}
+                    ? '1 - باقات ومستويات المباني (متاحة) | 2 - باقات ومستويات المنازل (قريباً) | 3 - باقات ومستويات الشاليهات (قريباً)'
+                    : '1 - Building Tiers (Available) | 2 - Home Tiers (Coming Soon) | 3 - Chalet Tiers (Coming Soon)'}
                 </p>
               </div>
               <button
                 onClick={handleResetDefaults}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#70787d] hover:text-[#004a60] px-3 py-1.5 rounded-lg border border-[#e3e8f9] hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#70787d] hover:text-[#004a60] px-3 py-1.5 rounded-lg border border-[#e3e8f9] hover:bg-gray-50 cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                <span>{isArabic ? 'إعادة ضبط التصنيفات' : 'Reset Defaults'}</span>
+                <span>{isArabic ? 'إعادة ضبط المستويات' : 'Reset Tiers'}</span>
               </button>
             </div>
 
@@ -721,7 +748,7 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
 
                         <div className="flex flex-wrap items-center gap-2 mt-3">
                           <span className="text-[11px] font-semibold text-[#70787d]">
-                            {isArabic ? 'أنواع العقارات التابعة:' : 'Target Property Types:'}
+                            {isArabic ? 'أنواع العقارات التابعة للمستوى:' : 'Target Property Types:'}
                           </span>
                           {(isArabic ? cat.propertyTypesAr : cat.propertyTypes).map((pt, i) => (
                             <span
@@ -752,14 +779,14 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setEditingPlan(cat)}
-                          className="bg-white border border-[#e3e8f9] hover:border-[#004a60] hover:bg-[#f1f3ff] text-[#004a60] px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1"
+                          className="bg-white border border-[#e3e8f9] hover:border-[#004a60] hover:bg-[#f1f3ff] text-[#004a60] px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
                         >
                           <Edit3 className="h-3.5 w-3.5" />
-                          <span>{isArabic ? 'تعديل التصنيف' : 'Edit Category'}</span>
+                          <span>{isArabic ? 'تعديل المستوى' : 'Edit Tier'}</span>
                         </button>
                         <button
                           onClick={() => handleToggleStatus(cat.id)}
-                          className="p-1.5 border border-[#e3e8f9] hover:bg-gray-100 rounded-lg text-[#70787d]"
+                          className="p-1.5 border border-[#e3e8f9] hover:bg-gray-100 rounded-lg text-[#70787d] cursor-pointer"
                         >
                           {cat.status === 'active' ? (
                             <ToggleRight className="h-5 w-5 text-emerald-600" />
@@ -772,239 +799,6 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
                   </div>
                 );
               })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: PRICING & TIER MATRIX */}
-      {currentTab === 'pricing' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-[#e3e8f9] p-6 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#e3e8f9]">
-              <div>
-                <h3 className="text-base font-bold text-[#161c27]">
-                  {isArabic ? 'مصفوفة التسعير والحدود وسقف الخصم' : 'Pricing & Tier Threshold Matrix'}
-                </h3>
-                <p className="text-xs text-[#70787d] mt-1">
-                  {isArabic
-                    ? 'هيكل تسعير باقة المباني: 150 ر.س لكل عقار من 1 إلى 20، وسعر ثابت 3,000 ر.س لما زاد عن 20 عقار.'
-                    : 'Building Plan Structure: 150 SAR per property for 1 to 20, and capped at 3,000 SAR for 20+ properties.'}
-                </p>
-              </div>
-
-              <button
-                onClick={() => setEditingPlan(plans[0])}
-                className="bg-[#004a60] hover:bg-[#074e64] text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
-              >
-                <Sliders className="h-3.5 w-3.5" />
-                <span>{isArabic ? 'تعديل سقف وأسعار المباني' : 'Configure Building Plan Tier'}</span>
-              </button>
-            </div>
-
-            {/* Matrix Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-[#e3e8f9] text-[#70787d] uppercase text-[10px] tracking-wider bg-[#f9f9ff]">
-                    <th className="py-3 px-4">{isArabic ? 'اسم الخطة' : 'Plan Name'}</th>
-                    <th className="py-3 px-4">{isArabic ? 'الشريحة الأولى (من 1 إلى N)' : 'Tier 1 (1 to N Units)'}</th>
-                    <th className="py-3 px-4">{isArabic ? 'حد الانتقال للسقف' : 'Cap Threshold Limit'}</th>
-                    <th className="py-3 px-4">{isArabic ? 'السعر الثابت بعد الحد' : 'Fixed Price After Limit'}</th>
-                    <th className="py-3 px-4">{isArabic ? 'دورة الفوترة' : 'Billing Cycle'}</th>
-                    <th className="py-3 px-4">{isArabic ? 'الحالة' : 'Status'}</th>
-                    <th className="py-3 px-4 text-right">{isArabic ? 'إجراء' : 'Action'}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e3e8f9]">
-                  {plans.map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-50/70 transition-colors">
-                      <td className="py-3.5 px-4">
-                        <div className="font-bold text-[#161c27]">{isArabic ? p.nameAr : p.name}</div>
-                        <div className="text-[11px] text-[#70787d]">{isArabic ? p.subtitleAr : p.subtitle}</div>
-                      </td>
-                      <td className="py-3.5 px-4 font-mono font-bold text-[#004a60]">
-                        {p.tier1Rate} {p.currency}{' '}
-                        <span className="text-[10px] text-[#70787d] font-normal">/ unit</span>
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold text-[#161c27]">
-                        {p.tierLimit} {isArabic ? 'عقار' : 'properties'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono font-extrabold text-emerald-800">
-                        {p.cappedRate.toLocaleString()} {p.currency}{' '}
-                        <span className="text-[10px] font-normal text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                          {isArabic ? 'ثابت سقف' : 'Fixed Cap'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-[#70787d]">
-                        {isArabic ? p.billingFrequencyAr : p.billingFrequency}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            p.status === 'active'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : p.status === 'coming_soon'
-                              ? 'bg-amber-100 text-amber-900'
-                              : 'bg-gray-200 text-gray-700'
-                          }`}
-                        >
-                          {isArabic
-                            ? p.status === 'active'
-                              ? 'متاحة'
-                              : p.status === 'coming_soon'
-                              ? 'قريباً'
-                              : 'معطلة'
-                            : p.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          onClick={() => setEditingPlan(p)}
-                          className="text-[#004a60] hover:text-[#074e64] font-semibold text-xs inline-flex items-center gap-1"
-                        >
-                          <Edit3 className="h-3 w-3" />
-                          <span>{isArabic ? 'تعديل' : 'Configure'}</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: UNITS OF MEASURE (UoM) */}
-      {currentTab === 'uom' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-[#e3e8f9] p-6 shadow-xs">
-            <h3 className="text-base font-bold text-[#161c27] mb-2">
-              {isArabic ? 'وحدات القياس والتسعير (UoM)' : 'Units of Measure (UoM)'}
-            </h3>
-            <p className="text-xs text-[#70787d] mb-6">
-              {isArabic
-                ? 'تعريف الوحدات المعتمدة لاحتساب الاشتراكات الفندقية والعقارية.'
-                : 'Standard units of measurement for hospitality property invoicing and tier computation.'}
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[
-                {
-                  code: 'UOM-PROP',
-                  name: 'Property (Building / Tower)',
-                  nameAr: 'العقار (مبنى فندقي / برج مخدوم)',
-                  symbol: 'PROP',
-                  desc: 'Used in Building Plans for 1-20 properties tiering and 20+ cap.',
-                },
-                {
-                  code: 'UOM-VILLA',
-                  name: 'Private Home / Villa Unit',
-                  nameAr: 'الوحدة السكنية / الفيلا الخاصة',
-                  symbol: 'HOME',
-                  desc: 'Used for Home Plans (Villa, Townhouses, Holiday Homes).',
-                },
-                {
-                  code: 'UOM-CHL',
-                  name: 'Chalet / Mountain Lodge',
-                  nameAr: 'الشاليه / النزل الجبلي',
-                  symbol: 'CHL',
-                  desc: 'Used for Chalet & Resort Plans.',
-                },
-                {
-                  code: 'UOM-KEY',
-                  name: 'Hospitality Room Key',
-                  nameAr: 'مفتاح غرفة فندقية',
-                  symbol: 'KEY',
-                  desc: 'For room-level hardware and smart lock synchronization.',
-                },
-                {
-                  code: 'UOM-MONTH',
-                  name: 'Billing Month',
-                  nameAr: 'الشهر المحاسبي',
-                  symbol: 'MO',
-                  desc: 'Standard recurrent billing frequency cycle.',
-                },
-                {
-                  code: 'UOM-BUNDLE',
-                  name: 'Enterprise Portfolio Cap',
-                  nameAr: 'سقف المحفظة الشامل',
-                  symbol: 'CAP',
-                  desc: 'Fixed 3,000 SAR maximum ceiling bundle.',
-                },
-              ].map((uom, idx) => (
-                <div key={idx} className="p-4 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-mono text-[#004a60] bg-[#e8eeff] px-2 py-0.5 rounded font-bold">
-                      {uom.code}
-                    </span>
-                    <span className="text-xs font-mono font-bold text-[#70787d]">{uom.symbol}</span>
-                  </div>
-                  <h4 className="text-xs font-bold text-[#161c27]">
-                    {isArabic ? uom.nameAr : uom.name}
-                  </h4>
-                  <p className="text-[11px] text-[#70787d] mt-1">{uom.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 5: TAX CONFIGURATION (ZATCA Phase 2) */}
-      {currentTab === 'tax_config' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-[#e3e8f9] p-6 shadow-xs">
-            <h3 className="text-base font-bold text-[#161c27] mb-2">
-              {isArabic
-                ? 'التهيئة الضريبية المعتمدة وهيئة الزكاة والضريبة والجمارك (ZATCA)'
-                : 'Tax Configuration & ZATCA Phase 2 Fatoora Engine'}
-            </h3>
-            <p className="text-xs text-[#70787d] mb-6">
-              {isArabic
-                ? 'ضبط نسب ضريبة القيمة المضافة 15% ورسوم السياحة والبلدية 5% المتوافقة مع عقود الإيجار والضيافة.'
-                : 'Automated 15% Saudi VAT and 5% Tourism & Municipality Tax configurations for hospitality contracts.'}
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-5 rounded-xl border border-[#e3e8f9] bg-[#fdfdff]">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Percent className="h-5 w-5 text-emerald-600" />
-                    <span className="font-bold text-sm text-[#161c27]">
-                      {isArabic ? 'ضريبة القيمة المضافة القياسية (15%)' : 'Standard Saudi VAT (15%)'}
-                    </span>
-                  </div>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                    Active / نشطة
-                  </span>
-                </div>
-                <p className="text-xs text-[#70787d] leading-relaxed">
-                  {isArabic
-                    ? 'تطبق تلقائياً على كافة باقات الاشتراكات (باقات المباني، المنازل، والشاليهات) مع إنشاء الفاتورة الإلكترونية المتوافقة مع منصة فاتورة.'
-                    : 'Automatically calculated on all subscription invoices with cryptographic stamp and ZATCA QR code.'}
-                </p>
-              </div>
-
-              <div className="p-5 rounded-xl border border-[#e3e8f9] bg-[#fdfdff]">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-[#004a60]" />
-                    <span className="font-bold text-sm text-[#161c27]">
-                      {isArabic ? 'رسوم البلدية والسياحة الفندقية (5%)' : 'Tourism & Municipality Surcharge (5%)'}
-                    </span>
-                  </div>
-                  <span className="text-xs font-bold text-[#004a60] bg-[#e8eeff] px-2 py-0.5 rounded">
-                    Hotel Specific
-                  </span>
-                </div>
-                <p className="text-xs text-[#70787d] leading-relaxed">
-                  {isArabic
-                    ? 'خاصة بنزلاء الفنادق والشقق المخدومة، مفعلة في باقة المباني لضمان الامتثال مع بوابة بلدي وهيئة السياحة.'
-                    : 'Governed by the Saudi Ministry of Tourism and Balady platform for hotel and aparthotel guests.'}
-                </p>
-              </div>
             </div>
           </div>
         </div>
@@ -1413,6 +1207,17 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
           </div>
         </div>
       )}
+
+      {/* CREATE PLAN FORM MODAL */}
+      <CreatePlanFormModal
+        isOpen={isCreatePlanModalOpen || isCreatePlanOpen}
+        onClose={() => {
+          setIsCreatePlanModalOpen(false);
+          onCloseCreatePlan?.();
+        }}
+        isArabic={isArabic}
+        onPlanCreated={handlePlanCreated}
+      />
     </div>
   );
 };

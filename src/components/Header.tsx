@@ -81,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
         return isArabic ? 'الاشتراكات / باقات الضيافة والفوترة' : 'Subscriptions / Hospitality OS Plans & Billing';
       case 'profiles':
       case 'organization':
-        return isArabic ? 'المؤسسة والمنشآت / الفروع والجهات المعتمدة' : 'Organization / Hospitality Branches & Signatories';
+        return isArabic ? 'المؤسسات / التراخيص والاشتراكات النشطة' : 'Organizations / Active Subscriptions & Licenses';
       case 'sales_orders':
         return isArabic ? 'المبيعات / أوامر البيع' : 'Sales / Sales Orders';
       case 'invoices':
@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
         return isArabic ? 'الرسائل / مراسلات الواتساب والتنبيهات والفواتير' : 'Messages / WhatsApp Concierge & Notifications';
       case 'products':
       case 'plans':
-        return isArabic ? 'الخطط والباقات / كتالوج الفنادق والضرائب' : 'Plans / Hospitality Catalog & Tax Rates';
+        return isArabic ? 'الخطط والمستويات / باقات العقارات الفندقية والسكنية' : 'Plans & Tiers / Hospitality & Residential Portfolio Plans';
       case 'projects':
       case 'task_manager':
         return isArabic ? 'إدارة المهام / كتالوج وقوالب المهام الفندقية' : 'Task Manager / Task Catalog & Sprint Board';

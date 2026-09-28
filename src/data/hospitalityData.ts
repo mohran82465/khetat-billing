@@ -31,9 +31,32 @@ export interface HospitalityBillingCycle {
   paymentMethods: string[];
 }
 
+export interface HospitalityOrganization {
+  id: string;
+  code: string;
+  name: string;
+  nameAr: string;
+  legalType: string;
+  crNumber: string;
+  taxNumber: string;
+  city: string;
+  tier: 'Enterprise Holding' | 'Hotel Chain' | 'Boutique Operator' | 'Asset Management';
+  tierAr: string;
+  totalManagedKeys: number;
+  billingEmail: string;
+  phone: string;
+  logoBadge: string;
+  badgeColor: string;
+}
+
 export interface ActiveHospitalitySubscription {
   id: string;
   code: string;
+  organizationId: string;
+  organizationName: string;
+  organizationNameAr: string;
+  organizationTier?: string;
+  organizationBadgeColor?: string;
   propertyName: string;
   propertyNameAr: string;
   propertyType: 'Hotel' | 'Villa' | 'Apartment';
@@ -277,11 +300,156 @@ export const HOSPITALITY_BILLING_CYCLES: HospitalityBillingCycle[] = [
   },
 ];
 
+// 2.5 Multi-Tenant Client Organizations for Subscriptions Platform
+export const HOSPITALITY_ORGANIZATIONS: HospitalityOrganization[] = [
+  {
+    id: 'ORG-DUR-01',
+    code: 'DUR',
+    name: 'Dur Hospitality Co.',
+    nameAr: 'شركة دور للضيافة',
+    legalType: 'Saudi Public Joint Stock Company (Tadawul 4011)',
+    crNumber: '1010001587',
+    taxNumber: '300052918200003',
+    city: 'Riyadh',
+    tier: 'Enterprise Holding',
+    tierAr: 'مجموعة قابضة كبرى',
+    totalManagedKeys: 320,
+    billingEmail: 'accounts@dur.sa',
+    phone: '+966 11 481 6666',
+    logoBadge: 'DUR',
+    badgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+  },
+  {
+    id: 'ORG-DIRIYAH-02',
+    code: 'DRY',
+    name: 'Royal Commission & Diriyah Hospitality Holding',
+    nameAr: 'هيئة تطوير بوابة الدرعية ومشاريع العلا',
+    legalType: 'Government / Semi-Government Tourism Entity',
+    crNumber: '3550182910',
+    taxNumber: '310982736100003',
+    city: 'AlUla',
+    tier: 'Enterprise Holding',
+    tierAr: 'هيئة سياحية وطنية',
+    totalManagedKeys: 42,
+    billingEmail: 'procurement@chedihegra-alula.sa',
+    phone: '+966 14 881 2244',
+    logoBadge: 'DRY',
+    badgeColor: 'bg-amber-50 text-amber-800 border-amber-300',
+  },
+  {
+    id: 'ORG-KHOZAMA-03',
+    code: 'KHZ',
+    name: 'Al Khozama Investment & Management',
+    nameAr: 'شركة الخزامى للاستثمار والإدارة',
+    legalType: 'Closed Joint Stock Luxury Operator',
+    crNumber: '1010884920',
+    taxNumber: '310188924000003',
+    city: 'Riyadh',
+    tier: 'Hotel Chain',
+    tierAr: 'سلسلة فنادق فاخرة',
+    totalManagedKeys: 24,
+    billingEmail: 'finance@alkhozama.com',
+    phone: '+966 11 465 4650',
+    logoBadge: 'KHZ',
+    badgeColor: 'bg-purple-50 text-purple-800 border-purple-300',
+  },
+  {
+    id: 'ORG-KAFD-04',
+    code: 'KFD',
+    name: 'KAFD Hospitality & Real Estate Co.',
+    nameAr: 'شركة كافد للضيافة والتطوير العقاري',
+    legalType: 'PIF Subsidiary / Sovereign Real Estate',
+    crNumber: '1010772641',
+    taxNumber: '310772641000003',
+    city: 'Riyadh',
+    tier: 'Asset Management',
+    tierAr: 'إدارة أصول عقارية',
+    totalManagedKeys: 180,
+    billingEmail: 'billing@kafd.sa',
+    phone: '+966 11 813 0000',
+    logoBadge: 'KFD',
+    badgeColor: 'bg-blue-50 text-blue-800 border-blue-300',
+  },
+  {
+    id: 'ORG-DURRAT-05',
+    code: 'DAR',
+    name: 'Durrat Al-Arous Tourism Development',
+    nameAr: 'مجموعة درة العروس للتطوير السياحي',
+    legalType: 'Limited Liability Tourism Consortium',
+    crNumber: '4030661928',
+    taxNumber: '310661928000003',
+    city: 'Jeddah',
+    tier: 'Boutique Operator',
+    tierAr: 'مشغل منتجعات بحرية',
+    totalManagedKeys: 36,
+    billingEmail: 'finance@durratmarina.sa',
+    phone: '+966 12 618 3333',
+    logoBadge: 'DAR',
+    badgeColor: 'bg-cyan-50 text-cyan-800 border-cyan-300',
+  },
+  {
+    id: 'ORG-BOUDL-06',
+    code: 'BDL',
+    name: 'Boudl Hotels & Resorts Co.',
+    nameAr: 'شركة بودل للفنادق والمنتجعات',
+    legalType: 'Saudi Closed Joint Stock (Narcissus & Braira)',
+    crNumber: '2050119842',
+    taxNumber: '310205011900003',
+    city: 'Al Khobar',
+    tier: 'Hotel Chain',
+    tierAr: 'سلسلة فنادق ومنتجعات',
+    totalManagedKeys: 95,
+    billingEmail: 'accounts@boudl.com',
+    phone: '+966 13 882 0000',
+    logoBadge: 'BDL',
+    badgeColor: 'bg-indigo-50 text-indigo-800 border-indigo-300',
+  },
+  {
+    id: 'ORG-REDSEA-07',
+    code: 'RSG',
+    name: 'Red Sea Global Hospitality',
+    nameAr: 'شركة البحر الأحمر الدولية للضيافة',
+    legalType: 'Giga-Project Hospitality Arm',
+    crNumber: '4030998124',
+    taxNumber: '310403099800003',
+    city: 'Red Sea',
+    tier: 'Enterprise Holding',
+    tierAr: 'مشاريع رؤية 2030 الكبرى',
+    totalManagedKeys: 140,
+    billingEmail: 'hospitality@redseaglobal.com',
+    phone: '+966 11 834 8000',
+    logoBadge: 'RSG',
+    badgeColor: 'bg-teal-50 text-teal-800 border-teal-300',
+  },
+  {
+    id: 'ORG-TAIBA-08',
+    code: 'TBA',
+    name: 'Taiba Investments & Heritage Holdings',
+    nameAr: 'شركة طيبة للاستثمار والضيافة التراثية',
+    legalType: 'Saudi Listed Joint Stock (Tadawul 4090)',
+    crNumber: '4032118491',
+    taxNumber: '310403211800003',
+    city: 'Taif',
+    tier: 'Enterprise Holding',
+    tierAr: 'استثمار وضيافة مدرجة',
+    totalManagedKeys: 16,
+    billingEmail: 'investments@taiba.com.sa',
+    phone: '+966 14 837 7777',
+    logoBadge: 'TBA',
+    badgeColor: 'bg-rose-50 text-rose-800 border-rose-300',
+  },
+];
+
 // 3. Active Hospitality Subscriptions (Mock Data across KSA Hotels, Villas, Apartments)
 export const ACTIVE_HOSPITALITY_SUBSCRIPTIONS: ActiveHospitalitySubscription[] = [
   {
     id: 'SUB-HOSP-101',
     code: 'DAR-ALTAQWA-MED',
+    organizationId: 'ORG-DUR-01',
+    organizationName: 'Dur Hospitality Co.',
+    organizationNameAr: 'شركة دور للضيافة',
+    organizationTier: 'Enterprise Holding',
+    organizationBadgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-200',
     propertyName: 'Dar Al-Taqwa Luxury Suites & Hotel',
     propertyNameAr: 'فندق وأجنحة دار التقوى الفاخرة',
     propertyType: 'Hotel',
@@ -319,6 +487,11 @@ export const ACTIVE_HOSPITALITY_SUBSCRIPTIONS: ActiveHospitalitySubscription[] =
   {
     id: 'SUB-HOSP-102',
     code: 'CHEDI-HEGRA-ALULA',
+    organizationId: 'ORG-DIRIYAH-02',
+    organizationName: 'Royal Commission & Diriyah Hospitality Holding',
+    organizationNameAr: 'هيئة تطوير بوابة الدرعية ومشاريع العلا',
+    organizationTier: 'Enterprise Holding',
+    organizationBadgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
     propertyName: 'The Chedi Hegra Desert Sanctuary',
     propertyNameAr: 'منتجع الشيدي الحجر الصحراوي - العلا',
     propertyType: 'Hotel',
@@ -356,6 +529,11 @@ export const ACTIVE_HOSPITALITY_SUBSCRIPTIONS: ActiveHospitalitySubscription[] =
   {
     id: 'SUB-HOSP-103',
     code: 'NAFAL-VILLAS-RYD',
+    organizationId: 'ORG-KHOZAMA-03',
+    organizationName: 'Al Khozama Investment & Management',
+    organizationNameAr: 'شركة الخزامى للاستثمار والإدارة',
+    organizationTier: 'Hotel Chain',
+    organizationBadgeColor: 'bg-purple-50 text-purple-800 border-purple-200',
     propertyName: 'Al-Nafal Luxury Private Villas & Compound',
     propertyNameAr: 'مجمع فلل النفل الفندقية الفاخرة',
     propertyType: 'Villa',
@@ -393,6 +571,11 @@ export const ACTIVE_HOSPITALITY_SUBSCRIPTIONS: ActiveHospitalitySubscription[] =
   {
     id: 'SUB-HOSP-104',
     code: 'KAFD-SKY-APTS',
+    organizationId: 'ORG-KAFD-04',
+    organizationName: 'KAFD Hospitality & Real Estate Co.',
+    organizationNameAr: 'شركة كافد للضيافة والتطوير العقاري',
+    organizationTier: 'Asset Management',
+    organizationBadgeColor: 'bg-blue-50 text-blue-800 border-blue-200',
     propertyName: 'KAFD Sky Tower Executive Serviced Apartments',
     propertyNameAr: 'شقق كافد سكاي تاور الفندقية المخدومة',
     propertyType: 'Apartment',
@@ -430,6 +613,11 @@ export const ACTIVE_HOSPITALITY_SUBSCRIPTIONS: ActiveHospitalitySubscription[] =
   {
     id: 'SUB-HOSP-105',
     code: 'DURRAT-AROUS-JED',
+    organizationId: 'ORG-DURRAT-05',
+    organizationName: 'Durrat Al-Arous Tourism Development',
+    organizationNameAr: 'مجموعة درة العروس للتطوير السياحي',
+    organizationTier: 'Boutique Operator',
+    organizationBadgeColor: 'bg-cyan-50 text-cyan-800 border-cyan-200',
     propertyName: 'Durrat Al-Arous Marina Luxury Chalets',
     propertyNameAr: 'شاليهات وفلل درة العروس البحرية',
     propertyType: 'Villa',
@@ -467,6 +655,11 @@ export const ACTIVE_HOSPITALITY_SUBSCRIPTIONS: ActiveHospitalitySubscription[] =
   {
     id: 'SUB-HOSP-106',
     code: 'CORNICHE-PEARL-KHB',
+    organizationId: 'ORG-BOUDL-06',
+    organizationName: 'Boudl Hotels & Resorts Co.',
+    organizationNameAr: 'شركة بودل للفنادق والمنتجعات',
+    organizationTier: 'Hotel Chain',
+    organizationBadgeColor: 'bg-indigo-50 text-indigo-800 border-indigo-200',
     propertyName: 'Corniche Pearl Waterfront Aparthotel',
     propertyNameAr: 'فندق وشقق لؤلؤة الكورنيش المفروشة',
     propertyType: 'Apartment',
@@ -504,6 +697,11 @@ export const ACTIVE_HOSPITALITY_SUBSCRIPTIONS: ActiveHospitalitySubscription[] =
   {
     id: 'SUB-HOSP-107',
     code: 'REDSEA-CORAL-RESORT',
+    organizationId: 'ORG-REDSEA-07',
+    organizationName: 'Red Sea Global Hospitality',
+    organizationNameAr: 'شركة البحر الأحمر الدولية للضيافة',
+    organizationTier: 'Enterprise Holding',
+    organizationBadgeColor: 'bg-teal-50 text-teal-800 border-teal-200',
     propertyName: 'Red Sea Dunes & Coral Boutique Resort',
     propertyNameAr: 'منتجع كثبان البحر الأحمر البوتيكي',
     propertyType: 'Hotel',
@@ -541,6 +739,11 @@ export const ACTIVE_HOSPITALITY_SUBSCRIPTIONS: ActiveHospitalitySubscription[] =
   {
     id: 'SUB-HOSP-108',
     code: 'TAIF-ROSE-CHALETS',
+    organizationId: 'ORG-TAIBA-08',
+    organizationName: 'Taiba Investments & Heritage Holdings',
+    organizationNameAr: 'شركة طيبة للاستثمار والضيافة التراثية',
+    organizationTier: 'Enterprise Holding',
+    organizationBadgeColor: 'bg-rose-50 text-rose-800 border-rose-200',
     propertyName: 'Taif Mountain Rose Heritage Chalets',
     propertyNameAr: 'شاليهات ورد الطائف الجبلية التراثية',
     propertyType: 'Villa',

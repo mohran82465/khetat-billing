@@ -7,7 +7,6 @@ import { SitemapModuleView } from './views/SitemapModuleView';
 import { SalesOrdersView } from './views/SalesOrdersView';
 import { InvoicesView } from './views/InvoicesView';
 import { QuotationsView } from './views/QuotationsView';
-import { CustomersView } from './views/CustomersView';
 import { BalancesReportsView } from './views/BalancesReportsView';
 import { ReceiptsView } from './views/ReceiptsView';
 import { ProjectsTasksView } from './views/ProjectsTasksView';
@@ -94,6 +93,11 @@ export function App() {
   };
 
   const handleSelectView = (view: string, subTab?: string) => {
+    if (view === 'customers') {
+      setActiveView('organization');
+      setActiveSubTab(subTab || 'contacts');
+      return;
+    }
     setActiveView(view);
     if (subTab) {
       setActiveSubTab(subTab);
@@ -290,15 +294,6 @@ export function App() {
             />
           )}
 
-          {activeView === 'customers' && (
-            <CustomersView
-              customers={customers}
-              isArabic={isArabic}
-              onOpenCreateCustomer={() => setIsCreateCustomerOpen(true)}
-              onCreateOrderForCustomer={handleCreateOrderForCustomer}
-            />
-          )}
-
           {activeView === 'balances' && (
             <BalancesReportsView
               ledgers={ledgers}
@@ -359,14 +354,10 @@ export function App() {
             'settings',
           ].includes(activeView) && (
             <SitemapModuleView
-              module={(activeView === 'organization' ? 'profiles' : activeView) as any}
-              subTab={activeView === 'organization' ? 'organization' : activeSubTab}
+              module={(activeView === 'profiles' ? 'organization' : activeView) as any}
+              subTab={activeSubTab}
               isArabic={isArabic}
               onNavigateToInvoice={handleNavigateToInvoice}
-              customers={customers}
-              onOpenCreateCustomer={() => setIsCreateCustomerOpen(true)}
-              onCreateOrderForCustomer={handleCreateOrderForCustomer}
-              onNavigateToCustomerMaster={() => setActiveView('customers')}
               suppliers={suppliers}
               onAddSupplier={handleAddSupplier}
               onUpdateSupplier={handleUpdateSupplier}

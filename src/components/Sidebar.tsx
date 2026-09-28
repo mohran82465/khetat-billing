@@ -103,15 +103,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     {
-      id: 'profiles',
-      name: 'Profile',
-      nameAr: 'الملف التعريفي',
+      id: 'organization',
+      name: 'Organizations',
+      nameAr: 'المؤسسات',
       icon: Building2,
+      badge: '8 Orgs',
       children: [
-        { id: 'organization', name: 'Profile', nameAr: 'الملف التعريفي' },
-        { id: 'customers', name: 'Customers', nameAr: 'العملاء' },
+        { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات' },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال' },
-        { id: 'branches', name: 'Branchs', nameAr: 'الفروع' },
+        { id: 'branches', name: 'Branches', nameAr: 'الفروع' },
       ],
     },
     {
@@ -120,11 +120,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       nameAr: 'الخطط والباقات',
       icon: Package,
       children: [
-        { id: 'catalog', name: 'Catalog', nameAr: 'الكتالوج' },
-        { id: 'categories', name: 'Categories', nameAr: 'التصنيفات' },
-        { id: 'uom', name: 'Units of Measure', nameAr: 'وحدات القياس' },
-        { id: 'pricing', name: 'Pricing', nameAr: 'الأسعار' },
-        { id: 'tax_config', name: 'Tax Configuration', nameAr: 'التهيئة الضريبية' },
+        { id: 'catalog', name: 'Plans', nameAr: 'الخطط' },
+        { id: 'categories', name: 'Tiers', nameAr: 'المستويات' },
       ],
     },
     {
@@ -247,8 +244,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Map sub-views to their parent section
   const getParentSectionId = (view: string): string => {
-    if (['customers'].includes(view)) {
-      return 'profiles';
+    if (['organization', 'profiles', 'contacts', 'branches'].includes(view)) {
+      return 'organization';
     }
     if (['sales_orders', 'invoices', 'quotations', 'receipts', 'balances'].includes(view)) {
       return 'sales';
@@ -270,6 +267,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     subscriptions: true,
     sales: true,
     task_manager: false,
+    organization: true,
     profiles: true,
     products: false,
     procurement: false,
@@ -300,8 +298,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         onSelectView('subscriptions', 'subscriptions_active');
       } else if (section.id === 'sales') {
         onSelectView('quotations');
-      } else if (section.id === 'profiles') {
-        onSelectView('profiles', 'organization');
+      } else if (section.id === 'organization' || section.id === 'profiles') {
+        onSelectView('organization', 'organization');
       } else if (section.id === 'task_manager') {
         onSelectView('projects', 'task_list');
       } else {
@@ -314,12 +312,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (sectionId === 'sales') {
       // Direct sales views
       onSelectView(childId);
-    } else if (sectionId === 'profiles') {
-      if (childId === 'customers') {
-        onSelectView('customers');
-      } else {
-        onSelectView('profiles', childId);
-      }
+    } else if (sectionId === 'organization' || sectionId === 'profiles') {
+      onSelectView('organization', childId);
     } else if (sectionId === 'task_manager') {
       onSelectView('projects', childId);
     } else {
@@ -450,6 +444,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       isChildActive =
                         activeView === 'projects' &&
                         (activeSubTab === child.id || (!activeSubTab && child.id === 'task_list'));
+                    } else if (section.id === 'organization' || section.id === 'profiles') {
+                      isChildActive =
+                        (activeView === 'organization' || activeView === 'profiles') &&
+                        (activeSubTab === child.id || (!activeSubTab && child.id === 'organization'));
                     } else {
                       isChildActive =
                         activeView === section.id &&

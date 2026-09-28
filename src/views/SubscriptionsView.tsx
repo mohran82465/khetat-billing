@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   CreditCard,
   Building2,
@@ -25,6 +25,7 @@ import {
   RefreshCw,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
   TrendingUp,
   X,
   LayoutGrid,
@@ -39,14 +40,24 @@ import {
   Sliders,
   DollarSign,
   ArrowRight,
+  Download,
+  Share2,
+  FileSpreadsheet,
+  Briefcase,
+  Globe,
+  MapPin,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import {
   HOSPITALITY_BILLING_CYCLES,
   ACTIVE_HOSPITALITY_SUBSCRIPTIONS,
+  HOSPITALITY_ORGANIZATIONS,
   HOSPITALITY_COUPONS,
   HOSPITALITY_LIFECYCLE_HISTORY,
   HOSPITALITY_RENEWAL_REMINDERS,
   ActiveHospitalitySubscription,
+  HospitalityOrganization,
 } from '../data/hospitalityData';
 
 interface SubscriptionsViewProps {
@@ -74,7 +85,6 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
   // Sync if prop changes
   React.useEffect(() => {
     if (subTab) {
-      // If user had selected subscriptions_plans, redirect to subscriptions_active
       if (subTab === 'subscriptions_plans') {
         setActiveTab('subscriptions_active');
       } else {
@@ -90,18 +100,31 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
     }
   };
 
-  // State for active subscriptions list
+  // State for organizations & active subscriptions list
+  const [organizations, setOrganizations] = useState<HospitalityOrganization[]>(
+    HOSPITALITY_ORGANIZATIONS
+  );
   const [activeSubs, setActiveSubs] = useState<ActiveHospitalitySubscription[]>(
     ACTIVE_HOSPITALITY_SUBSCRIPTIONS
   );
+
+  // Multi-organization and property filters
+  const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>('All');
   const [typeFilter, setTypeFilter] = useState<'All' | 'Hotel' | 'Villa' | 'Apartment'>('All');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Pending Renewal' | 'Seasonal Pause'>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // View Mode: Cards View vs List View
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
+  // Primary View Mode: LIST TABLE VIEW as requested by user
+  const [viewMode, setViewMode] = useState<'list' | 'cards'>('list');
+
+  // Multi-select for batch operations
+  const [selectedSubIds, setSelectedSubIds] = useState<string[]>([]);
 
   // Selected subscription for detail modal
   const [selectedSub, setSelectedSub] = useState<ActiveHospitalitySubscription | null>(null);
+
+  // Selected organization for organization profile drawer
+  const [viewingOrg, setViewingOrg] = useState<HospitalityOrganization | null>(null);
 
   // Selected subscription for Renewal modal
   const [renewingSub, setRenewingSub] = useState<ActiveHospitalitySubscription | null>(null);
@@ -128,6 +151,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
 
   // Modal to add new property subscription
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newSelectedOrgId, setNewSelectedOrgId] = useState<string>(HOSPITALITY_ORGANIZATIONS[0].id);
   const [newPropName, setNewPropName] = useState('');
   const [newPropNameAr, setNewPropNameAr] = useState('');
   const [newPropType, setNewPropType] = useState<'Hotel' | 'Villa' | 'Apartment'>('Hotel');
@@ -138,24 +162,76 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
   const [newGmName, setNewGmName] = useState('');
   const [newGmEmail, setNewGmEmail] = useState('');
 
-  // Filter subscriptions
-  const filteredActiveSubs = activeSubs.filter((sub) => {
-    const matchesType = typeFilter === 'All' || sub.propertyType === typeFilter;
-    const q = searchQuery.toLowerCase();
-    const matchesSearch =
-      sub.propertyName.toLowerCase().includes(q) ||
-      sub.propertyNameAr.toLowerCase().includes(q) ||
-      sub.city.toLowerCase().includes(q) ||
-      sub.crNumber.includes(q) ||
-      sub.planName.toLowerCase().includes(q);
-    return matchesType && matchesSearch;
-  });
+  // Filter subscriptions based on Organization, Type, Status, and Search Query
+  const filteredActiveSubs = useMemo(() => {
+    return activeSubs.filter((sub) => {
+      const matchesOrg = selectedOrgFilter === 'All' || sub.organizationId === selectedOrgFilter;
+      const matchesType = typeFilter === 'All' || sub.propertyType === typeFilter;
+      const matchesStatus = statusFilter === 'All' || sub.status === statusFilter;
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        sub.propertyName.toLowerCase().includes(q) ||
+        sub.propertyNameAr.toLowerCase().includes(q) ||
+        sub.organizationName.toLowerCase().includes(q) ||
+        sub.organizationNameAr.toLowerCase().includes(q) ||
+        sub.city.toLowerCase().includes(q) ||
+        sub.crNumber.includes(q) ||
+        sub.code.toLowerCase().includes(q) ||
+        sub.planName.toLowerCase().includes(q);
 
-  // Handle Add New Subscription
+      return matchesOrg && matchesType && matchesStatus && matchesSearch;
+    });
+  }, [activeSubs, selectedOrgFilter, typeFilter, statusFilter, searchQuery]);
+
+  // Aggregate metrics
+  const totalOrganizationsCount = organizations.length;
+  const totalManagedKeys = activeSubs.reduce((acc, curr) => acc + curr.keysCount, 0);
+  const totalMrr = activeSubs.reduce((acc, curr) => acc + curr.mrr, 0);
+  const totalArr = totalMrr * 12;
+
+  // Batch actions
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedSubIds(filteredActiveSubs.map((s) => s.id));
+    } else {
+      setSelectedSubIds([]);
+    }
+  };
+
+  const handleToggleSelectSub = (subId: string) => {
+    setSelectedSubIds((prev) =>
+      prev.includes(subId) ? prev.filter((id) => id !== subId) : [...prev, subId]
+    );
+  };
+
+  const handleBatchRenew = () => {
+    if (selectedSubIds.length === 0) return;
+    const updated = activeSubs.map((s) => {
+      if (selectedSubIds.includes(s.id)) {
+        return {
+          ...s,
+          renewalDate: '27 Sep 2027',
+          status: 'Active' as const,
+        };
+      }
+      return s;
+    });
+    setActiveSubs(updated);
+    showToast(
+      isArabic
+        ? `تم تجديد ${selectedSubIds.length} اشتراكات بنجاح لجميع المنظمات المحددة!`
+        : `Successfully renewed ${selectedSubIds.length} subscriptions across selected organizations!`
+    );
+    setSelectedSubIds([]);
+  };
+
+  // Handle Add New Subscription for Organization
   const handleAddNewSubscription = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPropName) return;
 
+    const targetOrg = organizations.find((o) => o.id === newSelectedOrgId) || organizations[0];
     const keys = parseInt(newKeys, 10) || 40;
     const monthlyRate = newPlan.includes('Hotel')
       ? keys * 45
@@ -166,6 +242,11 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
     const newSub: ActiveHospitalitySubscription = {
       id: `HOSP-SUB-${Math.floor(100 + Math.random() * 900)}`,
       code: `SA-${newCity.slice(0, 3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      organizationId: targetOrg.id,
+      organizationName: targetOrg.name,
+      organizationNameAr: targetOrg.nameAr,
+      organizationTier: targetOrg.tier,
+      organizationBadgeColor: targetOrg.badgeColor,
       propertyName: newPropName,
       propertyNameAr: newPropNameAr || newPropName,
       propertyType: newPropType,
@@ -176,8 +257,8 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           ? 'Luxury Private Compound'
           : 'Serviced Residences',
       city: newCity,
-      crNumber: '101099' + Math.floor(1000 + Math.random() * 9000),
-      zatcaTrn: '300' + Math.floor(1000000000 + Math.random() * 9000000000) + '0003',
+      crNumber: targetOrg.crNumber,
+      zatcaTrn: targetOrg.taxNumber,
       planName: newPlan,
       keysCount: keys,
       billingCycle: newCycle,
@@ -211,7 +292,11 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
     setNewPropName('');
     setNewPropNameAr('');
     setNewGmName('');
-    showToast(isArabic ? `تم تفعيل اشتراك ${newSub.propertyNameAr} بنجاح!` : `Activated subscription for ${newSub.propertyName}!`);
+    showToast(
+      isArabic
+        ? `تم إضافة اشتراك ${newSub.propertyNameAr} تحت مظلة ${targetOrg.nameAr} بنجاح!`
+        : `Activated subscription for ${newSub.propertyName} under ${targetOrg.name}!`
+    );
   };
 
   // Handle Confirm Renewal
@@ -241,8 +326,8 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
     setRenewingSub(null);
     showToast(
       isArabic
-        ? `تم تجديد اشتراك ${subName} بنجاح حتى ${newDate} عبر ${renewalPaymentMode}`
-        : `Successfully renewed subscription for ${subName} until ${newDate} via ${renewalPaymentMode}`
+        ? `تم تجديد اشتراك ${subName} (${renewingSub.organizationNameAr}) بنجاح حتى ${newDate}`
+        : `Successfully renewed subscription for ${subName} (${renewingSub.organizationName}) until ${newDate}`
     );
   };
 
@@ -275,7 +360,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
     setOptionsSub(null);
     showToast(
       isArabic
-        ? `تم تحديث خيارات واشتراك ${subName} بنجاح`
+        ? `تم تحديث خطة واشتراك ${subName} بنجاح`
         : `Successfully updated subscription settings for ${subName}`
     );
   };
@@ -293,9 +378,6 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
     );
   };
 
-  const totalManagedKeys = activeSubs.reduce((acc, curr) => acc + curr.keysCount, 0);
-  const totalMrr = activeSubs.reduce((acc, curr) => acc + curr.mrr, 0);
-
   return (
     <div className="flex-1 flex flex-col h-full bg-[#f9f9ff] overflow-y-auto" dir={isArabic ? 'rtl' : 'ltr'}>
       {/* Toast Notification Banner */}
@@ -303,54 +385,68 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
         <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 rounded-xl bg-[#004a60] text-white px-4 py-3 shadow-xl border border-white/20 text-xs font-semibold animate-in slide-in-from-bottom-3">
           <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="ml-2 hover:opacity-75">
+          <button onClick={() => setToastMessage(null)} className="ml-2 hover:opacity-75 cursor-pointer">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
 
-      {/* Hospitality OS Header Banner */}
-      <div className="bg-gradient-to-r from-[#003647] via-[#004a60] to-[#0d5c75] text-white p-5 lg:p-6 shrink-0 border-b border-[#003647]">
+      {/* Multi-Organization Platform Header Banner */}
+      <div className="bg-gradient-to-r from-[#00303e] via-[#004a60] to-[#0b546b] text-white p-5 lg:p-6 shrink-0 border-b border-[#002835]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-emerald-200 border border-emerald-400/30">
                 <ShieldCheck className="h-3 w-3" />
-                ZATCA Phase 2 Fatoora Certified
+                ZATCA Phase 2 Fatoora Cryptographic Certified
               </span>
-              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-medium text-white/80">
-                Saudi Tourism Authority Spec
+              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-medium text-white/90 border border-white/10">
+                {isArabic ? 'بنية منصة متعددة المؤسسات' : 'Multi-Organization Tenant Platform'}
+              </span>
+              <span className="rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+                SAMA / Mada Direct Debit
               </span>
             </div>
             <h1 className="text-xl lg:text-2xl font-bold tracking-tight">
               {isArabic
-                ? 'منظومة إدارة اشتراكات الضيافة السعودية'
-                : 'Saudi Hospitality OS - Subscription Cloud'}
+                ? 'منظومة إدارة الاشتراكات للمؤسسات الفندقية المتعددة'
+                : 'Multi-Organization Hospitality Subscription Platform'}
             </h1>
-            <p className="text-xs text-white/80 mt-1 max-w-2xl leading-relaxed">
+            <p className="text-xs text-white/85 mt-1 max-w-2xl leading-relaxed">
               {isArabic
-                ? 'إدارة اشتراكات المنشآت الفندقية، الفلل والشاليهات الخاصة، والشقق الفندقية المخدومة مع التجديد الفوري والامتثال لـ ZATCA.'
-                : 'Manage hotel, luxury villa, and serviced apartment subscriptions with one-click renewals, plan upgrades, and full ZATCA compliance.'}
+                ? 'منصة سحابية متكاملة لإدارة اشتراكات السلاسل والمجموعات القابضة، الفنادق، الفلل والشقق الفندقية بجدول تفصيلي يربط كل اشتراك بمؤسسته مع التجديد الفوري وامتثال ZATCA.'
+                : 'Centralized multi-tenant subscription engine for hotel chains, enterprise holdings, private resorts, and serviced residences with automated billing cycles and ZATCA compliance.'}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md rounded-xl px-4 py-2 border border-white/15">
+            {/* Quick Metrics Badge */}
+            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-xl px-3.5 py-2 border border-white/15">
               <div>
                 <div className="text-[10px] text-white/70 uppercase tracking-wider font-semibold">
-                  {isArabic ? 'إجمالي الوحدات والمفاتيح' : 'Managed Keys'}
+                  {isArabic ? 'المؤسسات' : 'Client Orgs'}
                 </div>
-                <div className="text-base font-bold text-white flex items-center gap-1">
-                  <Key className="h-4 w-4 text-emerald-300" />
-                  {totalManagedKeys.toLocaleString()} Keys
+                <div className="text-sm font-bold text-white flex items-center gap-1">
+                  <Building2 className="h-3.5 w-3.5 text-cyan-300" />
+                  {totalOrganizationsCount} {isArabic ? 'مؤسسات' : 'Enterprises'}
                 </div>
               </div>
-              <div className="h-8 w-px bg-white/20" />
+              <div className="h-7 w-px bg-white/20" />
               <div>
                 <div className="text-[10px] text-white/70 uppercase tracking-wider font-semibold">
-                  {isArabic ? 'الإيراد الشهري MRR' : 'Platform MRR'}
+                  {isArabic ? 'إجمالي الغرف' : 'Total Keys'}
                 </div>
-                <div className="text-base font-bold text-emerald-300">
+                <div className="text-sm font-bold text-white flex items-center gap-1">
+                  <Key className="h-3.5 w-3.5 text-emerald-300" />
+                  {totalManagedKeys.toLocaleString()}
+                </div>
+              </div>
+              <div className="h-7 w-px bg-white/20" />
+              <div>
+                <div className="text-[10px] text-white/70 uppercase tracking-wider font-semibold">
+                  {isArabic ? 'الإيراد الشهري' : 'Platform MRR'}
+                </div>
+                <div className="text-sm font-bold text-emerald-300">
                   SAR {totalMrr.toLocaleString()}
                 </div>
               </div>
@@ -361,19 +457,19 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
               className="flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:shadow-lg cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>{isArabic ? 'إضافة منشأة / اشتراك جديد' : 'New Subscription'}</span>
+              <span>{isArabic ? 'إضافة اشتراك لمنظمة' : 'New Subscription'}</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Tabs Bar strictly matching user requirements: First item is "Subscriptions" */}
+      {/* Tabs Bar */}
       <div className="bg-white border-b border-[#e3e8f9] px-4 lg:px-6 sticky top-0 z-20 shadow-xs">
         <div className="max-w-7xl mx-auto flex items-center gap-1 sm:gap-2 overflow-x-auto py-2.5 no-scrollbar">
           {[
             {
               id: 'subscriptions_active',
-              label: isArabic ? 'الاشتراكات' : 'Subscriptions',
+              label: isArabic ? 'الاشتراكات والمنظمات' : 'Subscriptions (Multi-Org)',
               badge: activeSubs.length.toString(),
               icon: Building2,
             },
@@ -434,107 +530,581 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
       {/* Main Content Area */}
       <div className="p-4 lg:p-6 max-w-7xl mx-auto w-full flex-1">
         {/* ========================================================
-            TAB 1: SUBSCRIPTIONS (WITH CARD VIEW & LIST VIEW TOGGLE)
+            TAB 1: SUBSCRIPTIONS FOR MULTIPLE ORGANIZATIONS (LIST TABLE VIEW)
            ======================================================== */}
         {activeTab === 'subscriptions_active' && (
           <div className="space-y-4">
-            {/* Filter, Search, and View Mode Toggle Bar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-[#e3e8f9] shadow-xs">
-              {/* Type Filter Buttons */}
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <span className="text-xs font-bold text-[#161c27] flex items-center gap-1.5 pr-1">
-                  <Filter className="h-3.5 w-3.5 text-[#70787d]" />
-                  {isArabic ? 'النوع:' : 'Type:'}
-                </span>
-                {(['All', 'Hotel', 'Villa', 'Apartment'] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setTypeFilter(type)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
-                      typeFilter === type
-                        ? 'bg-[#004a60] text-white font-bold'
-                        : 'bg-[#f1f3ff] text-[#40484d] hover:bg-[#e8eeff]'
-                    }`}
-                  >
-                    {type === 'All'
-                      ? isArabic
-                        ? 'الكل'
-                        : 'All (8)'
-                      : type === 'Hotel'
-                      ? isArabic
-                        ? 'فنادق ومنتجعات'
-                        : 'Hotels (3)'
-                      : type === 'Villa'
-                      ? isArabic
-                        ? 'فلل وشاليهات'
-                        : 'Villas & Chalets (3)'
-                      : isArabic
-                      ? 'شقق مخدومة'
-                      : 'Apartments (2)'}
-                  </button>
-                ))}
+            {/* Multi-Organization Summary Metrics Banner */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-white rounded-xl p-3.5 border border-[#e3e8f9] shadow-2xs">
+                <div className="text-[11px] text-[#70787d] font-medium flex items-center justify-between">
+                  <span>{isArabic ? 'المؤسسات المشتركة' : 'Subscribed Organizations'}</span>
+                  <Building2 className="h-4 w-4 text-[#004a60]" />
+                </div>
+                <div className="text-xl font-bold text-[#161c27] mt-1">
+                  {totalOrganizationsCount} <span className="text-xs font-normal text-[#70787d]">{isArabic ? 'مؤسسة' : 'Holdings'}</span>
+                </div>
+                <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">
+                  {isArabic ? '100% نشطة ومعتمدة ZATCA' : '100% Active & ZATCA Approved'}
+                </div>
               </div>
 
-              {/* Search Box & View Mode Toggle (Card View vs List View) */}
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 sm:w-60">
-                  <Search className={`absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#70787d] ${isArabic ? 'right-3' : 'left-3'}`} />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={isArabic ? 'بحث باسم الفندق، المدينة...' : 'Search property, city, plan...'}
-                    className={`w-full rounded-lg border border-[#e3e8f9] bg-[#f9f9ff] py-1.5 text-xs text-[#161c27] placeholder-[#70787d] focus:border-[#004a60] focus:bg-white focus:outline-hidden ${
-                      isArabic ? 'pr-8 pl-3' : 'pl-8 pr-3'
-                    }`}
-                  />
+              <div className="bg-white rounded-xl p-3.5 border border-[#e3e8f9] shadow-2xs">
+                <div className="text-[11px] text-[#70787d] font-medium flex items-center justify-between">
+                  <span>{isArabic ? 'الاشتراكات النشطة' : 'Active Subscriptions'}</span>
+                  <CreditCard className="h-4 w-4 text-emerald-600" />
                 </div>
+                <div className="text-xl font-bold text-[#161c27] mt-1">
+                  {activeSubs.length} <span className="text-xs font-normal text-[#70787d]">{isArabic ? 'منشأة فندقية' : 'Properties'}</span>
+                </div>
+                <div className="text-[10px] text-[#004a60] font-semibold mt-0.5">
+                  {activeSubs.filter((s) => s.status === 'Active').length} {isArabic ? 'سارية حالياً' : 'Active folios'}
+                </div>
+              </div>
 
-                {/* View Mode Toggle: Cards View vs List View */}
-                <div className="flex items-center rounded-xl border border-[#e3e8f9] bg-[#f9f9ff] p-0.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('cards')}
-                    title={isArabic ? 'عرض البطاقات' : 'Cards View'}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      viewMode === 'cards'
-                        ? 'bg-white text-[#004a60] shadow-xs'
-                        : 'text-[#70787d] hover:text-[#161c27]'
-                    }`}
-                  >
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{isArabic ? 'بطاقات' : 'Cards'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('list')}
-                    title={isArabic ? 'عرض القائمة' : 'List View'}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      viewMode === 'list'
-                        ? 'bg-white text-[#004a60] shadow-xs'
-                        : 'text-[#70787d] hover:text-[#161c27]'
-                    }`}
-                  >
-                    <List className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{isArabic ? 'قائمة' : 'List'}</span>
-                  </button>
+              <div className="bg-white rounded-xl p-3.5 border border-[#e3e8f9] shadow-2xs">
+                <div className="text-[11px] text-[#70787d] font-medium flex items-center justify-between">
+                  <span>{isArabic ? 'إجمالي الغرف والمفاتيح' : 'Managed Room Keys'}</span>
+                  <Key className="h-4 w-4 text-amber-600" />
+                </div>
+                <div className="text-xl font-bold text-[#161c27] mt-1">
+                  {totalManagedKeys.toLocaleString()} <span className="text-xs font-normal text-[#70787d]">{isArabic ? 'مفتاح' : 'Keys'}</span>
+                </div>
+                <div className="text-[10px] text-[#70787d] mt-0.5">
+                  {isArabic ? 'في 7 مدن سعودية' : 'Across 7 Saudi Cities'}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-3.5 border border-[#e3e8f9] shadow-2xs">
+                <div className="text-[11px] text-[#70787d] font-medium flex items-center justify-between">
+                  <span>{isArabic ? 'الإيراد الشهري والسنوي' : 'Total Revenue (MRR / ARR)'}</span>
+                  <TrendingUp className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="text-xl font-bold text-emerald-700 mt-1">
+                  SAR {totalMrr.toLocaleString()}
+                </div>
+                <div className="text-[10px] text-[#70787d] mt-0.5">
+                  ARR: SAR {totalArr.toLocaleString()}
                 </div>
               </div>
             </div>
 
-            {/* View Mode: CARDS VIEW */}
-            {viewMode === 'cards' ? (
+            {/* Filter & Control Bar */}
+            <div className="bg-white p-3.5 rounded-xl border border-[#e3e8f9] shadow-xs space-y-3">
+              {/* Top Row: Organization Selector Chips */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
+                <span className="font-bold text-[#161c27] flex items-center gap-1.5 shrink-0 text-xs">
+                  <Briefcase className="h-3.5 w-3.5 text-[#004a60]" />
+                  {isArabic ? 'المؤسسة:' : 'Organization:'}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrgFilter('All')}
+                  className={`rounded-lg px-3 py-1.5 font-semibold transition-all shrink-0 cursor-pointer ${
+                    selectedOrgFilter === 'All'
+                      ? 'bg-[#004a60] text-white shadow-xs'
+                      : 'bg-[#f1f3ff] text-[#40484d] hover:bg-[#e8eeff]'
+                  }`}
+                >
+                  {isArabic ? 'جميع المؤسسات' : 'All Organizations'} ({activeSubs.length})
+                </button>
+
+                {organizations.map((org) => {
+                  const isSelected = selectedOrgFilter === org.id;
+                  const orgSubCount = activeSubs.filter((s) => s.organizationId === org.id).length;
+                  return (
+                    <button
+                      key={org.id}
+                      type="button"
+                      onClick={() => setSelectedOrgFilter(org.id)}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-all shrink-0 cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#004a60] text-white font-bold shadow-xs'
+                          : 'bg-[#f9f9ff] text-[#40484d] hover:bg-[#e8eeff] border border-[#e3e8f9]'
+                      }`}
+                    >
+                      <span className="font-bold text-[10px] uppercase">{org.code}</span>
+                      <span>{isArabic ? org.nameAr : org.name}</span>
+                      <span
+                        className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                        }`}
+                      >
+                        {orgSubCount}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Bottom Row: Property Type, Status, Search & List/Card Toggle */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-[#f1f3ff]">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Property Type Filter */}
+                  <div className="flex items-center gap-1 bg-[#f9f9ff] p-0.5 rounded-lg border border-[#e3e8f9]">
+                    {(['All', 'Hotel', 'Villa', 'Apartment'] as const).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setTypeFilter(t)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                          typeFilter === t
+                            ? 'bg-white text-[#004a60] font-bold shadow-2xs'
+                            : 'text-[#70787d] hover:text-[#161c27]'
+                        }`}
+                      >
+                        {t === 'All'
+                          ? isArabic ? 'الكل' : 'All Types'
+                          : t === 'Hotel'
+                          ? isArabic ? 'فنادق' : 'Hotels'
+                          : t === 'Villa'
+                          ? isArabic ? 'فلل' : 'Villas'
+                          : isArabic ? 'شقق مخدومة' : 'Apartments'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Status Filter */}
+                  <div className="flex items-center gap-1 bg-[#f9f9ff] p-0.5 rounded-lg border border-[#e3e8f9]">
+                    {(['All', 'Active', 'Pending Renewal', 'Seasonal Pause'] as const).map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => setStatusFilter(st)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                          statusFilter === st
+                            ? 'bg-[#004a60] text-white font-bold shadow-2xs'
+                            : 'text-[#70787d] hover:text-[#161c27]'
+                        }`}
+                      >
+                        {st === 'All'
+                          ? isArabic ? 'كل الحالات' : 'All Status'
+                          : st === 'Active'
+                          ? isArabic ? 'نشط' : 'Active'
+                          : st === 'Pending Renewal'
+                          ? isArabic ? 'قيد التجديد' : 'Pending Renewal'
+                          : isArabic ? 'إيقاف مؤقت' : 'Paused'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Search Box */}
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className={`absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#70787d] ${isArabic ? 'right-3' : 'left-3'}`} />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={isArabic ? 'بحث بالمؤسسة، الفندق، السجل...' : 'Search organization, property, CR...'}
+                      className={`w-full rounded-lg border border-[#e3e8f9] bg-[#f9f9ff] py-1.5 text-xs text-[#161c27] placeholder-[#70787d] focus:border-[#004a60] focus:bg-white focus:outline-hidden ${
+                        isArabic ? 'pr-8 pl-3' : 'pl-8 pr-3'
+                      }`}
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className={`absolute top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 ${isArabic ? 'left-2.5' : 'right-2.5'}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* View Mode Toggle: Built as List Table View as requested */}
+                  <div className="flex items-center rounded-xl border border-[#e3e8f9] bg-[#f9f9ff] p-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('list')}
+                      title={isArabic ? 'عرض الجدول والقائمة' : 'List Table View'}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        viewMode === 'list'
+                          ? 'bg-white text-[#004a60] shadow-xs'
+                          : 'text-[#70787d] hover:text-[#161c27]'
+                      }`}
+                    >
+                      <List className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">{isArabic ? 'جدول القائمة' : 'List Table'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('cards')}
+                      title={isArabic ? 'عرض البطاقات' : 'Cards View'}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        viewMode === 'cards'
+                          ? 'bg-white text-[#004a60] shadow-xs'
+                          : 'text-[#70787d] hover:text-[#161c27]'
+                      }`}
+                    >
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">{isArabic ? 'بطاقات' : 'Cards'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Batch Action Toolbar when rows are selected */}
+            {selectedSubIds.length > 0 && (
+              <div className="bg-[#004a60] text-white p-3 rounded-xl shadow-lg border border-white/20 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center font-bold text-[11px]">
+                    {selectedSubIds.length}
+                  </span>
+                  <span className="font-semibold">
+                    {isArabic
+                      ? `تم تحديد ${selectedSubIds.length} اشتراك عبر المؤسسات`
+                      : `${selectedSubIds.length} multi-org subscriptions selected`}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleBatchRenew}
+                    className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'تجديد فوري للمحددة' : 'Batch Renew Selected'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      showToast(
+                        isArabic
+                          ? 'تم تجهيز تقرير مطابقة ZATCA للاشتراكات المحددة'
+                          : 'ZATCA compliance report prepared for export'
+                      );
+                    }}
+                    className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'تصدير التقرير' : 'Export CSV'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubIds([])}
+                    className="text-white/70 hover:text-white px-2 py-1 cursor-pointer"
+                  >
+                    {isArabic ? 'إلغاء التحديد' : 'Deselect'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================
+                PRIMARY HERO VIEW: LIST TABLE VIEW
+               ======================================================== */}
+            {viewMode === 'list' ? (
+              <div className="bg-white rounded-2xl border border-[#e3e8f9] shadow-2xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left min-w-[980px]">
+                    <thead className="bg-[#f9f9ff] text-[11px] text-[#70787d] font-semibold border-b border-[#e3e8f9]">
+                      <tr>
+                        {/* Checkbox for Select All */}
+                        <th className="px-3.5 py-3 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={
+                              filteredActiveSubs.length > 0 &&
+                              selectedSubIds.length === filteredActiveSubs.length
+                            }
+                            onChange={handleSelectAll}
+                            className="h-3.5 w-3.5 text-[#004a60] rounded-sm focus:ring-[#004a60] cursor-pointer"
+                          />
+                        </th>
+                        <th className="px-3.5 py-3 font-bold text-[#161c27]">
+                          {isArabic ? 'المؤسسة والمالك' : 'Organization & Holding'}
+                        </th>
+                        <th className="px-3.5 py-3 font-bold text-[#161c27]">
+                          {isArabic ? 'المنشأة الفندقية' : 'Hospitality Property'}
+                        </th>
+                        <th className="px-3 py-3">{isArabic ? 'المدينة' : 'City'}</th>
+                        <th className="px-3.5 py-3">{isArabic ? 'الباقة والمفاتيح' : 'Plan & Keys'}</th>
+                        <th className="px-3 py-3">{isArabic ? 'دورة الفوترة' : 'Billing Cycle'}</th>
+                        <th className="px-3.5 py-3 text-right">{isArabic ? 'الرسوم الشهرية' : 'Monthly Fee'}</th>
+                        <th className="px-3.5 py-3">{isArabic ? 'تاريخ التجديد' : 'Renewal Due'}</th>
+                        <th className="px-3 py-3 text-center">{isArabic ? 'امتثال ZATCA' : 'ZATCA Node'}</th>
+                        <th className="px-3 py-3 text-center">{isArabic ? 'الحالة' : 'Status'}</th>
+                        <th className="px-3.5 py-3 text-center">{isArabic ? 'الإجراءات' : 'Actions'}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#e3e8f9]">
+                      {filteredActiveSubs.length === 0 ? (
+                        <tr>
+                          <td colSpan={11} className="py-12 text-center text-[#70787d]">
+                            <Building2 className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                            <div className="font-bold text-[#161c27]">
+                              {isArabic ? 'لا توجد اشتراكات مطابقة للبحث' : 'No subscriptions matching criteria'}
+                            </div>
+                            <div className="text-xs text-[#70787d] mt-1">
+                              {isArabic
+                                ? 'جرب تغيير المؤسسة المحددة أو إعادة ضبط الفلاتر'
+                                : 'Try adjusting your organization filter or search keywords.'}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredActiveSubs.map((sub) => {
+                          const isSelected = selectedSubIds.includes(sub.id);
+                          const org = organizations.find((o) => o.id === sub.organizationId);
+
+                          return (
+                            <tr
+                              key={sub.id}
+                              className={`hover:bg-[#f9f9ff]/90 transition-colors ${
+                                isSelected ? 'bg-[#f1f6fa]' : ''
+                              }`}
+                            >
+                              {/* Selection Checkbox */}
+                              <td className="px-3.5 py-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleSelectSub(sub.id)}
+                                  className="h-3.5 w-3.5 text-[#004a60] rounded-sm focus:ring-[#004a60] cursor-pointer"
+                                />
+                              </td>
+
+                              {/* 1. Organization & Holding */}
+                              <td className="px-3.5 py-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => org && setViewingOrg(org)}
+                                    className="font-bold text-[#161c27] hover:text-[#004a60] transition-colors text-left cursor-pointer flex items-center gap-1.5"
+                                  >
+                                    <Building2 className="h-3.5 w-3.5 text-[#004a60] shrink-0" />
+                                    <span>{isArabic ? sub.organizationNameAr : sub.organizationName}</span>
+                                  </button>
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-1 text-[10px]">
+                                  <span
+                                    className={`inline-block rounded-md px-1.5 py-0.2 font-semibold border ${
+                                      sub.organizationBadgeColor || 'bg-gray-100 text-gray-700 border-gray-200'
+                                    }`}
+                                  >
+                                    {sub.organizationTier || 'Enterprise'}
+                                  </span>
+                                  <span className="text-[#70787d] font-mono">
+                                    CR: {sub.crNumber}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* 2. Property Name & Code */}
+                              <td className="px-3.5 py-3">
+                                <div className="font-bold text-[#161c27]">
+                                  {isArabic ? sub.propertyNameAr : sub.propertyName}
+                                </div>
+                                <div className="flex items-center gap-1.5 text-[10px] text-[#70787d] mt-0.5">
+                                  <span
+                                    className={`inline-flex items-center gap-1 font-bold ${
+                                      sub.propertyType === 'Hotel'
+                                        ? 'text-blue-700'
+                                        : sub.propertyType === 'Villa'
+                                        ? 'text-amber-800'
+                                        : 'text-emerald-800'
+                                    }`}
+                                  >
+                                    {sub.propertyType === 'Hotel' && <Hotel className="h-3 w-3" />}
+                                    {sub.propertyType === 'Villa' && <Home className="h-3 w-3" />}
+                                    {sub.propertyType === 'Apartment' && <Building2 className="h-3 w-3" />}
+                                    <span>{sub.propertyType}</span>
+                                  </span>
+                                  <span>•</span>
+                                  <span>{sub.classification}</span>
+                                  <span>•</span>
+                                  <span className="font-mono text-[#004a60]">{sub.code}</span>
+                                </div>
+                              </td>
+
+                              {/* 3. City / Region */}
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#f1f3ff] text-[#004a60] text-[10px] font-bold">
+                                  <MapPin className="h-3 w-3 text-[#004a60]" />
+                                  <span>{sub.city}</span>
+                                </span>
+                              </td>
+
+                              {/* 4. Plan & Keys */}
+                              <td className="px-3.5 py-3">
+                                <div className="font-semibold text-[#161c27]">{sub.planName}</div>
+                                <div className="text-[10px] text-[#004a60] font-bold flex items-center gap-1 mt-0.5">
+                                  <Key className="h-3 w-3 text-emerald-600" />
+                                  <span>{sub.keysCount} {isArabic ? 'وحدة / مفتاح' : 'Keys / Units'}</span>
+                                </div>
+                              </td>
+
+                              {/* 5. Billing Cycle */}
+                              <td className="px-3 py-3 text-[#70787d]">
+                                <span className="truncate max-w-[130px] block text-[11px] font-medium text-[#40484d]">
+                                  {sub.billingCycle}
+                                </span>
+                              </td>
+
+                              {/* 6. Monthly Fee (MRR) */}
+                              <td className="px-3.5 py-3 text-right whitespace-nowrap">
+                                <div className="font-mono font-bold text-[#161c27] text-xs">
+                                  SAR {sub.mrr.toLocaleString()}
+                                </div>
+                                <div className="text-[9px] text-[#70787d]">
+                                  ACV: SAR {sub.annualContractValue.toLocaleString()}
+                                </div>
+                              </td>
+
+                              {/* 7. Renewal Due Date */}
+                              <td className="px-3.5 py-3 whitespace-nowrap">
+                                <span className="font-semibold text-[#161c27] flex items-center gap-1 text-[11px]">
+                                  <CalendarDays className="h-3 w-3 text-[#004a60]" />
+                                  {sub.renewalDate}
+                                </span>
+                                <span className="text-[9px] text-emerald-700 font-semibold block mt-0.5">
+                                  {isArabic ? 'تجديد آلي مفعل' : 'Auto-Renew Active'}
+                                </span>
+                              </td>
+
+                              {/* 8. ZATCA Compliance */}
+                              <td className="px-3 py-3 text-center whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    sub.zatcaCsid.status === 'Valid & Cleared'
+                                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                      : 'bg-amber-50 text-amber-800 border border-amber-200'
+                                  }`}
+                                  title={`CSID: ${sub.zatcaCsid.csidId}`}
+                                >
+                                  <ShieldCheck className="h-3 w-3 text-emerald-600" />
+                                  <span>{sub.zatcaCsid.status}</span>
+                                </span>
+                              </td>
+
+                              {/* 9. Status */}
+                              <td className="px-3 py-3 text-center whitespace-nowrap">
+                                <span
+                                  className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                    sub.status === 'Active'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : sub.status === 'Pending Renewal'
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : 'bg-purple-100 text-purple-800'
+                                  }`}
+                                >
+                                  {sub.status}
+                                </span>
+                              </td>
+
+                              {/* 10. Actions */}
+                              <td className="px-3.5 py-3 text-center whitespace-nowrap">
+                                <div className="flex items-center justify-center gap-1">
+                                  {/* Renew Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setRenewingSub(sub)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs transition-all cursor-pointer"
+                                    title={isArabic ? 'تجديد الاشتراك' : 'Renew Subscription'}
+                                  >
+                                    <RefreshCw className="h-3 w-3" />
+                                    <span>{isArabic ? 'تجديد' : 'Renew'}</span>
+                                  </button>
+
+                                  {/* Options Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenOptions(sub)}
+                                    className="p-1 rounded-lg text-[#70787d] hover:text-[#161c27] hover:bg-gray-100 transition-colors cursor-pointer"
+                                    title={isArabic ? 'خيارات وترقية' : 'Options & Upgrades'}
+                                  >
+                                    <Sliders className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  {/* View Details Drawer */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSub(sub)}
+                                    className="p-1 rounded-lg text-[#004a60] hover:bg-[#e8eeff] transition-colors cursor-pointer"
+                                    title={isArabic ? 'تفاصيل العقد' : 'View Details & Folio'}
+                                  >
+                                    <ChevronRight className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Table Footer with Summary */}
+                <div className="bg-[#f9f9ff] px-4 py-3 border-t border-[#e3e8f9] flex flex-col sm:flex-row items-center justify-between text-xs text-[#70787d] gap-2">
+                  <div>
+                    {isArabic ? 'إجمالي الاشتراكات المعروضة:' : 'Showing'}{' '}
+                    <strong className="text-[#161c27]">{filteredActiveSubs.length}</strong>{' '}
+                    {isArabic ? 'من أصل' : 'of'}{' '}
+                    <strong className="text-[#161c27]">{activeSubs.length}</strong>{' '}
+                    {isArabic ? 'اشتراك عبر المنظمات' : 'subscriptions across organizations'}
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs font-semibold">
+                    <span>
+                      {isArabic ? 'إجمالي المفاتيح المعروضة:' : 'Keys:'}{' '}
+                      <strong className="text-[#004a60]">
+                        {filteredActiveSubs.reduce((acc, c) => acc + c.keysCount, 0).toLocaleString()}
+                      </strong>
+                    </span>
+                    <span>
+                      {isArabic ? 'إجمالي MRR المعروض:' : 'MRR:'}{' '}
+                      <strong className="text-emerald-700">
+                        SAR {filteredActiveSubs.reduce((acc, c) => acc + c.mrr, 0).toLocaleString()}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* ALTERNATE VIEW: CARDS VIEW */
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredActiveSubs.map((sub) => {
                   const isDropdownOpen = activeDropdownId === sub.id;
+                  const org = organizations.find((o) => o.id === sub.organizationId);
+
                   return (
                     <div
                       key={sub.id}
                       className="bg-white rounded-2xl border border-[#e3e8f9] p-4.5 shadow-2xs hover:shadow-md hover:border-[#004a60]/40 transition-all flex flex-col justify-between relative group"
                     >
                       <div>
-                        {/* Top Row: Type Badge, City & Status */}
-                        <div className="flex items-center justify-between gap-2 mb-2.5">
+                        {/* Organization Badge Row */}
+                        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-[#f1f3ff]">
+                          <button
+                            type="button"
+                            onClick={() => org && setViewingOrg(org)}
+                            className="flex items-center gap-1.5 text-xs font-bold text-[#004a60] hover:underline cursor-pointer"
+                          >
+                            <Building2 className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate max-w-[180px]">
+                              {isArabic ? sub.organizationNameAr : sub.organizationName}
+                            </span>
+                          </button>
+                          <span
+                            className={`rounded-full px-2 py-0.2 text-[9px] font-bold ${
+                              sub.status === 'Active'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : sub.status === 'Pending Renewal'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-purple-100 text-purple-800'
+                            }`}
+                          >
+                            {sub.status}
+                          </span>
+                        </div>
+
+                        {/* Property Type Badge & City */}
+                        <div className="flex items-center justify-between gap-2 mb-2">
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
                               sub.propertyType === 'Hotel'
@@ -550,88 +1120,71 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                             <span>{sub.propertyType} • {sub.city}</span>
                           </span>
 
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                sub.status === 'Active'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : sub.status === 'Pending Renewal'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-purple-100 text-purple-800'
-                              }`}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveDropdownId(isDropdownOpen ? null : sub.id);
+                              }}
+                              className="p-1 rounded-lg text-[#70787d] hover:text-[#161c27] hover:bg-[#f1f3ff] transition-colors cursor-pointer"
                             >
-                              {sub.status}
-                            </span>
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
 
-                            {/* Options 3-Dots Dropdown Trigger */}
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveDropdownId(isDropdownOpen ? null : sub.id);
-                                }}
-                                className="p-1 rounded-lg text-[#70787d] hover:text-[#161c27] hover:bg-[#f1f3ff] transition-colors cursor-pointer"
-                                title={isArabic ? 'خيارات الاشتراك' : 'Subscription Options'}
+                            {isDropdownOpen && (
+                              <div
+                                className={`absolute ${
+                                  isArabic ? 'left-0' : 'right-0'
+                                } top-full mt-1 w-52 bg-white rounded-xl shadow-xl border border-[#e3e8f9] py-1.5 z-30 text-xs animate-in fade-in zoom-in-95`}
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                <MoreVertical className="h-4 w-4" />
-                              </button>
-
-                              {/* Options Dropdown Menu */}
-                              {isDropdownOpen && (
-                                <div
-                                  className={`absolute ${
-                                    isArabic ? 'left-0' : 'right-0'
-                                  } top-full mt-1 w-52 bg-white rounded-xl shadow-xl border border-[#e3e8f9] py-1.5 z-30 text-xs animate-in fade-in zoom-in-95`}
-                                  onClick={(e) => e.stopPropagation()}
+                                <button
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    setRenewingSub(sub);
+                                  }}
+                                  className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-[#f9f9ff] text-emerald-700 font-semibold cursor-pointer"
                                 >
-                                  <button
-                                    onClick={() => {
-                                      setActiveDropdownId(null);
-                                      setRenewingSub(sub);
-                                    }}
-                                    className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-[#f9f9ff] text-emerald-700 font-semibold cursor-pointer"
-                                  >
-                                    <RefreshCw className="h-3.5 w-3.5" />
-                                    <span>{isArabic ? 'تجديد الاشتراك الآن' : 'Renew Subscription'}</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleOpenOptions(sub)}
-                                    className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-[#f9f9ff] text-[#161c27] cursor-pointer"
-                                  >
-                                    <Sliders className="h-3.5 w-3.5 text-[#004a60]" />
-                                    <span>{isArabic ? 'ترقية / تعديل الباقة' : 'Upgrade / Change Plan'}</span>
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setActiveDropdownId(null);
-                                      setSelectedSub(sub);
-                                    }}
-                                    className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-[#f9f9ff] text-[#161c27] cursor-pointer"
-                                  >
-                                    <CreditCard className="h-3.5 w-3.5 text-[#70787d]" />
-                                    <span>{isArabic ? 'تفاصيل العقد والفواتير' : 'View Contract & ZATCA'}</span>
-                                  </button>
-                                  <div className="border-t border-[#f1f3ff] my-1" />
-                                  <button
-                                    onClick={() => handleTogglePause(sub)}
-                                    className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-[#f9f9ff] text-amber-700 cursor-pointer"
-                                  >
-                                    {sub.status === 'Seasonal Pause' ? (
-                                      <>
-                                        <Play className="h-3.5 w-3.5" />
-                                        <span>{isArabic ? 'استئناف الاشتراك' : 'Resume Subscription'}</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Pause className="h-3.5 w-3.5" />
-                                        <span>{isArabic ? 'إيقاف موسمي مؤقت' : 'Seasonal Pause'}</span>
-                                      </>
-                                    )}
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                  <span>{isArabic ? 'تجديد الاشتراك الآن' : 'Renew Subscription'}</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenOptions(sub)}
+                                  className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-[#f9f9ff] text-[#161c27] cursor-pointer"
+                                >
+                                  <Sliders className="h-3.5 w-3.5 text-[#004a60]" />
+                                  <span>{isArabic ? 'ترقية / تعديل الباقة' : 'Upgrade / Change Plan'}</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    setSelectedSub(sub);
+                                  }}
+                                  className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-[#f9f9ff] text-[#161c27] cursor-pointer"
+                                >
+                                  <CreditCard className="h-3.5 w-3.5 text-[#70787d]" />
+                                  <span>{isArabic ? 'تفاصيل العقد والمؤسسة' : 'View Contract & Org'}</span>
+                                </button>
+                                <div className="border-t border-[#f1f3ff] my-1" />
+                                <button
+                                  onClick={() => handleTogglePause(sub)}
+                                  className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-[#f9f9ff] text-amber-700 cursor-pointer"
+                                >
+                                  {sub.status === 'Seasonal Pause' ? (
+                                    <>
+                                      <Play className="h-3.5 w-3.5" />
+                                      <span>{isArabic ? 'استئناف الاشتراك' : 'Resume Subscription'}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Pause className="h-3.5 w-3.5" />
+                                      <span>{isArabic ? 'إيقاف موسمي مؤقت' : 'Seasonal Pause'}</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -646,11 +1199,11 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                         {/* Plan & Cycle Info Box */}
                         <div className="mt-3 bg-[#f9f9ff] rounded-xl p-3 border border-[#e3e8f9]/70 space-y-1.5">
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-[#70787d]">{isArabic ? 'الباقة المعتمدة:' : 'Plan:'}</span>
+                            <span className="text-[#70787d]">{isArabic ? 'الباقة:' : 'Plan:'}</span>
                             <span className="font-bold text-[#161c27]">{sub.planName}</span>
                           </div>
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-[#70787d]">{isArabic ? 'دورة الفوترة:' : 'Billing Cycle:'}</span>
+                            <span className="text-[#70787d]">{isArabic ? 'الفوترة:' : 'Cycle:'}</span>
                             <span className="font-medium text-[#40484d] truncate max-w-[150px]">{sub.billingCycle}</span>
                           </div>
                           <div className="flex items-center justify-between text-xs">
@@ -670,7 +1223,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Bottom Pricing & Card Actions (Renew & Options) */}
+                      {/* Bottom Pricing & Card Actions */}
                       <div className="mt-4 pt-3 border-t border-[#e3e8f9] flex items-center justify-between gap-2">
                         <div>
                           <div className="text-[10px] text-[#70787d] uppercase tracking-wider font-semibold">
@@ -681,20 +1234,15 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                           </div>
                         </div>
 
-                        {/* Interactive Action Buttons on Card */}
                         <div className="flex items-center gap-1.5">
-                          {/* Options Button */}
                           <button
                             type="button"
                             onClick={() => handleOpenOptions(sub)}
-                            className="px-2.5 py-1.5 rounded-lg border border-[#c3cce6] bg-white hover:bg-[#f1f3ff] text-[#161c27] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1"
-                            title={isArabic ? 'خيارات الاشتراك' : 'Subscription Options'}
+                            className="px-2.5 py-1.5 rounded-lg border border-[#c3cce6] bg-white hover:bg-[#f1f3ff] text-[#161c27] text-xs font-semibold transition-all cursor-pointer"
                           >
                             <Sliders className="h-3.5 w-3.5 text-[#70787d]" />
-                            <span className="hidden sm:inline">{isArabic ? 'خيارات' : 'Options'}</span>
                           </button>
 
-                          {/* Renew Button matching prompt */}
                           <button
                             type="button"
                             onClick={() => setRenewingSub(sub)}
@@ -708,136 +1256,6 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     </div>
                   );
                 })}
-              </div>
-            ) : (
-              /* View Mode: LIST VIEW (TABLE VIEW) */
-              <div className="bg-white rounded-2xl border border-[#e3e8f9] shadow-2xs overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left min-w-[760px]">
-                    <thead className="bg-[#f9f9ff] text-[11px] text-[#70787d] font-semibold border-b border-[#e3e8f9]">
-                      <tr>
-                        <th className="px-4 py-3">{isArabic ? 'المنشأة الفندقية' : 'Hospitality Property'}</th>
-                        <th className="px-4 py-3">{isArabic ? 'المدينة والنوع' : 'Location & Type'}</th>
-                        <th className="px-4 py-3">{isArabic ? 'الباقة والمفاتيح' : 'Plan & Keys'}</th>
-                        <th className="px-4 py-3">{isArabic ? 'دورة الفوترة' : 'Billing Cycle'}</th>
-                        <th className="px-4 py-3 text-right">{isArabic ? 'الرسوم الشهرية' : 'Monthly Fee'}</th>
-                        <th className="px-4 py-3">{isArabic ? 'تاريخ التجديد' : 'Renewal Date'}</th>
-                        <th className="px-4 py-3 text-center">{isArabic ? 'الحالة' : 'Status'}</th>
-                        <th className="px-4 py-3 text-center">{isArabic ? 'الإجراءات' : 'Actions'}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#e3e8f9]">
-                      {filteredActiveSubs.map((sub) => (
-                        <tr key={sub.id} className="hover:bg-[#f9f9ff]/70 transition-colors">
-                          {/* Property Name */}
-                          <td className="px-4 py-3">
-                            <div className="font-bold text-[#161c27]">
-                              {isArabic ? sub.propertyNameAr : sub.propertyName}
-                            </div>
-                            <div className="text-[10px] text-[#70787d]">
-                              {sub.code} • {sub.classification}
-                            </div>
-                          </td>
-
-                          {/* Location & Type */}
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                sub.propertyType === 'Hotel'
-                                  ? 'bg-blue-50 text-blue-700'
-                                  : sub.propertyType === 'Villa'
-                                  ? 'bg-amber-50 text-amber-800'
-                                  : 'bg-emerald-50 text-emerald-800'
-                              }`}
-                            >
-                              <span>{sub.propertyType}</span>
-                              <span>•</span>
-                              <span>{sub.city}</span>
-                            </span>
-                          </td>
-
-                          {/* Plan & Keys */}
-                          <td className="px-4 py-3">
-                            <div className="font-semibold text-[#161c27]">{sub.planName}</div>
-                            <div className="text-[10px] text-[#004a60] font-semibold">{sub.keysCount} Keys / Rooms</div>
-                          </td>
-
-                          {/* Cycle */}
-                          <td className="px-4 py-3 text-[#70787d]">
-                            <span className="truncate max-w-[120px] block">{sub.billingCycle}</span>
-                          </td>
-
-                          {/* Monthly Rate */}
-                          <td className="px-4 py-3 text-right">
-                            <div className="font-mono font-bold text-[#161c27]">
-                              SAR {sub.mrr.toLocaleString()}
-                            </div>
-                            <div className="text-[10px] text-[#70787d]">per month</div>
-                          </td>
-
-                          {/* Renewal Date */}
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="font-medium text-[#161c27] flex items-center gap-1">
-                              <CalendarDays className="h-3 w-3 text-[#70787d]" />
-                              {sub.renewalDate}
-                            </span>
-                          </td>
-
-                          {/* Status */}
-                          <td className="px-4 py-3 text-center whitespace-nowrap">
-                            <span
-                              className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                sub.status === 'Active'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : sub.status === 'Pending Renewal'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-purple-100 text-purple-800'
-                              }`}
-                            >
-                              {sub.status}
-                            </span>
-                          </td>
-
-                          {/* Actions on List View */}
-                          <td className="px-4 py-3 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1.5">
-                              {/* Renew Button */}
-                              <button
-                                type="button"
-                                onClick={() => setRenewingSub(sub)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs transition-all cursor-pointer"
-                                title={isArabic ? 'تجديد الاشتراك' : 'Renew Subscription'}
-                              >
-                                <RefreshCw className="h-3 w-3" />
-                                <span>{isArabic ? 'تجديد' : 'Renew'}</span>
-                              </button>
-
-                              {/* Options Button */}
-                              <button
-                                type="button"
-                                onClick={() => handleOpenOptions(sub)}
-                                className="p-1 rounded-lg text-[#70787d] hover:text-[#161c27] hover:bg-gray-100 transition-colors cursor-pointer"
-                                title={isArabic ? 'خيارات' : 'Options'}
-                              >
-                                <Sliders className="h-3.5 w-3.5" />
-                              </button>
-
-                              {/* View Details */}
-                              <button
-                                type="button"
-                                onClick={() => setSelectedSub(sub)}
-                                className="p-1 rounded-lg text-[#004a60] hover:bg-[#e8eeff] transition-colors cursor-pointer"
-                                title={isArabic ? 'التفاصيل' : 'Details'}
-                              >
-                                <ChevronRight className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             )}
           </div>
@@ -854,7 +1272,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
               </h2>
               <p className="text-xs text-[#70787d]">
                 {isArabic
-                  ? 'جدولة الفواتير الضريبية الآلية المتوافقة مع هيئة الزكاة والضريبة والجمارك مع خصومات الدفع المقدم'
+                  ? 'جدولة الفواتير الضريبية الآلية المتوافقة مع هيئة الزكاة والضريبة والجمارك مع خصومات الدفع المقدم عبر المؤسسات'
                   : 'Automated recurring billing engines supporting annual, quarterly, per-room monthly, and Holy Cities pilgrimage seasonality.'}
               </p>
             </div>
@@ -1052,7 +1470,16 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     : 'Automated dunning & renewal pipeline alerting General Managers & Financial Controllers in KSA.'}
                 </p>
               </div>
-              <button className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 cursor-pointer">
+              <button
+                onClick={() =>
+                  showToast(
+                    isArabic
+                      ? 'تم إرسال تنبيهات وتذكيرات التجديد عبر الواتساب لجميع مسؤولي المنظمات!'
+                      : 'Batch renewal alerts dispatched via WhatsApp & Email!'
+                  )
+                }
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 cursor-pointer"
+              >
                 <Send className="h-3.5 w-3.5" />
                 <span>{isArabic ? 'إرسال تذكيرات الدفعة الآن' : 'Dispatch Batch Alerts'}</span>
               </button>
@@ -1125,7 +1552,16 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
 
                   <div className="mt-4 pt-3 border-t border-[#e3e8f9] flex items-center justify-between">
                     <span className="text-[10px] text-[#70787d]">Last sent: {rem.lastDispatched}</span>
-                    <button className="text-xs font-bold text-[#004a60] hover:underline flex items-center gap-1 cursor-pointer">
+                    <button
+                      onClick={() =>
+                        showToast(
+                          isArabic
+                            ? `تم إرسال تذكير التجديد إلى ${rem.gmContact.name}`
+                            : `Dispatched renewal alert to ${rem.gmContact.name}`
+                        )
+                      }
+                      className="text-xs font-bold text-[#004a60] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
                       <span>{isArabic ? 'إرسال تذكير فوري' : 'Dispatch Reminder'}</span>
                       <ArrowUpRight className="h-3 w-3" />
                     </button>
@@ -1138,7 +1574,125 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
       </div>
 
       {/* ========================================================
-          MODAL 1: RENEW SUBSCRIPTION MODAL (matching prompt)
+          MODAL 1: ORGANIZATION PROFILE & CONTRACTS DRAWER
+         ======================================================== */}
+      {viewingOrg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-[#e3e8f9] animate-in zoom-in-95 my-auto text-xs">
+            <div className="flex items-center justify-between border-b border-[#e3e8f9] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-xl bg-[#004a60] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                  {viewingOrg.code}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-[#161c27]">
+                      {isArabic ? viewingOrg.nameAr : viewingOrg.name}
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] border ${viewingOrg.badgeColor}`}>
+                      {isArabic ? viewingOrg.tierAr : viewingOrg.tier}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#70787d] mt-0.5">
+                    {viewingOrg.legalType} • {viewingOrg.city}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingOrg(null)}
+                className="h-8 w-8 rounded-lg hover:bg-[#f1f3ff] text-[#70787d] flex items-center justify-center cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* Organization Legal Credentials */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-[#f9f9ff] p-3 rounded-xl border border-[#e3e8f9]">
+                <div>
+                  <span className="text-[#70787d] text-[10px] block">{isArabic ? 'السجل التجاري:' : 'CR Number:'}</span>
+                  <span className="font-mono font-bold text-[#161c27]">{viewingOrg.crNumber}</span>
+                </div>
+                <div>
+                  <span className="text-[#70787d] text-[10px] block">{isArabic ? 'الرقم الضريبي ZATCA:' : 'VAT Number:'}</span>
+                  <span className="font-mono font-bold text-[#161c27] truncate block">{viewingOrg.taxNumber}</span>
+                </div>
+                <div>
+                  <span className="text-[#70787d] text-[10px] block">{isArabic ? 'البريد المالي:' : 'Billing Email:'}</span>
+                  <span className="font-medium text-[#004a60] truncate block">{viewingOrg.billingEmail}</span>
+                </div>
+                <div>
+                  <span className="text-[#70787d] text-[10px] block">{isArabic ? 'هاتف الإدارة:' : 'Phone:'}</span>
+                  <span className="font-medium text-[#161c27]">{viewingOrg.phone}</span>
+                </div>
+              </div>
+
+              {/* Subscriptions Under This Organization */}
+              <div>
+                <h4 className="font-bold text-[#161c27] mb-2 text-xs flex items-center justify-between">
+                  <span>{isArabic ? 'المنشآت والاشتراكات التابعة للمؤسسة:' : 'Active Property Subscriptions Under Organization:'}</span>
+                  <span className="text-[#70787d] font-normal text-[11px]">
+                    {activeSubs.filter((s) => s.organizationId === viewingOrg.id).length} {isArabic ? 'منشآت' : 'properties'}
+                  </span>
+                </h4>
+
+                <div className="space-y-2">
+                  {activeSubs
+                    .filter((s) => s.organizationId === viewingOrg.id)
+                    .map((sub) => (
+                      <div
+                        key={sub.id}
+                        className="p-3 rounded-xl border border-[#e3e8f9] bg-white flex items-center justify-between gap-3 hover:border-[#004a60]/40 transition-all"
+                      >
+                        <div>
+                          <div className="font-bold text-[#161c27] text-xs">
+                            {isArabic ? sub.propertyNameAr : sub.propertyName}
+                          </div>
+                          <div className="text-[10px] text-[#70787d] mt-0.5">
+                            {sub.city} • {sub.keysCount} Keys • {sub.planName}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="font-mono font-bold text-emerald-700 text-xs">
+                            SAR {sub.mrr.toLocaleString()} /mo
+                          </div>
+                          <div className="text-[10px] text-[#70787d]">
+                            Renews: {sub.renewalDate}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-[#e3e8f9] pt-4 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedOrgFilter(viewingOrg.id);
+                  setViewingOrg(null);
+                }}
+                className="rounded-lg bg-[#004a60] text-white px-4 py-2 font-bold text-xs hover:bg-[#074e64] cursor-pointer"
+              >
+                {isArabic ? `تصفية الجدول لـ ${viewingOrg.nameAr}` : `Filter Table to ${viewingOrg.name}`}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewingOrg(null)}
+                className="rounded-lg border border-[#e3e8f9] px-4 py-2 font-semibold text-[#40484d] hover:bg-[#f1f3ff] cursor-pointer"
+              >
+                {isArabic ? 'إغلاق' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL 2: RENEW SUBSCRIPTION MODAL
          ======================================================== */}
       {renewingSub && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
@@ -1150,10 +1704,10 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-[#161c27]">
-                    {isArabic ? 'تجديد الاشتراك الفندقي' : 'Renew Subscription'}
+                    {isArabic ? 'تجديد الاشتراك الفندقي للمؤسسة' : 'Renew Organization Subscription'}
                   </h3>
                   <p className="text-xs text-[#70787d]">
-                    {isArabic ? renewingSub.propertyNameAr : renewingSub.propertyName} ({renewingSub.city})
+                    {isArabic ? renewingSub.propertyNameAr : renewingSub.propertyName} ({isArabic ? renewingSub.organizationNameAr : renewingSub.organizationName})
                   </p>
                 </div>
               </div>
@@ -1212,27 +1766,10 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                 </div>
               </div>
 
-              {/* New Renewal Date Preview */}
-              <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200 flex items-center justify-between text-xs">
-                <span className="font-bold text-emerald-950 flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 text-emerald-700" />
-                  {isArabic ? 'تاريخ التجديد الجديد بعد السداد:' : 'New Expiration Date:'}
-                </span>
-                <span className="font-bold text-emerald-800 font-mono text-sm">
-                  {renewalTerm === '1year'
-                    ? '27 Sep 2027'
-                    : renewalTerm === '2years'
-                    ? '27 Sep 2028'
-                    : renewalTerm === '6months'
-                    ? '27 Mar 2027'
-                    : '27 Oct 2026'}
-                </span>
-              </div>
-
               {/* Payment Mode Selection */}
               <div>
                 <label className="block font-bold text-[#161c27] mb-1.5">
-                  {isArabic ? 'طريقة الدفع والتسوية:' : 'Payment Settlement Method:'}
+                  {isArabic ? 'طريقة الدفع والتسوية للمؤسسة:' : 'Payment Settlement Method:'}
                 </label>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   {[
@@ -1254,24 +1791,6 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Auto-Renew Switch */}
-              <div className="flex items-center justify-between p-3 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
-                <div>
-                  <span className="font-bold text-[#161c27] block text-xs">
-                    {isArabic ? 'تفعيل التجديد التلقائي المستمر' : 'Enable Automatic Renewal'}
-                  </span>
-                  <span className="text-[10px] text-[#70787d]">
-                    {isArabic ? 'إصدار فواتير ZATCA وسحب الرسوم تلقائياً قبل 7 أيام من الانتهاء' : 'Auto-charge via Mada token / direct debit with 7-day alert'}
-                  </span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={renewalAutoRenew}
-                  onChange={(e) => setRenewalAutoRenew(e.target.checked)}
-                  className="h-4 w-4 text-emerald-600 rounded-sm focus:ring-emerald-500 cursor-pointer"
-                />
               </div>
 
               {/* Pricing Breakdown */}
@@ -1324,7 +1843,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
       )}
 
       {/* ========================================================
-          MODAL 2: SUBSCRIPTION OPTIONS / UPGRADE MODAL (matching prompt)
+          MODAL 3: SUBSCRIPTION OPTIONS / UPGRADE MODAL
          ======================================================== */}
       {optionsSub && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
@@ -1339,7 +1858,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     {isArabic ? 'خيارات وترقية الاشتراك' : 'Subscription Options & Upgrades'}
                   </h3>
                   <p className="text-xs text-[#70787d]">
-                    {isArabic ? optionsSub.propertyNameAr : optionsSub.propertyName}
+                    {isArabic ? optionsSub.propertyNameAr : optionsSub.propertyName} ({optionsSub.organizationName})
                   </p>
                 </div>
               </div>
@@ -1352,7 +1871,6 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
             </div>
 
             <div className="py-4 space-y-4">
-              {/* Option 1: Upgrade / Change Plan */}
               <div>
                 <label className="block font-bold text-[#161c27] mb-1.5">
                   {isArabic ? 'ترقية / تغيير الباقة الفندقية:' : 'Upgrade / Change Hospitality Plan:'}
@@ -1363,13 +1881,12 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                   className="w-full rounded-xl border border-[#c3cce6] bg-white px-3 py-2 text-xs font-semibold text-[#161c27] focus:border-[#004a60] outline-hidden"
                 >
                   <option value="Hotel Enterprise OS">Hotel Enterprise OS (SAR 45/room/mo)</option>
-                  <option value="Boutique Luxury Chalet Suite">Boutique Luxury Chalet Suite (SAR 85/unit/mo)</option>
-                  <option value="Serviced Apt & Aparthotel OS">Serviced Apt & Aparthotel OS (SAR 35/unit/mo)</option>
-                  <option value="Saudi National Heritage Retreat">Saudi National Heritage Retreat (AlUla/Taif Tier)</option>
+                  <option value="Luxury Villas & Chalet Pro">Luxury Villas & Chalet Pro (SAR 85/unit/mo)</option>
+                  <option value="Serviced Apartments Scale Tier">Serviced Apartments Scale Tier (SAR 35/unit/mo)</option>
+                  <option value="Boutique & Heritage Retreats">Boutique & Heritage Retreats (Flat SAR 2,400/mo)</option>
                 </select>
               </div>
 
-              {/* Option 2: Change Billing Cycle */}
               <div>
                 <label className="block font-bold text-[#161c27] mb-1.5">
                   {isArabic ? 'تعديل دورة الفوترة:' : 'Billing Frequency Cycle:'}
@@ -1380,20 +1897,19 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                   className="w-full rounded-xl border border-[#c3cce6] bg-white px-3 py-2 text-xs font-semibold text-[#161c27] focus:border-[#004a60] outline-hidden"
                 >
                   <option value="Annual Enterprise (Advantage 15%)">Annual Enterprise (Advantage 15% discount)</option>
-                  <option value="Quarterly Executive (Advantage 5%)">Quarterly Executive (Advantage 5% discount)</option>
-                  <option value="Monthly Per-Room Standard">Monthly Per-Room Standard</option>
-                  <option value="Pilgrimage Season Advance (Hajj & Umrah)">Pilgrimage Season Advance (Hajj & Umrah)</option>
+                  <option value="Quarterly Commercial Plan">Quarterly Commercial Plan (5% discount)</option>
+                  <option value="Monthly Key Utility Billing">Monthly Key Utility Billing</option>
+                  <option value="Holy Cities Seasonal Peak (Hajj & Umrah)">Holy Cities Seasonal Peak (Hajj & Umrah)</option>
                 </select>
               </div>
 
-              {/* Option 3: Auto-Renew Toggle */}
               <div className="flex items-center justify-between p-3.5 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
                 <div>
                   <span className="font-bold text-[#161c27] block text-xs">
                     {isArabic ? 'حالة التجديد التلقائي' : 'Auto-Renewal Status'}
                   </span>
                   <span className="text-[10px] text-[#70787d]">
-                    {isArabic ? 'تجديد العقد وتحديث شهادة ZATCA تلقائياً' : 'Auto-renew and refresh ZATCA compliance tokens'}
+                    {isArabic ? 'تجديد العقد وتحديث شهادة ZATCA تلقائياً للمؤسسة' : 'Auto-renew and refresh ZATCA compliance tokens'}
                   </span>
                 </div>
                 <input
@@ -1403,37 +1919,8 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                   className="h-4 w-4 text-[#004a60] rounded-sm focus:ring-[#004a60] cursor-pointer"
                 />
               </div>
-
-              {/* Fast Option Actions */}
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const currentSub = optionsSub;
-                    setOptionsSub(null);
-                    setRenewingSub(currentSub);
-                  }}
-                  className="p-2.5 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 font-bold flex items-center justify-center gap-1.5 hover:bg-emerald-100 cursor-pointer"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  <span>{isArabic ? 'تجديد الاشتراك الآن' : 'Renew Subscription'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleTogglePause(optionsSub);
-                    setOptionsSub(null);
-                  }}
-                  className="p-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-800 font-bold flex items-center justify-center gap-1.5 hover:bg-amber-100 cursor-pointer"
-                >
-                  <Pause className="h-3.5 w-3.5" />
-                  <span>{optionsSub.status === 'Seasonal Pause' ? (isArabic ? 'استئناف' : 'Resume') : (isArabic ? 'إيقاف موسمي' : 'Seasonal Pause')}</span>
-                </button>
-              </div>
             </div>
 
-            {/* Actions */}
             <div className="border-t border-[#e3e8f9] pt-4 flex items-center justify-end gap-2.5">
               <button
                 type="button"
@@ -1455,7 +1942,9 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
         </div>
       )}
 
-      {/* Selected Subscription Drawer Modal */}
+      {/* ========================================================
+          MODAL 4: SUBSCRIPTION DETAILS MODAL
+         ======================================================== */}
       {selectedSub && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#e3e8f9] animate-in zoom-in-95 my-auto">
@@ -1469,7 +1958,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     {isArabic ? selectedSub.propertyNameAr : selectedSub.propertyName}
                   </h3>
                   <p className="text-xs text-[#70787d]">
-                    {selectedSub.code} • {selectedSub.city} • CRN: {selectedSub.crNumber}
+                    {isArabic ? selectedSub.organizationNameAr : selectedSub.organizationName} • {selectedSub.code} • {selectedSub.city}
                   </p>
                 </div>
               </div>
@@ -1484,8 +1973,8 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
             <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-[#f9f9ff] p-3 rounded-xl border border-[#e3e8f9] text-xs">
                 <div>
-                  <span className="text-[#70787d]">{isArabic ? 'الباقة المطبقة:' : 'Current Plan:'}</span>
-                  <div className="font-bold text-[#161c27]">{selectedSub.planName}</div>
+                  <span className="text-[#70787d]">{isArabic ? 'المؤسسة المالكة:' : 'Parent Organization:'}</span>
+                  <div className="font-bold text-[#161c27]">{selectedSub.organizationName}</div>
                 </div>
                 <div>
                   <span className="text-[#70787d]">{isArabic ? 'عدد المفاتيح والغرف:' : 'Total Keys/Units:'}</span>
@@ -1516,31 +2005,6 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                   <div>CSID Identifier: <code className="font-mono text-emerald-800">{selectedSub.zatcaCsid.csidId}</code></div>
                   <div>ZATCA TRN: <span className="font-medium text-[#161c27]">{selectedSub.zatcaTrn}</span></div>
                   <div>Last Synchronized: <span className="text-[#70787d]">{selectedSub.zatcaCsid.lastSynced}</span></div>
-                </div>
-              </div>
-
-              {/* Features active */}
-              <div>
-                <div className="text-xs font-bold text-[#161c27] mb-2">
-                  {isArabic ? 'الخدمات المفعلة للمنشأة:' : 'Enabled Integration Modules:'}
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-100">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Channel Manager (OTA Sync)</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-100">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Assa Abloy IoT Door Locks</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-100">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Nafath Guest Verification</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-100">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Tourism Municipality Tax (5%)</span>
-                  </div>
                 </div>
               </div>
 
@@ -1577,19 +2041,21 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
         </div>
       )}
 
-      {/* Add New Hospitality Property Modal */}
+      {/* ========================================================
+          MODAL 5: ADD NEW HOSPITALITY SUBSCRIPTION FOR AN ORGANIZATION
+         ======================================================== */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#e3e8f9] animate-in zoom-in-95 my-auto">
             <div className="flex items-center justify-between border-b border-[#e3e8f9] pb-3">
               <div>
                 <h3 className="text-base font-bold text-[#161c27]">
-                  {isArabic ? 'إضافة منشأة فندقية / اشتراك جديد' : 'New Saudi Hospitality Property Subscription'}
+                  {isArabic ? 'إضافة اشتراك جديد لمؤسسة' : 'New Subscription for Organization'}
                 </h3>
                 <p className="text-xs text-[#70787d]">
                   {isArabic
-                    ? 'ربط فندق، مجمع فلل، أو شقق مخدومة مع إصدار الختم الضريبي لـ ZATCA Phase 2'
-                    : 'Provision hotel, luxury villa compound, or serviced apartment chain.'}
+                    ? 'ربط منشأة فندقية تحت حساب مؤسسة مع إصدار الختم الضريبي لـ ZATCA'
+                    : 'Assign a new hospitality property under an enterprise organization account.'}
                 </p>
               </div>
               <button
@@ -1601,6 +2067,24 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
             </div>
 
             <form onSubmit={handleAddNewSubscription} className="py-4 space-y-3.5 text-xs">
+              {/* Organization Selection Field */}
+              <div>
+                <label className="block font-bold text-[#161c27] mb-1">
+                  {isArabic ? 'المؤسسة التابعة لها المنشأة:' : 'Assign to Organization:'}
+                </label>
+                <select
+                  value={newSelectedOrgId}
+                  onChange={(e) => setNewSelectedOrgId(e.target.value)}
+                  className="w-full rounded-lg border border-[#004a60] bg-white px-3 py-2 text-xs font-bold text-[#004a60] focus:ring-1 focus:ring-[#004a60] outline-hidden"
+                >
+                  {organizations.map((org) => (
+                    <option key={org.id} value={org.id}>
+                      {org.code} — {isArabic ? org.nameAr : org.name} ({org.tier})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-[#161c27] mb-1">
@@ -1690,8 +2174,9 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     className="w-full rounded-lg border border-[#e3e8f9] bg-[#f9f9ff] px-3 py-2 text-xs focus:border-[#004a60] focus:bg-white outline-hidden"
                   >
                     <option value="Hotel Enterprise OS">Hotel Enterprise OS</option>
-                    <option value="Boutique Luxury Chalet Suite">Boutique Luxury Chalet Suite</option>
-                    <option value="Serviced Apt & Aparthotel OS">Serviced Apt & Aparthotel OS</option>
+                    <option value="Luxury Villas & Chalet Pro">Luxury Villas & Chalet Pro</option>
+                    <option value="Serviced Apartments Scale Tier">Serviced Apartments Scale Tier</option>
+                    <option value="Boutique & Heritage Retreats">Boutique & Heritage Retreats</option>
                   </select>
                 </div>
 
@@ -1705,8 +2190,8 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     className="w-full rounded-lg border border-[#e3e8f9] bg-[#f9f9ff] px-3 py-2 text-xs focus:border-[#004a60] focus:bg-white outline-hidden"
                   >
                     <option value="Annual Enterprise (Advantage 15%)">Annual (15% Off)</option>
-                    <option value="Quarterly Executive (Advantage 5%)">Quarterly (5% Off)</option>
-                    <option value="Monthly Per-Room Standard">Monthly Standard</option>
+                    <option value="Quarterly Commercial Plan">Quarterly (5% Off)</option>
+                    <option value="Monthly Key Utility Billing">Monthly Key Utility</option>
                   </select>
                 </div>
               </div>
