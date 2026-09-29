@@ -5,6 +5,8 @@ import { PlansCatalogManager } from '../components/PlansCatalogManager';
 import { SuppliersView } from './SuppliersView';
 import { PurchaseOrdersView } from './PurchaseOrdersView';
 import { SupplierBillsView } from './SupplierBillsView';
+import { PaymentsView } from './PaymentsView';
+import { OrgStructureView } from './hr/OrgStructureView';
 import { AddSupplierModal } from '../components/AddSupplierModal';
 import { CreatePurchaseOrderModal } from '../components/CreatePurchaseOrderModal';
 import { CreateStandardBillModal } from '../components/CreateStandardBillModal';
@@ -27,6 +29,8 @@ import {
   INITIAL_PURCHASE_ORDERS,
   SupplierBill,
   INITIAL_SUPPLIER_BILLS,
+  SupplierPayment,
+  INITIAL_SUPPLIER_PAYMENTS,
 } from '../data/mockData';
 import {
   MultichannelDispatchModal,
@@ -100,6 +104,9 @@ interface SitemapModuleViewProps {
   onAddBill?: (bill: SupplierBill) => void;
   onUpdateBill?: (bill: SupplierBill) => void;
   onDeleteBill?: (id: string) => void;
+  payments?: SupplierPayment[];
+  onAddPayment?: (payment: SupplierPayment) => void;
+  onDeletePayment?: (id: string) => void;
 }
 
 export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
@@ -122,6 +129,9 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
   onAddBill,
   onUpdateBill,
   onDeleteBill,
+  payments,
+  onAddPayment,
+  onDeletePayment,
 }) => {
   const [internalSuppliers, setInternalSuppliers] = useState<Supplier[]>(
     suppliers || INITIAL_SUPPLIERS
@@ -219,10 +229,45 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     }
   };
 
+  const [internalPayments, setInternalPayments] = useState<SupplierPayment[]>(
+    payments || INITIAL_SUPPLIER_PAYMENTS
+  );
+  const activePayments = payments || internalPayments;
+
+  const handleAddPaymentAction = (payment: SupplierPayment) => {
+    if (onAddPayment) {
+      onAddPayment(payment);
+    } else {
+      setInternalPayments((prev) => [payment, ...prev]);
+    }
+    if (payment.billId) {
+      const foundBill = activeBills.find((b) => b.id === payment.billId);
+      if (foundBill) {
+        const remaining = payment.remainingAmount;
+        const newStatus = remaining <= 0 ? 'Paid' : 'Partially Paid';
+        const newStatusAr = remaining <= 0 ? 'مسدد بالكامل' : 'مسدد جزئياً';
+        handleUpdateBillAction({
+          ...foundBill,
+          status: newStatus as any,
+          statusAr: newStatusAr,
+        });
+      }
+    }
+  };
+
+  const handleDeletePaymentAction = (id: string) => {
+    if (onDeletePayment) {
+      onDeletePayment(id);
+    } else {
+      setInternalPayments((prev) => prev.filter((p) => p.id !== id));
+    }
+  };
+
   const [isHeaderAddSupplierOpen, setIsHeaderAddSupplierOpen] = useState(false);
   const [isHeaderCreatePOOpen, setIsHeaderCreatePOOpen] = useState(false);
   const [isHeaderCreateBillOpen, setIsHeaderCreateBillOpen] = useState(false);
   const [isHeaderRaiseBillNoPOOpen, setIsHeaderRaiseBillNoPOOpen] = useState(false);
+  const [isHeaderRecordPaymentOpen, setIsHeaderRecordPaymentOpen] = useState(false);
 
   // Organization, Contacts & Branches State
   const [orgBranches, setOrgBranches] = useState<OrganizationBranch[]>(INITIAL_BRANCHES);
@@ -348,7 +393,7 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
         { id: 'suppliers', name: 'Suppliers', nameAr: 'الموردون', count: activeSuppliers.length.toString() },
         { id: 'purchase_orders', name: 'Purchase Orders', nameAr: 'أوامر الشراء', count: activePurchaseOrders.length.toString() },
         { id: 'supplier_bills', name: 'Bills', nameAr: 'الفواتير', count: activeBills.length.toString() },
-        { id: 'supplier_payments', name: 'Supplier Payments', nameAr: 'سندات صرف الموردين' },
+        { id: 'supplier_payments', name: 'Payments', nameAr: 'المدفوعات', count: activePayments.length.toString() },
       ],
     },
     accounting: {
@@ -369,14 +414,14 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
       ],
     },
     hr: {
-      title: 'HR & Hospitality Staff',
+      title: 'Human Resources & Hospitality Staff',
       titleAr: 'الموارد البشرية وكوادر الضيافة',
       desc: 'Hotel front office, housekeeping teams, Saudi Saudization quotas (Nitaqat), and GOSI payroll.',
       descAr: 'فرق الاستقبال وخدمة الغرف، متابعة نسب التوطين (نطاقات)، وإعداد مسيرات الرواتب عبر نظام مدد.',
       icon: Briefcase,
       tabs: [
         { id: 'org_structure', name: 'Org Structure', nameAr: 'الهيكل التنظيمي' },
-        { id: 'employees', name: 'Employee Records', nameAr: 'سجلات الموظفين', count: '64' },
+        { id: 'employees', name: 'Employee Records', nameAr: 'سجلات الموظفين', count: '6' },
         { id: 'attendance', name: 'Attendance', nameAr: 'سجلات الحضور والشفتات' },
         { id: 'payroll', name: 'Payroll', nameAr: 'مسيرات الرواتب (GOSI)' },
       ],
@@ -581,6 +626,8 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
                   setIsHeaderCreatePOOpen(true);
                 } else if (module === 'procurement' && activeTab === 'supplier_bills') {
                   setIsHeaderCreateBillOpen(true);
+                } else if (module === 'procurement' && activeTab === 'supplier_payments') {
+                  setIsHeaderRecordPaymentOpen(true);
                 } else if (module === 'procurement') {
                   setIsHeaderAddSupplierOpen(true);
                 } else if (module === 'products') {
@@ -599,10 +646,18 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
                   ? isArabic
                     ? 'إنشاء فاتورة (Create Bill)'
                     : 'Create Bill'
+                  : module === 'procurement' && activeTab === 'supplier_payments'
+                  ? isArabic
+                    ? 'تسجيل سند صرف (Record Payment)'
+                    : 'Record Payment'
                   : module === 'procurement' && activeTab === 'suppliers'
                   ? isArabic
                     ? 'إضافة مورد جديد'
                     : 'Add Supplier'
+                  : module === 'hr'
+                  ? isArabic
+                    ? 'إضافة موظف / قسم'
+                    : 'Add Member / Dept'
                   : module === 'products'
                   ? isArabic
                     ? 'إنشاء خطة جديدة'
@@ -982,31 +1037,16 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
             )}
 
             {activeTab === 'supplier_payments' && (
-              <div className="space-y-4">
-                <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs">
-                  <h3 className="text-sm font-bold text-[#161c27] mb-1">
-                    {isArabic ? 'سندات صرف الموردين والتحويلات البنكية ساريع' : 'Supplier Payment Vouchers & SARIE Wire'}
-                  </h3>
-                  <p className="text-xs text-[#70787d] mb-4">
-                    {isArabic
-                      ? 'إصدار سندات الصرف والتحويل عبر النظام البنكي السعودي SARIE والخصم من حساب الدائنين GL: 2101'
-                      : 'Disbursements via SARIE B2B bank wire, clearing Trade Payables (GL: 2101) and Supplier Advances (GL: 1204).'}
-                  </p>
-
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-[#f9f9ff] border border-[#e3e8f9] gap-2">
-                      <div>
-                        <div className="font-bold text-[#161c27]">PV-2026-081 • Assa Abloy Hospitality ME</div>
-                        <div className="text-[11px] text-[#70787d]">SARIE Wire Ref: SR-99482104 • Alinma Bank Corporate</div>
-                      </div>
-                      <div className="sm:text-right">
-                        <div className="font-mono font-bold text-sm text-emerald-700">SAR 48,200.00</div>
-                        <span className="text-[10px] text-gray-500">Paid on 20 Sep 2026</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <PaymentsView
+                payments={activePayments}
+                bills={activeBills}
+                suppliers={activeSuppliers}
+                isArabic={isArabic}
+                onAddPayment={handleAddPaymentAction}
+                onDeletePayment={handleDeletePaymentAction}
+                isExternalRecordOpen={isHeaderRecordPaymentOpen}
+                onCloseExternalRecord={() => setIsHeaderRecordPaymentOpen(false)}
+              />
             )}
           </div>
         )}
@@ -1045,22 +1085,55 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
           </div>
         )}
 
-        {/* HR MODULE */}
+        {/* HR MODULE (HUMAN RESOURCES) */}
         {module === 'hr' && (
           <div className="space-y-4">
-            <div className="bg-white rounded-xl border border-[#e3e8f9] p-5 shadow-xs">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-bold text-[#161c27]">
-                  Hospitality Workforce & Saudization (Nitaqat Platinum)
-                </h3>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  Saudization: 42.8% (Platinum Tier)
-                </span>
+            {(activeTab === 'org_structure' || activeTab === 'employees') && (
+              <OrgStructureView
+                isArabic={isArabic}
+                activeSubTab={activeTab === 'employees' ? 'employees' : undefined}
+              />
+            )}
+
+            {activeTab === 'attendance' && (
+              <div className="space-y-4">
+                <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold text-[#161c27]">
+                      {isArabic ? 'سجلات الحضور الذكي والشفتات الفندقية' : 'Smart Hospitality Attendance & Shifts'}
+                    </h3>
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      {isArabic ? 'حضور اليوم: 98.4%' : "Today's Attendance: 98.4%"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#70787d]">
+                    {isArabic
+                      ? 'مزامنة أجهزة البصمة البيومترية، شفتات الاستقبال وخدمة الغرف، والربط بنظام مدد لحماية الأجور'
+                      : 'Biometric fingerprint synchronization, 3-shift rotation, and automated overtime calculation.'}
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-[#70787d] mb-4">
-                Tracking 64 staff members across front office reception, concierge, housekeeping, and night audit operations.
-              </p>
-            </div>
+            )}
+
+            {activeTab === 'payroll' && (
+              <div className="space-y-4">
+                <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold text-[#161c27]">
+                      {isArabic ? 'مسيرات الرواتب ونظام حماية الأجور (WPS - مدد)' : 'Payroll & Wage Protection System (Mudad)'}
+                    </h3>
+                    <span className="text-xs font-bold text-[#004a60] bg-[#e8eeff] px-2.5 py-0.5 rounded-full border border-[#c3cce6]">
+                      {isArabic ? 'مسيرة سبتمبر 2026: معتمدة' : 'Sep 2026 Batch: Approved'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#70787d]">
+                    {isArabic
+                      ? 'تحويل الرواتب عبر منصة مدد، خصومات التأمينات الاجتماعية GOSI، وتوزيع تكلفة الرواتب على أقسام USALI الفندقية.'
+                      : 'Mudad compliance export, GOSI statutory deductions, and USALI payroll expense distribution.'}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -191,7 +191,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'hr',
-      name: 'HR',
+      name: 'Human Resources',
       nameAr: 'الموارد البشرية',
       icon: Briefcase,
       children: [

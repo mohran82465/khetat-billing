@@ -41,6 +41,8 @@ import {
   INITIAL_PURCHASE_ORDERS,
   SupplierBill,
   INITIAL_SUPPLIER_BILLS,
+  SupplierPayment,
+  INITIAL_SUPPLIER_PAYMENTS,
 } from './data/mockData';
 import {
   LayoutDashboard,
@@ -75,6 +77,7 @@ export function App() {
   const [suppliers, setSuppliers] = useState<Supplier[]>(INITIAL_SUPPLIERS);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(INITIAL_PURCHASE_ORDERS);
   const [bills, setBills] = useState<SupplierBill[]>(INITIAL_SUPPLIER_BILLS);
+  const [payments, setPayments] = useState<SupplierPayment[]>(INITIAL_SUPPLIER_PAYMENTS);
 
   // Modals
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
@@ -240,6 +243,14 @@ export function App() {
     setBills((prev) => prev.filter((b) => b.id !== billId));
   };
 
+  const handleAddPayment = (newPayment: SupplierPayment) => {
+    setPayments((prev) => [newPayment, ...prev]);
+  };
+
+  const handleDeletePayment = (paymentId: string) => {
+    setPayments((prev) => prev.filter((p) => p.id !== paymentId));
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f9f9ff] text-[#161c27] font-sans antialiased">
       {/* Sidebar Navigation matching sitemap */}
@@ -387,6 +398,9 @@ export function App() {
               onAddBill={handleAddBill}
               onUpdateBill={handleUpdateBill}
               onDeleteBill={handleDeleteBill}
+              payments={payments}
+              onAddPayment={handleAddPayment}
+              onDeletePayment={handleDeletePayment}
             />
           )}
         </main>
