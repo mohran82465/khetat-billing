@@ -61,6 +61,8 @@ interface NavSubItem {
   name: string;
   nameAr: string;
   badge?: string;
+  isGroup?: boolean;
+  children?: NavSubItem[];
 }
 
 interface NavSection {
@@ -105,14 +107,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'organization',
-      name: 'Organizations',
-      nameAr: 'المؤسسات',
+      name: 'Profiles',
+      nameAr: 'الملفات',
       icon: Building2,
-      badge: '8 Orgs',
+      badge: 'Hub',
       children: [
-        { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات' },
-        { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال' },
-        { id: 'branches', name: 'Branches', nameAr: 'الفروع' },
+        {
+          id: 'operators_group',
+          name: 'Operators',
+          nameAr: 'المشغلون',
+          isGroup: true,
+          children: [
+            { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات' },
+            { id: 'branches', name: 'Properties', nameAr: 'العقارات والفروع' },
+            { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال' },
+          ],
+        },
+        { id: 'guests', name: 'Guests', nameAr: 'النزلاء', badge: 'Mudabbir' },
+        {
+          id: 'guest_group',
+          name: 'Guest',
+          nameAr: 'النزلاء (ضيافة)',
+          isGroup: true,
+          children: [
+            { id: 'diyafa_guests', name: 'Guests', nameAr: 'النزلاء' },
+            { id: 'diyafa_corporates', name: 'Corporates', nameAr: 'الشركات' },
+          ],
+        },
       ],
     },
     {
@@ -245,7 +266,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Map sub-views to their parent section
   const getParentSectionId = (view: string): string => {
-    if (['organization', 'profiles', 'contacts', 'branches'].includes(view)) {
+    if (
+      [
+        'organization',
+        'profiles',
+        'contacts',
+        'branches',
+        'guests',
+        'guest_hub',
+        'diyafa_guests',
+        'diyafa_corporates',
+      ].includes(view)
+    ) {
       return 'organization';
     }
     if (['sales_orders', 'invoices', 'quotations', 'receipts', 'balances'].includes(view)) {
@@ -270,6 +302,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     task_manager: false,
     organization: true,
     profiles: true,
+    guest_hub: true,
     products: false,
     procurement: false,
     accounting: false,
@@ -298,12 +331,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
           return sectionMatch ? section : null;
         }
 
-        const matchingChildren = section.children.filter(
-          (child) =>
+        const matchingChildren = section.children.filter((child) => {
+          if (child.isGroup && child.children) {
+            const groupMatch =
+              child.name.toLowerCase().includes(q) ||
+              child.nameAr.toLowerCase().includes(q);
+            const subMatch = child.children.some(
+              (c) =>
+                c.name.toLowerCase().includes(q) ||
+                c.nameAr.toLowerCase().includes(q) ||
+                (c.badge && c.badge.toLowerCase().includes(q))
+            );
+            return groupMatch || subMatch;
+          }
+          return (
             child.name.toLowerCase().includes(q) ||
             child.nameAr.toLowerCase().includes(q) ||
             (child.badge && child.badge.toLowerCase().includes(q))
-        );
+          );
+        });
 
         if (sectionMatch || matchingChildren.length > 0) {
           return {
@@ -339,6 +385,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         onSelectView('quotations');
       } else if (section.id === 'organization' || section.id === 'profiles') {
         onSelectView('organization', 'organization');
+      } else if (section.id === 'guest_hub') {
+        onSelectView('guest_hub', 'diyafa_guests');
       } else if (section.id === 'task_manager') {
         onSelectView('projects', 'task_list');
       } else {
@@ -353,6 +401,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onSelectView(childId);
     } else if (sectionId === 'organization' || sectionId === 'profiles') {
       onSelectView('organization', childId);
+    } else if (sectionId === 'guest_hub') {
+      onSelectView('guest_hub', childId);
     } else if (sectionId === 'task_manager') {
       onSelectView('projects', childId);
     } else {
@@ -527,8 +577,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {/* Sub items rendered hierarchically */}
               {hasChildren && isExpanded && (
-                <div className="space-y-0.5 pl-5 border-l border-[#e3e8f9] ml-4 my-1">
+                <div className="space-y-0.5 pl-5 rtl:pl-0 rtl:pr-5 border-l rtl:border-l-0 rtl:border-r border-[#e3e8f9] ml-4 rtl:ml-0 rtl:mr-4 my-1">
                   {section.children!.map((child) => {
+                    // If child is a subgroup (like Operators)
+                    if (child.isGroup && child.children) {
+                      return (
+                        <div key={child.id} className="space-y-0.5 pt-1.5 pb-1">
+                          <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold text-[#70787d] uppercase tracking-wider">
+                            <span>{isArabic ? child.nameAr : child.name}</span>
+                          </div>
+                          <div className="space-y-0.5 pl-3 rtl:pl-0 rtl:pr-3 border-l rtl:border-l-0 rtl:border-r border-[#e3e8f9] ml-1.5 rtl:ml-0 rtl:mr-1.5">
+                            {child.children.map((subChild) => {
+                              const isSubActive =
+                                (activeView === 'organization' || activeView === 'profiles') &&
+                                (activeSubTab === subChild.id ||
+                                  (!activeSubTab && subChild.id === 'organization'));
+                              return (
+                                <button
+                                  key={subChild.id}
+                                  onClick={() => handleSelectChild(section.id, subChild.id)}
+                                  className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] font-medium transition-all cursor-pointer ${
+                                    isSubActive
+                                      ? 'bg-[#e8eeff] font-bold text-[#004a60]'
+                                      : 'text-[#50585e] hover:bg-[#f1f3ff] hover:text-[#161c27]'
+                                  }`}
+                                >
+                                  <span className="truncate text-left rtl:text-right">
+                                    {isArabic ? subChild.nameAr : subChild.name}
+                                  </span>
+                                  {subChild.badge && (
+                                    <span className="rounded-full px-1.5 py-0.2 text-[8px] font-bold bg-[#e8eeff] text-[#004a60]">
+                                      {subChild.badge}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    }
+
                     let isChildActive = false;
 
                     if (section.id === 'sales') {
@@ -546,6 +635,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       isChildActive =
                         (activeView === 'organization' || activeView === 'profiles') &&
                         (activeSubTab === child.id || (!activeSubTab && child.id === 'organization'));
+                    } else if (section.id === 'guest_hub') {
+                      isChildActive =
+                        activeView === 'guest_hub' &&
+                        (activeSubTab === child.id || (!activeSubTab && child.id === 'diyafa_guests'));
                     } else {
                       isChildActive =
                         activeView === section.id &&
@@ -557,18 +650,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <button
                         key={child.id}
                         onClick={() => handleSelectChild(section.id, child.id)}
-                        className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] font-medium transition-all ${
+                        className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] font-medium transition-all cursor-pointer ${
                           isChildActive
                             ? 'bg-[#e8eeff] font-bold text-[#004a60]'
                             : 'text-[#50585e] hover:bg-[#f1f3ff] hover:text-[#161c27]'
                         }`}
                       >
-                        <span className="truncate text-left">{isArabic ? child.nameAr : child.name}</span>
+                        <span className="truncate text-left rtl:text-right">{isArabic ? child.nameAr : child.name}</span>
                         {child.badge && (
                           <span
                             className={`rounded-full px-1.5 py-0.2 text-[8px] font-bold ${
-                              child.badge === 'ZATCA'
+                              child.badge === 'ZATCA' || child.badge === 'Diyafa'
                                 ? 'bg-emerald-100 text-emerald-800'
+                                : child.badge === 'Mudabbir'
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
                                 : 'bg-[#e8eeff] text-[#004a60]'
                             }`}
                           >

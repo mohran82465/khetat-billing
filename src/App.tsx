@@ -104,6 +104,16 @@ export function App() {
       setActiveSubTab(subTab || 'contacts');
       return;
     }
+    if (view === 'guests') {
+      setActiveView('organization');
+      setActiveSubTab('guests');
+      return;
+    }
+    if (view === 'guest_hub' || view === 'diyafa_guests' || view === 'diyafa_corporates') {
+      setActiveView('organization');
+      setActiveSubTab(subTab || (view === 'diyafa_corporates' ? 'diyafa_corporates' : 'diyafa_guests'));
+      return;
+    }
     setActiveView(view);
     if (subTab) {
       setActiveSubTab(subTab);
@@ -373,6 +383,7 @@ export function App() {
           {[
             'profiles',
             'organization',
+            'guest_hub',
             'products',
             'procurement',
             'accounting',
@@ -385,6 +396,7 @@ export function App() {
               module={(activeView === 'profiles' ? 'organization' : activeView) as any}
               subTab={activeSubTab}
               isArabic={isArabic}
+              onNavigateToModule={(mod, tab) => handleSelectView(mod, tab)}
               onNavigateToInvoice={handleNavigateToInvoice}
               suppliers={suppliers}
               onAddSupplier={handleAddSupplier}

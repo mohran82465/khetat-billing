@@ -7,6 +7,8 @@ import { PurchaseOrdersView } from './PurchaseOrdersView';
 import { SupplierBillsView } from './SupplierBillsView';
 import { PaymentsView } from './PaymentsView';
 import { OrgStructureView } from './hr/OrgStructureView';
+import { ProfilesGuestsView } from './ProfilesGuestsView';
+import { DiyafaGuestHubView } from './DiyafaGuestHubView';
 import { AddSupplierModal } from '../components/AddSupplierModal';
 import { CreatePurchaseOrderModal } from '../components/CreatePurchaseOrderModal';
 import { CreateStandardBillModal } from '../components/CreateStandardBillModal';
@@ -69,12 +71,14 @@ import {
   TrendingUp,
   MapPin,
   ExternalLink,
+  UserCheck,
 } from 'lucide-react';
 
 interface SitemapModuleViewProps {
   module:
     | 'profiles'
     | 'organization'
+    | 'guest_hub'
     | 'messaging'
     | 'messages'
     | 'chat'
@@ -88,6 +92,7 @@ interface SitemapModuleViewProps {
   subTab?: string;
   isArabic: boolean;
   onNavigateToInvoice?: (id: string) => void;
+  onNavigateToModule?: (module: string, subTab?: string) => void;
   customers?: Customer[];
   onOpenCreateCustomer?: () => void;
   onCreateOrderForCustomer?: (customer: Customer) => void;
@@ -113,6 +118,8 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
   module,
   subTab,
   isArabic,
+  onNavigateToInvoice,
+  onNavigateToModule,
   customers = INITIAL_CUSTOMERS,
   onOpenCreateCustomer,
   onCreateOrderForCustomer,
@@ -308,27 +315,44 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     }
   > = {
     profiles: {
-      title: 'Organizations',
-      titleAr: 'المؤسسات',
-      desc: 'Enterprise client organizations that have subscriptions and PMS licenses on our website.',
-      descAr: 'المؤسسات وشركات الضيافة المشتركة في المنصة مع تفاصيل اشتراكاتها وتراخيصها الفندقية النشطة.',
+      title: 'Profiles',
+      titleAr: 'الملفات',
+      desc: 'Central platform managing profiles received from Mudabbir operators (Organizations, Properties, Contacts), Mudabbir Guests, and Diyafa registered accounts.',
+      descAr: 'المنصة المركزية لإدارة ملفات مشغلي مدبّر (المؤسسات، العقارات، جهات الاتصال)، نزلاء مدبّر، وحسابات منصة ضيافة.',
       icon: Building2,
       tabs: [
         { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات', count: '8' },
+        { id: 'branches', name: 'Properties', nameAr: 'العقارات والفروع', count: orgBranches.length.toString() },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: orgContacts.length.toString() },
-        { id: 'branches', name: 'Branches', nameAr: 'الفروع', count: orgBranches.length.toString() },
+        { id: 'guests', name: 'Guests (Mudabbir)', nameAr: 'النزلاء (مدبّر)', count: '14' },
+        { id: 'diyafa_guests', name: 'Diyafa Guests', nameAr: 'نزلاء ضيافة', count: '6' },
+        { id: 'diyafa_corporates', name: 'Corporates', nameAr: 'الشركات', count: '4' },
       ],
     },
     organization: {
-      title: 'Organizations',
-      titleAr: 'المؤسسات',
-      desc: 'Enterprise client organizations that have subscriptions and PMS licenses on our website.',
-      descAr: 'المؤسسات وشركات الضيافة المشتركة في المنصة مع تفاصيل اشتراكاتها وتراخيصها الفندقية النشطة.',
+      title: 'Profiles',
+      titleAr: 'الملفات',
+      desc: 'Central platform managing profiles received from Mudabbir operators (Organizations, Properties, Contacts), Mudabbir Guests, and Diyafa registered accounts.',
+      descAr: 'المنصة المركزية لإدارة ملفات مشغلي مدبّر (المؤسسات، العقارات، جهات الاتصال)، نزلاء مدبّر، وحسابات منصة ضيافة.',
       icon: Building2,
       tabs: [
         { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات', count: '8' },
+        { id: 'branches', name: 'Properties', nameAr: 'العقارات والفروع', count: orgBranches.length.toString() },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: orgContacts.length.toString() },
-        { id: 'branches', name: 'Branches', nameAr: 'الفروع', count: orgBranches.length.toString() },
+        { id: 'guests', name: 'Guests (Mudabbir)', nameAr: 'النزلاء (مدبّر)', count: '14' },
+        { id: 'diyafa_guests', name: 'Diyafa Guests', nameAr: 'نزلاء ضيافة', count: '6' },
+        { id: 'diyafa_corporates', name: 'Corporates', nameAr: 'الشركات', count: '4' },
+      ],
+    },
+    guest_hub: {
+      title: 'Guest Hub (Diyafa)',
+      titleAr: 'منصة النزلاء (ضيافة)',
+      desc: 'Registered consumer accounts on Diyafa and contracted corporate accounts. Mudabbir guest profiles are managed under Profiles → Guests until linked.',
+      descAr: 'سجلات النزلاء المسجلين رسمياً عبر تطبيق ضيافة وحسابات الشركات المتعاقدة. نزلاء مشغلي مدبّر يديرهم النظام في «الملفات ← النزلاء» حتى يتم ربطهم.',
+      icon: UserCheck,
+      tabs: [
+        { id: 'diyafa_guests', name: 'Guests', nameAr: 'النزلاء (ضيافة)', count: '6' },
+        { id: 'diyafa_corporates', name: 'Corporates', nameAr: 'الشركات', count: '4' },
       ],
     },
     messaging: {
@@ -739,6 +763,37 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
                 onUpdateContactBranches={handleUpdateContactBranches}
               />
             )}
+
+            {/* SUB-TAB 4: GUESTS (Mudabbir Operator Guest Directory) */}
+            {activeTab === 'guests' && (
+              <ProfilesGuestsView isArabic={isArabic} />
+            )}
+
+            {/* SUB-TAB 5: DIYAFA GUESTS & CORPORATES */}
+            {(activeTab === 'diyafa_guests' || activeTab === 'diyafa_corporates') && (
+              <DiyafaGuestHubView
+                activeSubTab={activeTab}
+                isArabic={isArabic}
+                onNavigateToMudabbirGuests={() => setActiveTab('guests')}
+              />
+            )}
+          </div>
+        )}
+
+        {/* GUEST HUB MODULE (DIYAFA CONSUMER & CORPORATES) */}
+        {module === 'guest_hub' && (
+          <div className="space-y-4">
+            <DiyafaGuestHubView
+              activeSubTab={activeTab}
+              isArabic={isArabic}
+              onNavigateToMudabbirGuests={() => {
+                if (onNavigateToModule) {
+                  onNavigateToModule('organization', 'guests');
+                } else {
+                  setActiveTab('guests');
+                }
+              }}
+            />
           </div>
         )}
 
