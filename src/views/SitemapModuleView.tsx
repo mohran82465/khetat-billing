@@ -317,31 +317,29 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     profiles: {
       title: 'Profiles',
       titleAr: 'الملفات',
-      desc: 'Central platform managing profiles received from Mudabbir operators (Organizations, Properties, Contacts), Mudabbir Guests, and Diyafa registered accounts.',
-      descAr: 'المنصة المركزية لإدارة ملفات مشغلي مدبّر (المؤسسات، العقارات، جهات الاتصال)، نزلاء مدبّر، وحسابات منصة ضيافة.',
+      desc: 'Central platform managing profiles: Operators (Organizations, Properties, Contacts) and Guests (Guests, Corporate).',
+      descAr: 'المنصة المركزية لإدارة الملفات: المشغلون (المؤسسات، العقارات، جهات الاتصال) والنزلاء (النزلاء، الشركات).',
       icon: Building2,
       tabs: [
         { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات', count: '8' },
         { id: 'branches', name: 'Properties', nameAr: 'العقارات والفروع', count: orgBranches.length.toString() },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: orgContacts.length.toString() },
-        { id: 'guests', name: 'Guests (Mudabbir)', nameAr: 'النزلاء (مدبّر)', count: '14' },
-        { id: 'diyafa_guests', name: 'Diyafa Guests', nameAr: 'نزلاء ضيافة', count: '6' },
-        { id: 'diyafa_corporates', name: 'Corporates', nameAr: 'الشركات', count: '4' },
+        { id: 'guests', name: 'Guests', nameAr: 'النزلاء', count: '20' },
+        { id: 'corporate', name: 'Corporate', nameAr: 'الشركات', count: '4' },
       ],
     },
     organization: {
       title: 'Profiles',
       titleAr: 'الملفات',
-      desc: 'Central platform managing profiles received from Mudabbir operators (Organizations, Properties, Contacts), Mudabbir Guests, and Diyafa registered accounts.',
-      descAr: 'المنصة المركزية لإدارة ملفات مشغلي مدبّر (المؤسسات، العقارات، جهات الاتصال)، نزلاء مدبّر، وحسابات منصة ضيافة.',
+      desc: 'Central platform managing profiles: Operators (Organizations, Properties, Contacts) and Guests (Guests, Corporate).',
+      descAr: 'المنصة المركزية لإدارة الملفات: المشغلون (المؤسسات، العقارات، جهات الاتصال) والنزلاء (النزلاء، الشركات).',
       icon: Building2,
       tabs: [
         { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات', count: '8' },
         { id: 'branches', name: 'Properties', nameAr: 'العقارات والفروع', count: orgBranches.length.toString() },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: orgContacts.length.toString() },
-        { id: 'guests', name: 'Guests (Mudabbir)', nameAr: 'النزلاء (مدبّر)', count: '14' },
-        { id: 'diyafa_guests', name: 'Diyafa Guests', nameAr: 'نزلاء ضيافة', count: '6' },
-        { id: 'diyafa_corporates', name: 'Corporates', nameAr: 'الشركات', count: '4' },
+        { id: 'guests', name: 'Guests', nameAr: 'النزلاء', count: '20' },
+        { id: 'corporate', name: 'Corporate', nameAr: 'الشركات', count: '4' },
       ],
     },
     guest_hub: {
@@ -612,6 +610,11 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     }
   }, [subTab, module]);
 
+  const isProfiles = module === 'organization' || module === 'profiles';
+  const isGuestsSubRoute =
+    ['guests', 'corporate', 'diyafa_corporates', 'diyafa_guests'].includes(activeTab);
+  const profilesLevel2: 'operators' | 'guests' = isGuestsSubRoute ? 'guests' : 'operators';
+
   const Icon = currentConfig.icon;
 
   return (
@@ -695,43 +698,247 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
         </div>
       </div>
 
-      {/* Tabs navigation */}
-      <div className="bg-white border-b border-[#e3e8f9] px-4 lg:px-6 sticky top-0 z-10 shadow-xs">
-        <div className="max-w-7xl mx-auto flex items-center gap-1 sm:gap-2 overflow-x-auto py-2.5 no-scrollbar">
-          {currentConfig.tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all ${
-                  isActive
-                    ? 'bg-[#004a60] text-white shadow-xs'
-                    : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
-                }`}
-              >
-                <span>{isArabic ? tab.nameAr : tab.name}</span>
-                {tab.count && (
+      {/* 3-LEVEL NAVIGATION FOR PROFILES MODULE OR STANDARD TABS */}
+      {isProfiles ? (
+        <div className="bg-white border-b border-[#e3e8f9] px-4 lg:px-6 sticky top-0 z-10 shadow-xs">
+          <div className="max-w-7xl mx-auto py-2.5 space-y-2.5">
+            {/* LEVEL 2 SUB-ROUTES: Operators vs Guests */}
+            <div className="flex items-center justify-between flex-wrap gap-2.5">
+              <div className="flex items-center gap-1.5 p-1 bg-[#f1f3ff] rounded-xl border border-[#e3e8f9]">
+                {/* Level 2 Sub-Route 1: Operators */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (profilesLevel2 !== 'operators') {
+                      setActiveTab('organization');
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    profilesLevel2 === 'operators'
+                      ? 'bg-[#004a60] text-white shadow-xs'
+                      : 'text-[#50585e] hover:text-[#004a60] hover:bg-white/60'
+                  }`}
+                >
+                  <Building2 className="h-3.5 w-3.5" />
+                  <span>{isArabic ? 'المشغلون (Operators)' : 'Operators'}</span>
                   <span
-                    className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                    className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                      profilesLevel2 === 'operators'
+                        ? 'bg-white/20 text-white'
+                        : 'bg-[#e8eeff] text-[#004a60]'
                     }`}
                   >
-                    {tab.count}
+                    3
                   </span>
-                )}
-              </button>
-            );
-          })}
+                </button>
+
+                {/* Level 2 Sub-Route 2: Guests */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (profilesLevel2 !== 'guests') {
+                      setActiveTab('guests');
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    profilesLevel2 === 'guests'
+                      ? 'bg-[#004a60] text-white shadow-xs'
+                      : 'text-[#50585e] hover:text-[#004a60] hover:bg-white/60'
+                  }`}
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  <span>{isArabic ? 'النزلاء (Guests)' : 'Guests'}</span>
+                  <span
+                    className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                      profilesLevel2 === 'guests'
+                        ? 'bg-white/20 text-white'
+                        : 'bg-[#e8eeff] text-[#004a60]'
+                    }`}
+                  >
+                    2
+                  </span>
+                </button>
+              </div>
+
+              {/* Breadcrumb Hierarchy Indicator (3 Levels) */}
+              <div className="flex items-center gap-1.5 text-xs text-[#70787d]">
+                <span className="font-semibold text-[#004a60] bg-[#e8eeff] px-2 py-0.5 rounded-md">
+                  {isArabic ? 'الملفات (Profiles)' : 'Profiles'}
+                </span>
+                <span className="text-[#c3cce6]">/</span>
+                <span className="font-semibold text-[#161c27]">
+                  {profilesLevel2 === 'operators'
+                    ? isArabic ? 'المشغلون (Operators)' : 'Operators'
+                    : isArabic ? 'النزلاء (Guests)' : 'Guests'}
+                </span>
+                <span className="text-[#c3cce6]">/</span>
+                <span className="font-bold text-[#004a60] underline">
+                  {activeTab === 'organization'
+                    ? isArabic ? 'المؤسسات' : 'Organizations'
+                    : activeTab === 'branches'
+                    ? isArabic ? 'العقارات والفروع' : 'Properties'
+                    : activeTab === 'contacts'
+                    ? isArabic ? 'جهات الاتصال' : 'Contacts'
+                    : activeTab === 'corporate' || activeTab === 'diyafa_corporates'
+                    ? isArabic ? 'الشركات' : 'Corporate'
+                    : isArabic ? 'النزلاء' : 'Guests'}
+                </span>
+              </div>
+            </div>
+
+            {/* LEVEL 3 SUB-ROUTES TABS */}
+            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pt-1 border-t border-[#f1f3ff] no-scrollbar">
+              {profilesLevel2 === 'operators' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('organization')}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      activeTab === 'organization'
+                        ? 'bg-[#004a60] text-white shadow-xs font-bold'
+                        : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
+                    }`}
+                  >
+                    <Building className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'المؤسسات' : 'Organizations'}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                        activeTab === 'organization' ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                      }`}
+                    >
+                      8
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('branches')}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      activeTab === 'branches'
+                        ? 'bg-[#004a60] text-white shadow-xs font-bold'
+                        : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
+                    }`}
+                  >
+                    <Hotel className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'العقارات والفروع' : 'Properties'}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                        activeTab === 'branches' ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                      }`}
+                    >
+                      {orgBranches.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('contacts')}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      activeTab === 'contacts'
+                        ? 'bg-[#004a60] text-white shadow-xs font-bold'
+                        : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
+                    }`}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'جهات الاتصال' : 'Contacts'}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                        activeTab === 'contacts' ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                      }`}
+                    >
+                      {orgContacts.length}
+                    </span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('guests')}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      activeTab === 'guests' || activeTab === 'diyafa_guests'
+                        ? 'bg-[#004a60] text-white shadow-xs font-bold'
+                        : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
+                    }`}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'النزلاء' : 'Guests'}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                        activeTab === 'guests' || activeTab === 'diyafa_guests'
+                          ? 'bg-white/20 text-white'
+                          : 'bg-[#e8eeff] text-[#004a60]'
+                      }`}
+                    >
+                      20
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('corporate')}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      activeTab === 'corporate' || activeTab === 'diyafa_corporates'
+                        ? 'bg-[#004a60] text-white shadow-xs font-bold'
+                        : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
+                    }`}
+                  >
+                    <Building className="h-3.5 w-3.5" />
+                    <span>{isArabic ? 'الشركات' : 'Corporate'}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                        activeTab === 'corporate' || activeTab === 'diyafa_corporates'
+                          ? 'bg-white/20 text-white'
+                          : 'bg-[#e8eeff] text-[#004a60]'
+                      }`}
+                    >
+                      4
+                    </span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* Regular single-level tabs for other modules */
+        <div className="bg-white border-b border-[#e3e8f9] px-4 lg:px-6 sticky top-0 z-10 shadow-xs">
+          <div className="max-w-7xl mx-auto flex items-center gap-1 sm:gap-2 overflow-x-auto py-2.5 no-scrollbar">
+            {currentConfig.tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all ${
+                    isActive
+                      ? 'bg-[#004a60] text-white shadow-xs'
+                      : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
+                  }`}
+                >
+                  <span>{isArabic ? tab.nameAr : tab.name}</span>
+                  {tab.count && (
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Module Content */}
       <div className="p-4 lg:p-6 max-w-7xl mx-auto w-full flex-1">
-        {/* ORGANIZATION MODULE */}
-        {(module === 'organization' || module === 'profiles') && (
+        {/* PROFILES MODULE (3-LEVEL NAVIGATION: OPERATORS & GUESTS) */}
+        {isProfiles && (
           <div className="space-y-4">
-            {/* SUB-TAB 1: ORGANIZATION (Primary Contact Details & Headquarters Location) */}
+            {/* LEVEL 2: OPERATORS -> LEVEL 3: ORGANIZATIONS */}
             {activeTab === 'organization' && (
               <OrganizationProfileTab
                 isArabic={isArabic}
@@ -741,18 +948,7 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
               />
             )}
 
-            {/* SUB-TAB 2: CONTACTS (Individuals working for this org, another org, or independent) */}
-            {activeTab === 'contacts' && (
-              <OrganizationContactsTab
-                isArabic={isArabic}
-                contacts={orgContacts}
-                branches={orgBranches}
-                onUpdateContact={handleUpdateContact}
-                onAddContact={handleAddContact}
-              />
-            )}
-
-            {/* SUB-TAB 3: BRANCHES (Link between organization and workforce at specific locations) */}
+            {/* LEVEL 2: OPERATORS -> LEVEL 3: PROPERTIES */}
             {activeTab === 'branches' && (
               <OrganizationBranchesTab
                 isArabic={isArabic}
@@ -764,15 +960,26 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
               />
             )}
 
-            {/* SUB-TAB 4: GUESTS (Mudabbir Operator Guest Directory) */}
-            {activeTab === 'guests' && (
+            {/* LEVEL 2: OPERATORS -> LEVEL 3: CONTACTS */}
+            {activeTab === 'contacts' && (
+              <OrganizationContactsTab
+                isArabic={isArabic}
+                contacts={orgContacts}
+                branches={orgBranches}
+                onUpdateContact={handleUpdateContact}
+                onAddContact={handleAddContact}
+              />
+            )}
+
+            {/* LEVEL 2: GUESTS -> LEVEL 3: GUESTS */}
+            {(activeTab === 'guests' || activeTab === 'diyafa_guests') && (
               <ProfilesGuestsView isArabic={isArabic} />
             )}
 
-            {/* SUB-TAB 5: DIYAFA GUESTS & CORPORATES */}
-            {(activeTab === 'diyafa_guests' || activeTab === 'diyafa_corporates') && (
+            {/* LEVEL 2: GUESTS -> LEVEL 3: CORPORATE */}
+            {(activeTab === 'corporate' || activeTab === 'diyafa_corporates') && (
               <DiyafaGuestHubView
-                activeSubTab={activeTab}
+                activeSubTab="corporate"
                 isArabic={isArabic}
                 onNavigateToMudabbirGuests={() => setActiveTab('guests')}
               />

@@ -24,6 +24,11 @@ import {
   Tag,
   ArrowRight,
   UserCheck,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  SlidersHorizontal,
+  Award,
 } from 'lucide-react';
 import {
   MudabbirGuest,
@@ -34,6 +39,17 @@ import { GuestDetailsModal } from '../components/guests/GuestDetailsModal';
 import { AssociateDiyafaModal } from '../components/guests/AssociateDiyafaModal';
 import { ImportMudabbirGuestModal } from '../components/guests/ImportMudabbirGuestModal';
 
+export type GuestSortField =
+  | 'name'
+  | 'lastStayDate'
+  | 'totalStaysCount'
+  | 'totalSpendSar'
+  | 'platform'
+  | 'diyafaStatus'
+  | 'createdDate';
+
+export type SortDirection = 'asc' | 'desc';
+
 interface ProfilesGuestsViewProps {
   isArabic: boolean;
 }
@@ -43,10 +59,24 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPlatform, setSelectedPlatform] = useState<'all' | 'Mudabbir' | 'Diyafa'>('all');
   const [selectedOperator, setSelectedOperator] = useState('all');
   const [selectedProperty, setSelectedProperty] = useState('all');
   const [selectedDiyafaStatus, setSelectedDiyafaStatus] = useState<'all' | 'registered' | 'not_registered' | 'match_suggested'>('all');
   const [selectedPropertyType, setSelectedPropertyType] = useState('all');
+
+  // Sorting state
+  const [sortField, setSortField] = useState<GuestSortField>('lastStayDate');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  const handleToggleSort = (field: GuestSortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection(field === 'name' || field === 'platform' ? 'asc' : 'desc');
+    }
+  };
 
   // Modals state
   const [selectedGuestForDetails, setSelectedGuestForDetails] = useState<MudabbirGuest | null>(null);
@@ -88,17 +118,23 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
   // KPIs
   const stats = useMemo(() => {
     const total = guests.length;
+    const mudabbirCount = guests.filter(
+      (g) => (g.platform || 'Mudabbir') === 'Mudabbir' || g.platform === 'Both' || !g.id.startsWith('DYF')
+    ).length;
+    const diyafaCount = guests.filter(
+      (g) => g.platform === 'Diyafa' || g.platform === 'Both' || g.diyafaStatus === 'registered' || g.id.startsWith('DYF')
+    ).length;
     const registered = guests.filter((g) => g.diyafaStatus === 'registered').length;
     const notRegistered = guests.filter((g) => g.diyafaStatus === 'not_registered').length;
     const matchesAvailable = guests.filter((g) => g.diyafaStatus === 'match_suggested').length;
     const linkedRate = total > 0 ? Math.round((registered / total) * 100) : 0;
-    return { total, registered, notRegistered, matchesAvailable, linkedRate };
+    return { total, mudabbirCount, diyafaCount, registered, notRegistered, matchesAvailable, linkedRate };
   }, [guests]);
 
-  // Filtered Guests
-  const filteredGuests = useMemo(() => {
+  // Filtered & Sorted Guests (Mudabbir & Diyafa unified with multi-criteria sort)
+  const sortedAndFilteredGuests = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return guests.filter((g) => {
+    const filtered = guests.filter((g) => {
       const matchesSearch =
         !q ||
         g.name.toLowerCase().includes(q) ||
@@ -107,16 +143,79 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
         g.email.toLowerCase().includes(q) ||
         g.nationalIdOrPassport.toLowerCase().includes(q) ||
         g.operatorName.toLowerCase().includes(q) ||
-        g.propertyName.toLowerCase().includes(q);
+        g.propertyName.toLowerCase().includes(q) ||
+        (g.platform && g.platform.toLowerCase().includes(q)) ||
+        (g.source && g.source.toLowerCase().includes(q));
+
+      const guestPlatform = g.platform || (g.id.startsWith('DYF') ? 'Diyafa' : 'Mudabbir');
+      const matchesPlatform =
+        selectedPlatform === 'all' ||
+        (selectedPlatform === 'Mudabbir' && (guestPlatform === 'Mudabbir' || guestPlatform === 'Both' || !g.id.startsWith('DYF'))) ||
+        (selectedPlatform === 'Diyafa' && (guestPlatform === 'Diyafa' || guestPlatform === 'Both' || g.diyafaStatus === 'registered' || g.id.startsWith('DYF')));
 
       const matchesOperator = selectedOperator === 'all' || g.operatorName === selectedOperator;
       const matchesProperty = selectedProperty === 'all' || g.propertyName === selectedProperty;
       const matchesStatus = selectedDiyafaStatus === 'all' || g.diyafaStatus === selectedDiyafaStatus;
       const matchesType = selectedPropertyType === 'all' || g.propertyType === selectedPropertyType;
 
-      return matchesSearch && matchesOperator && matchesProperty && matchesStatus && matchesType;
+      return matchesSearch && matchesPlatform && matchesOperator && matchesProperty && matchesStatus && matchesType;
     });
-  }, [guests, searchQuery, selectedOperator, selectedProperty, selectedDiyafaStatus, selectedPropertyType]);
+
+    // Apply Sorting
+    return [...filtered].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'name': {
+          const nameA = isArabic ? a.nameAr || a.name : a.name;
+          const nameB = isArabic ? b.nameAr || b.name : b.name;
+          comparison = nameA.localeCompare(nameB, isArabic ? 'ar' : 'en');
+          break;
+        }
+        case 'lastStayDate':
+          comparison = new Date(a.lastStayDate).getTime() - new Date(b.lastStayDate).getTime();
+          break;
+        case 'totalStaysCount':
+          comparison = a.totalStaysCount - b.totalStaysCount;
+          break;
+        case 'totalSpendSar':
+          comparison = a.totalSpendSar - b.totalSpendSar;
+          break;
+        case 'platform': {
+          const platA = a.platform || (a.id.startsWith('DYF') ? 'Diyafa' : 'Mudabbir');
+          const platB = b.platform || (b.id.startsWith('DYF') ? 'Diyafa' : 'Mudabbir');
+          comparison = platA.localeCompare(platB);
+          break;
+        }
+        case 'diyafaStatus': {
+          const rankMap: Record<string, number> = {
+            registered: 3,
+            match_suggested: 2,
+            not_registered: 1,
+          };
+          comparison = (rankMap[a.diyafaStatus] || 0) - (rankMap[b.diyafaStatus] || 0);
+          break;
+        }
+        case 'createdDate':
+          comparison = new Date(a.createdDate).getTime() - new Date(b.createdDate).getTime();
+          break;
+        default:
+          comparison = 0;
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [
+    guests,
+    searchQuery,
+    selectedPlatform,
+    selectedOperator,
+    selectedProperty,
+    selectedDiyafaStatus,
+    selectedPropertyType,
+    sortField,
+    sortDirection,
+    isArabic,
+  ]);
 
   // Handlers
   const handleAssociateAccount = (guestId: string, diyafaAccount: DiyafaAccount) => {
@@ -214,16 +313,16 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
     const csvContent =
       'data:text/csv;charset=utf-8,' +
       [
-        'ID,Guest Name,Phone,Email,Source,Operator,Property,Last Stay,Diyafa Status,Diyafa Account',
-        ...filteredGuests.map(
+        'ID,Guest Name,Phone,Email,Platform,Source,Operator,Property,Total Stays,Spend SAR,Last Stay,Diyafa Status,Diyafa Account',
+        ...sortedAndFilteredGuests.map(
           (g) =>
-            `"${g.id}","${g.name}","${g.phone}","${g.email}","${g.source}","${g.operatorName}","${g.propertyName}","${g.lastStayDate}","${g.diyafaStatus}","${g.diyafaAccount?.accountId || 'N/A'}"`
+            `"${g.id}","${g.name}","${g.phone}","${g.email}","${g.platform || (g.id.startsWith('DYF') ? 'Diyafa' : 'Mudabbir')}","${g.source}","${g.operatorName}","${g.propertyName}","${g.totalStaysCount}","${g.totalSpendSar}","${g.lastStayDate}","${g.diyafaStatus}","${g.diyafaAccount?.accountId || 'N/A'}"`
         ),
       ].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `khetat_mudabbir_guests_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `khetat_guests_unified_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -256,18 +355,16 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
                 {isArabic ? 'ملفات النزلاء المركزية في خطط' : 'Khetat Central Profile Hub'}
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-900">
-                Mudabbir ↔ Diyafa
+                Mudabbir + Diyafa
               </span>
             </div>
             <h1 className="text-xl font-bold tracking-tight">
-              {isArabic
-                ? 'نزلاء مشغلي منصة مدبّر (Mudabbir Guests)'
-                : 'Mudabbir Operator Guest Directory'}
+              {isArabic ? 'سجل النزلاء الموحد (Guests Directory)' : 'Unified Guests Directory'}
             </h1>
             <p className="text-xs text-white/80 leading-relaxed">
               {isArabic
-                ? 'تدير هذه الصفحة سجلات النزلاء الواردة من مشغلي الفنادق والشاليهات عبر مدبّر. يتم الاحتفاظ بملف النزيل كسجل مستقل تماماً عن حسابات منصة ضيافة ما لم يتم التحقق منه وربطه لتجنب ازدواجية الحسابات.'
-                : 'Centralized registry of guest profiles received from Mudabbir accommodation operators. A Mudabbir guest is kept strictly separate from Diyafa accounts until explicit association, preventing customer profile duplication.'}
+                ? 'دليل موحد وشامل لجميع النزلاء الواردين من مشغلي مدبّر (الفنادق والشاليهات) والنزلاء المسجلين عبر منصة وتطبيق ضيافة، مع أدوات الربط والفرز المتقدم وفق معايير متعددة ومنع تكرار السجلات.'
+                : 'Consolidated guest directory listing profiles from both Mudabbir operators and the Diyafa platform, featuring advanced sorting criteria, account matching, and deduplication.'}
             </p>
           </div>
 
@@ -292,7 +389,7 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
               className="px-3.5 py-2 rounded-xl bg-white text-[#004a60] hover:bg-[#f1f3ff] font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Plus className="h-4 w-4" />
-              <span>{isArabic ? 'استيراد نزيل من مدبّر' : '+ Import Mudabbir Guest'}</span>
+              <span>{isArabic ? 'إضافة / استيراد نزيل' : '+ Add / Import Guest'}</span>
             </button>
             <button
               type="button"
@@ -376,11 +473,11 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
 
       {/* 4 KPI METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Total Mudabbir Guests */}
+        {/* Card 1: Total Guests */}
         <div className="bg-white rounded-2xl border border-[#e3e8f9] p-4 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#70787d]">
-              {isArabic ? 'إجمالي النزلاء من مدبّر' : 'Total Mudabbir Guests'}
+              {isArabic ? 'إجمالي النزلاء (مدبّر + ضيافة)' : 'Total Guests Directory'}
             </span>
             <div className="p-2 rounded-xl bg-[#e8eeff] text-[#004a60]">
               <Users className="h-4 w-4" />
@@ -391,11 +488,11 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
               {stats.total.toLocaleString()}
             </span>
             <span className="text-[11px] font-semibold text-[#70787d]">
-              {isArabic ? 'سجل وارد' : 'profiles'}
+              {isArabic ? 'سجل موحد' : 'profiles'}
             </span>
           </div>
           <div className="mt-2 pt-2 border-t border-[#f1f3ff] flex items-center justify-between text-[11px] text-[#70787d]">
-            <span>{isArabic ? 'عبر 5 مشغلين معتمدين' : 'Across 5 Operators'}</span>
+            <span>{isArabic ? `${stats.mudabbirCount} مدبّر • ${stats.diyafaCount} ضيافة` : `${stats.mudabbirCount} Mudabbir • ${stats.diyafaCount} Diyafa`}</span>
             <span className="font-semibold text-[#004a60]">{propertiesList.length} Properties</span>
           </div>
         </div>
@@ -479,9 +576,73 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
         </div>
       </div>
 
-      {/* FILTER & SEARCH TOOLBAR */}
+      {/* PLATFORM SOURCE SELECTOR TABS & SEARCH */}
       <div className="bg-white rounded-2xl border border-[#e3e8f9] p-4 shadow-2xs space-y-3">
+        {/* Top bar: Source filter tabs + Search input */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          {/* Source Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-[#f1f3ff] rounded-xl border border-[#e3e8f9] w-fit">
+            <button
+              type="button"
+              onClick={() => setSelectedPlatform('all')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                selectedPlatform === 'all'
+                  ? 'bg-[#004a60] text-white shadow-xs'
+                  : 'text-[#50585e] hover:text-[#004a60] hover:bg-white/60'
+              }`}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>{isArabic ? 'كافة النزلاء (الكل)' : 'All Guests'}</span>
+              <span
+                className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                  selectedPlatform === 'all' ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                }`}
+              >
+                {guests.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedPlatform('Mudabbir')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                selectedPlatform === 'Mudabbir'
+                  ? 'bg-[#004a60] text-white shadow-xs'
+                  : 'text-[#50585e] hover:text-[#004a60] hover:bg-white/60'
+              }`}
+            >
+              <Building2 className="h-3.5 w-3.5 text-sky-500" />
+              <span>{isArabic ? 'مشغلو مدبّر' : 'Mudabbir Operators'}</span>
+              <span
+                className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                  selectedPlatform === 'Mudabbir' ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                }`}
+              >
+                {stats.mudabbirCount}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedPlatform('Diyafa')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                selectedPlatform === 'Diyafa'
+                  ? 'bg-[#004a60] text-white shadow-xs'
+                  : 'text-[#50585e] hover:text-[#004a60] hover:bg-white/60'
+              }`}
+            >
+              <UserCheck className="h-3.5 w-3.5 text-emerald-500" />
+              <span>{isArabic ? 'منصة ضيافة' : 'Diyafa Platform'}</span>
+              <span
+                className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                  selectedPlatform === 'Diyafa' ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                }`}
+              >
+                {stats.diyafaCount}
+              </span>
+            </button>
+          </div>
+
           {/* Search Input */}
           <div className="relative flex-1 min-w-[280px]">
             <Search className="absolute left-3 rtl:right-3 rtl:left-auto top-1/2 -translate-y-1/2 h-4 w-4 text-[#70787d]" />
@@ -508,7 +669,8 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
           </div>
 
           {/* Quick Filter Reset */}
-          {(selectedOperator !== 'all' ||
+          {(selectedPlatform !== 'all' ||
+            selectedOperator !== 'all' ||
             selectedProperty !== 'all' ||
             selectedDiyafaStatus !== 'all' ||
             selectedPropertyType !== 'all' ||
@@ -517,6 +679,7 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
               type="button"
               onClick={() => {
                 setSearchQuery('');
+                setSelectedPlatform('all');
                 setSelectedOperator('all');
                 setSelectedProperty('all');
                 setSelectedDiyafaStatus('all');
@@ -615,35 +778,190 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
         </div>
       </div>
 
+      {/* DEDICATED SORTING CRITERIA CONTROLS BAR */}
+      <div className="bg-[#f9f9ff] border border-[#e3e8f9] rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xs">
+        <div className="flex items-center flex-wrap gap-2.5">
+          <div className="flex items-center gap-1.5 text-[#004a60] font-bold shrink-0">
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>{isArabic ? 'معيار الفرز (Sort Criteria):' : 'Sort Criteria:'}</span>
+          </div>
+
+          {/* Quick Sort Options */}
+          <div className="flex items-center flex-wrap gap-1.5">
+            {[
+              { field: 'lastStayDate' as GuestSortField, label: isArabic ? 'الأحدث إقامة' : 'Recent Stay' },
+              { field: 'totalStaysCount' as GuestSortField, label: isArabic ? 'الأكثر إقامة' : 'Most Stays' },
+              { field: 'totalSpendSar' as GuestSortField, label: isArabic ? 'الأعلى إنفاقاً' : 'Highest Spend' },
+              { field: 'name' as GuestSortField, label: isArabic ? 'الاسم أبجدياً' : 'Name (A-Z)' },
+              { field: 'platform' as GuestSortField, label: isArabic ? 'المنصة والمصدر' : 'Platform & Source' },
+              { field: 'diyafaStatus' as GuestSortField, label: isArabic ? 'حالة ضيافة' : 'Diyafa Status' },
+            ].map((item) => {
+              const isSelected = sortField === item.field;
+              return (
+                <button
+                  key={item.field}
+                  type="button"
+                  onClick={() => handleToggleSort(item.field)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#004a60] text-white shadow-2xs font-bold'
+                      : 'bg-white text-[#50585e] border border-[#e3e8f9] hover:bg-[#f1f3ff] hover:text-[#004a60]'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  {isSelected && (
+                    sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Direction Toggle & Count Indicator */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <span className="text-xs text-[#70787d] font-medium">
+            {isArabic
+              ? `${sortedAndFilteredGuests.length} نزيل متاح`
+              : `${sortedAndFilteredGuests.length} guests sorted`}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+            className="px-3 py-1.5 rounded-lg bg-white border border-[#c3cce6] hover:bg-[#f1f3ff] text-[#004a60] font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+            title={isArabic ? 'عكس اتجاه الفرز' : 'Toggle Ascending/Descending'}
+          >
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            <span>
+              {sortDirection === 'asc'
+                ? isArabic ? 'تصاعدي (A-Z)' : 'Ascending'
+                : isArabic ? 'تنازلي (Z-A)' : 'Descending'}
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* ADMIN GUESTS TABLE */}
       <div className="bg-white rounded-2xl border border-[#e3e8f9] shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
-            <thead className="bg-[#f9f9ff] text-[11px] text-[#70787d] font-semibold border-b border-[#e3e8f9] uppercase tracking-wider">
+            <thead className="bg-[#f9f9ff] text-[11px] text-[#70787d] font-semibold border-b border-[#e3e8f9] uppercase tracking-wider select-none">
               <tr>
-                <th className="px-4 py-3.5">{isArabic ? 'اسم النزيل' : 'Guest Name'}</th>
+                {/* 1. Guest Name */}
+                <th
+                  onClick={() => handleToggleSort('name')}
+                  className="px-4 py-3.5 cursor-pointer hover:bg-[#e8eeff]/50 transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{isArabic ? 'اسم النزيل' : 'Guest Name'}</span>
+                    {sortField === 'name' ? (
+                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 text-[#004a60]" /> : <ArrowDown className="h-3 w-3 text-[#004a60]" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 text-[#70787d]/40" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 2. Contact */}
                 <th className="px-4 py-3.5">{isArabic ? 'الجوال والبريد' : 'Contact'}</th>
-                <th className="px-4 py-3.5">{isArabic ? 'المصدر' : 'Source'}</th>
+
+                {/* 3. Platform & Source */}
+                <th
+                  onClick={() => handleToggleSort('platform')}
+                  className="px-4 py-3.5 cursor-pointer hover:bg-[#e8eeff]/50 transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{isArabic ? 'المنصة والمصدر' : 'Platform & Source'}</span>
+                    {sortField === 'platform' ? (
+                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 text-[#004a60]" /> : <ArrowDown className="h-3 w-3 text-[#004a60]" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 text-[#70787d]/40" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 4. Operator */}
                 <th className="px-4 py-3.5">{isArabic ? 'المشغّل (Operator)' : 'Operator'}</th>
+
+                {/* 5. Property */}
                 <th className="px-4 py-3.5">{isArabic ? 'العقار (Property)' : 'Property'}</th>
-                <th className="px-4 py-3.5">{isArabic ? 'آخر إقامة' : 'Last Stay'}</th>
-                <th className="px-4 py-3.5">{isArabic ? 'حالة حساب ضيافة' : 'Diyafa Account Status'}</th>
-                <th className="px-4 py-3.5">{isArabic ? 'تاريخ الاستيراد' : 'Created / Imported'}</th>
+
+                {/* 6. Stays & Spend */}
+                <th
+                  onClick={() => handleToggleSort('totalStaysCount')}
+                  className="px-4 py-3.5 cursor-pointer hover:bg-[#e8eeff]/50 transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{isArabic ? 'الإقامات والإنفاق' : 'Stays & Spend'}</span>
+                    {sortField === 'totalStaysCount' || sortField === 'totalSpendSar' ? (
+                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 text-[#004a60]" /> : <ArrowDown className="h-3 w-3 text-[#004a60]" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 text-[#70787d]/40" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 7. Last Stay */}
+                <th
+                  onClick={() => handleToggleSort('lastStayDate')}
+                  className="px-4 py-3.5 cursor-pointer hover:bg-[#e8eeff]/50 transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{isArabic ? 'آخر إقامة' : 'Last Stay'}</span>
+                    {sortField === 'lastStayDate' ? (
+                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 text-[#004a60]" /> : <ArrowDown className="h-3 w-3 text-[#004a60]" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 text-[#70787d]/40" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 8. Diyafa Status */}
+                <th
+                  onClick={() => handleToggleSort('diyafaStatus')}
+                  className="px-4 py-3.5 cursor-pointer hover:bg-[#e8eeff]/50 transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{isArabic ? 'حالة حساب ضيافة' : 'Diyafa Status'}</span>
+                    {sortField === 'diyafaStatus' ? (
+                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 text-[#004a60]" /> : <ArrowDown className="h-3 w-3 text-[#004a60]" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 text-[#70787d]/40" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 9. Created / Registered */}
+                <th
+                  onClick={() => handleToggleSort('createdDate')}
+                  className="px-4 py-3.5 cursor-pointer hover:bg-[#e8eeff]/50 transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{isArabic ? 'تاريخ التسجيل' : 'Registered Date'}</span>
+                    {sortField === 'createdDate' ? (
+                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 text-[#004a60]" /> : <ArrowDown className="h-3 w-3 text-[#004a60]" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 text-[#70787d]/40" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 10. Actions */}
                 <th className="px-4 py-3.5 text-center">{isArabic ? 'الإجراءات' : 'Actions'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e3e8f9]">
-              {filteredGuests.length === 0 ? (
+              {sortedAndFilteredGuests.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-16 text-center text-[#70787d]">
+                  <td colSpan={10} className="px-4 py-16 text-center text-[#70787d]">
                     <Users className="h-10 w-10 text-[#70787d]/40 mx-auto mb-2" />
                     <p className="font-bold text-sm text-[#161c27]">
                       {isArabic ? 'لا توجد سجلات نزلاء مطابقة' : 'No guest records found'}
                     </p>
                     <p className="text-xs text-[#70787d] mt-1 max-w-sm mx-auto">
                       {isArabic
-                        ? 'جرّب تعديل معايير البحث أو تصفية المشغل والعقار.'
-                        : 'Try adjusting your search criteria or filter selection.'}
+                        ? 'جرّب تعديل معايير البحث أو تصفية المنصة والمشغل.'
+                        : 'Try adjusting your search criteria or platform/operator selection.'}
                     </p>
                     <button
                       type="button"
@@ -651,14 +969,15 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
                       className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#004a60] text-white text-xs font-bold shadow-xs cursor-pointer"
                     >
                       <Plus className="h-3.5 w-3.5" />
-                      <span>{isArabic ? 'استيراد نزيل من مدبّر' : 'Import Mudabbir Guest'}</span>
+                      <span>{isArabic ? 'إضافة / استيراد نزيل' : 'Add / Import Guest'}</span>
                     </button>
                   </td>
                 </tr>
               ) : (
-                filteredGuests.map((guest) => {
+                sortedAndFilteredGuests.map((guest) => {
                   const isRegistered = guest.diyafaStatus === 'registered';
                   const isMatchSuggested = guest.diyafaStatus === 'match_suggested';
+                  const isDiyafaOrigin = guest.platform === 'Diyafa' || guest.id.startsWith('DYF');
 
                   return (
                     <tr
@@ -668,7 +987,13 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
                       {/* 1. Guest Name */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="h-8 w-8 rounded-xl bg-[#e8eeff] text-[#004a60] font-bold text-xs flex items-center justify-center shrink-0">
+                          <div
+                            className={`h-8 w-8 rounded-xl font-bold text-xs flex items-center justify-center shrink-0 ${
+                              isDiyafaOrigin
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-[#e8eeff] text-[#004a60]'
+                            }`}
+                          >
                             {guest.name
                               .split(' ')
                               .map((n) => n[0])
@@ -701,12 +1026,29 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
                         </div>
                       </td>
 
-                      {/* 3. Source */}
+                      {/* 3. Platform & Source */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#e8eeff] text-[#004a60]">
-                          <Tag className="h-3 w-3" />
-                          {isArabic ? guest.sourceAr : guest.source}
-                        </span>
+                        <div className="space-y-1">
+                          {isDiyafaOrigin ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <UserCheck className="h-3 w-3 text-emerald-700" />
+                              <span>{isArabic ? 'ضيافة (منصة)' : 'Diyafa Platform'}</span>
+                            </span>
+                          ) : isRegistered ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                              <Link2 className="h-3 w-3 text-purple-700" />
+                              <span>{isArabic ? 'مدبّر ↔ ضيافة (مرتبط)' : 'Mudabbir ↔ Diyafa'}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-300">
+                              <Building2 className="h-3 w-3 text-sky-700" />
+                              <span>{isArabic ? 'مشغل مدبّر' : 'Mudabbir Operator'}</span>
+                            </span>
+                          )}
+                          <div className="text-[10px] text-[#70787d] truncate max-w-[140px]" title={isArabic ? guest.sourceAr : guest.source}>
+                            {isArabic ? guest.sourceAr : guest.source}
+                          </div>
+                        </div>
                       </td>
 
                       {/* 4. Operator */}
@@ -731,17 +1073,29 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
                         </div>
                       </td>
 
-                      {/* 6. Last Stay */}
-                      <td className="px-4 py-3.5">
-                        <div className="font-mono text-xs font-semibold text-[#161c27]">
-                          {guest.lastStayDate}
+                      {/* 6. Stays & Spend */}
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <div className="font-bold text-xs text-[#161c27] flex items-center gap-1">
+                          <span className="text-[#004a60] bg-[#e8eeff] px-1.5 py-0.2 rounded-full font-mono text-[10px]">
+                            {guest.totalStaysCount} {isArabic ? 'إقامة' : 'stays'}
+                          </span>
                         </div>
-                        <div className="text-[11px] text-[#70787d] truncate max-w-[130px]" title={guest.lastStayUnit}>
-                          {guest.lastStayUnit} ({guest.totalStaysCount} stays)
+                        <div className="text-[11px] font-mono text-emerald-800 font-semibold mt-0.5">
+                          {guest.totalSpendSar.toLocaleString()} SAR
                         </div>
                       </td>
 
-                      {/* 7. Diyafa Account Status (CRITICAL UI DISTINCTION) */}
+                      {/* 7. Last Stay */}
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <div className="font-mono text-xs font-semibold text-[#161c27]">
+                          {guest.lastStayDate}
+                        </div>
+                        <div className="text-[10px] text-[#70787d] truncate max-w-[120px]" title={guest.lastStayUnit}>
+                          {guest.lastStayUnit}
+                        </div>
+                      </td>
+
+                      {/* 8. Diyafa Account Status */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         {isRegistered && guest.diyafaAccount && (
                           <div>
@@ -784,12 +1138,12 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
                         )}
                       </td>
 
-                      {/* 8. Created / Imported Date */}
+                      {/* 9. Created / Registered Date */}
                       <td className="px-4 py-3.5 whitespace-nowrap text-[11px] font-mono text-[#70787d]">
                         {guest.createdDate}
                       </td>
 
-                      {/* 9. Actions */}
+                      {/* 10. Actions */}
                       <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
                           {/* View Profile */}
@@ -821,7 +1175,7 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
                               type="button"
                               onClick={() => handleUnlinkAccount(guest.id)}
                               className="p-1.5 rounded-lg border border-red-200 hover:bg-red-50 text-red-600 transition-colors cursor-pointer"
-                              title={isArabic ? 'فك الارتباط' : 'Unlink Diyafa'}
+                              title={isArabic ? 'فك الربط عن ضيافة' : 'Unlink Diyafa Account'}
                             >
                               <Unlink className="h-3.5 w-3.5" />
                             </button>
@@ -840,17 +1194,21 @@ export const ProfilesGuestsView: React.FC<ProfilesGuestsViewProps> = ({ isArabic
         <div className="p-4 border-t border-[#e3e8f9] bg-[#f9f9ff] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-[#70787d]">
           <div>
             {isArabic
-              ? `عرض ${filteredGuests.length} من إجمالي ${guests.length} نزيل مسجل في منصة خطط من مدبّر`
-              : `Showing ${filteredGuests.length} of ${guests.length} total Mudabbir guest records in Khetat`}
+              ? `عرض ${sortedAndFilteredGuests.length} من إجمالي ${guests.length} نزيل مسجل في منصة خطط (مدبّر + ضيافة)`
+              : `Showing ${sortedAndFilteredGuests.length} of ${guests.length} total guest records (Mudabbir + Diyafa)`}
           </div>
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 font-medium">
               <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
               {stats.registered} {isArabic ? 'مرتبط بضيافة' : 'Diyafa Linked'}
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 font-medium">
+              <span className="h-2 w-2 rounded-full bg-sky-500"></span>
+              {stats.mudabbirCount} {isArabic ? 'مشغلو مدبّر' : 'Mudabbir Operators'}
+            </span>
+            <span className="flex items-center gap-1.5 font-medium">
               <span className="h-2 w-2 rounded-full bg-slate-400"></span>
-              {stats.notRegistered} {isArabic ? 'مدبّر فقط' : 'Mudabbir Only'}
+              {stats.notRegistered} {isArabic ? 'غير مسجل بضيافة' : 'Unlinked Mudabbir'}
             </span>
           </div>
         </div>

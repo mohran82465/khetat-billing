@@ -104,14 +104,19 @@ export function App() {
       setActiveSubTab(subTab || 'contacts');
       return;
     }
-    if (view === 'guests') {
+    if (view === 'operators') {
       setActiveView('organization');
-      setActiveSubTab('guests');
+      setActiveSubTab(subTab || 'organization');
       return;
     }
-    if (view === 'guest_hub' || view === 'diyafa_guests' || view === 'diyafa_corporates') {
+    if (view === 'guests') {
       setActiveView('organization');
-      setActiveSubTab(subTab || (view === 'diyafa_corporates' ? 'diyafa_corporates' : 'diyafa_guests'));
+      setActiveSubTab(subTab || 'guests');
+      return;
+    }
+    if (view === 'corporate' || view === 'guest_hub' || view === 'diyafa_guests' || view === 'diyafa_corporates') {
+      setActiveView('organization');
+      setActiveSubTab(subTab || (view === 'corporate' || view === 'diyafa_corporates' ? 'corporate' : 'guests'));
       return;
     }
     setActiveView(view);

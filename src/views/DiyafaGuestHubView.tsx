@@ -67,13 +67,16 @@ export const DiyafaGuestHubView: React.FC<DiyafaGuestHubViewProps> = ({
   isArabic,
   onNavigateToMudabbirGuests,
 }) => {
+  const isCorp = activeSubTab === 'corporate' || activeSubTab === 'diyafa_corporates';
   const [tab, setTab] = useState<'diyafa_guests' | 'diyafa_corporates'>(
-    (activeSubTab === 'diyafa_corporates' ? 'diyafa_corporates' : 'diyafa_guests')
+    isCorp ? 'diyafa_corporates' : 'diyafa_guests'
   );
 
   React.useEffect(() => {
-    if (activeSubTab === 'diyafa_corporates' || activeSubTab === 'diyafa_guests') {
-      setTab(activeSubTab);
+    if (activeSubTab === 'corporate' || activeSubTab === 'diyafa_corporates') {
+      setTab('diyafa_corporates');
+    } else if (activeSubTab === 'diyafa_guests' || activeSubTab === 'guests') {
+      setTab('diyafa_guests');
     }
   }, [activeSubTab]);
 

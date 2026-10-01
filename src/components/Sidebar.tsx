@@ -16,6 +16,7 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   ShieldCheck,
   X,
   Search,
@@ -113,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: 'Hub',
       children: [
         {
-          id: 'operators_group',
+          id: 'operators',
           name: 'Operators',
           nameAr: 'المشغلون',
           isGroup: true,
@@ -123,15 +124,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال' },
           ],
         },
-        { id: 'guests', name: 'Guests', nameAr: 'النزلاء', badge: 'Mudabbir' },
         {
-          id: 'guest_group',
-          name: 'Guest',
-          nameAr: 'النزلاء (ضيافة)',
+          id: 'guests',
+          name: 'Guests',
+          nameAr: 'النزلاء',
           isGroup: true,
           children: [
-            { id: 'diyafa_guests', name: 'Guests', nameAr: 'النزلاء' },
-            { id: 'diyafa_corporates', name: 'Corporates', nameAr: 'الشركات' },
+            { id: 'guests', name: 'Guests', nameAr: 'النزلاء' },
+            { id: 'corporate', name: 'Corporate', nameAr: 'الشركات' },
           ],
         },
       ],
@@ -370,6 +370,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }));
   };
 
+  // State to track expanded sub-groups (level 2 groups inside sections like Operators and Guests)
+  const [expandedSubGroups, setExpandedSubGroups] = useState<Record<string, boolean>>({
+    operators: true,
+    guests: true,
+  });
+
+  const toggleSubGroup = (groupId: string) => {
+    setExpandedSubGroups((prev) => {
+      const current = prev[groupId] !== undefined ? prev[groupId] : true;
+      return {
+        ...prev,
+        [groupId]: !current,
+      };
+    });
+  };
+
   const handleSelectParent = (section: NavSection) => {
     if (!section.children || section.children.length === 0) {
       onSelectView(section.id);
@@ -579,41 +595,90 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {hasChildren && isExpanded && (
                 <div className="space-y-0.5 pl-5 rtl:pl-0 rtl:pr-5 border-l rtl:border-l-0 rtl:border-r border-[#e3e8f9] ml-4 rtl:ml-0 rtl:mr-4 my-1">
                   {section.children!.map((child) => {
-                    // If child is a subgroup (like Operators)
+                    // If child is a subgroup (like Operators or Guests)
                     if (child.isGroup && child.children) {
+                      const isGroupActive =
+                        (activeView === 'organization' || activeView === 'profiles') &&
+                        child.children.some(
+                          (c) =>
+                            activeSubTab === c.id ||
+                            (!activeSubTab && c.id === 'organization') ||
+                            (c.id === 'corporate' && (activeSubTab === 'corporate' || activeSubTab === 'diyafa_corporates')) ||
+                            (c.id === 'guests' && (activeSubTab === 'guests' || activeSubTab === 'diyafa_guests'))
+                        );
+                      const isSubGroupExpanded =
+                        expandedSubGroups[child.id] !== undefined
+                          ? expandedSubGroups[child.id]
+                          : true;
+
                       return (
                         <div key={child.id} className="space-y-0.5 pt-1.5 pb-1">
-                          <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold text-[#70787d] uppercase tracking-wider">
-                            <span>{isArabic ? child.nameAr : child.name}</span>
-                          </div>
-                          <div className="space-y-0.5 pl-3 rtl:pl-0 rtl:pr-3 border-l rtl:border-l-0 rtl:border-r border-[#e3e8f9] ml-1.5 rtl:ml-0 rtl:mr-1.5">
-                            {child.children.map((subChild) => {
-                              const isSubActive =
-                                (activeView === 'organization' || activeView === 'profiles') &&
-                                (activeSubTab === subChild.id ||
-                                  (!activeSubTab && subChild.id === 'organization'));
-                              return (
-                                <button
-                                  key={subChild.id}
-                                  onClick={() => handleSelectChild(section.id, subChild.id)}
-                                  className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] font-medium transition-all cursor-pointer ${
-                                    isSubActive
-                                      ? 'bg-[#e8eeff] font-bold text-[#004a60]'
-                                      : 'text-[#50585e] hover:bg-[#f1f3ff] hover:text-[#161c27]'
-                                  }`}
-                                >
-                                  <span className="truncate text-left rtl:text-right">
-                                    {isArabic ? subChild.nameAr : subChild.name}
-                                  </span>
-                                  {subChild.badge && (
-                                    <span className="rounded-full px-1.5 py-0.2 text-[8px] font-bold bg-[#e8eeff] text-[#004a60]">
-                                      {subChild.badge}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSubGroup(child.id);
+                              // If opening and not active, select the first sub-item
+                              if (!isSubGroupExpanded && !isGroupActive && child.children && child.children.length > 0) {
+                                handleSelectChild(section.id, child.children[0].id);
+                              }
+                            }}
+                            className={`group flex items-center justify-between w-full px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-left rtl:text-right cursor-pointer rounded-md transition-colors ${
+                              isGroupActive
+                                ? 'text-[#004a60] bg-[#e8eeff]/60'
+                                : 'text-[#70787d] hover:text-[#004a60] hover:bg-[#f1f3ff]'
+                            }`}
+                            aria-expanded={isSubGroupExpanded}
+                          >
+                            <span className="truncate">{isArabic ? child.nameAr : child.name}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[9px] font-semibold text-[#004a60] bg-[#e8eeff] px-1.5 py-0.2 rounded-full">
+                                {child.children.length}
+                              </span>
+                              <span className="text-[#70787d] group-hover:text-[#004a60] p-0.5 transition-transform">
+                                {isSubGroupExpanded ? (
+                                  <ChevronDown className="h-3 w-3" />
+                                ) : isArabic ? (
+                                  <ChevronLeft className="h-3 w-3" />
+                                ) : (
+                                  <ChevronRight className="h-3 w-3" />
+                                )}
+                              </span>
+                            </div>
+                          </button>
+
+                          {isSubGroupExpanded && (
+                            <div className="space-y-0.5 pl-3 rtl:pl-0 rtl:pr-3 border-l rtl:border-l-0 rtl:border-r border-[#e3e8f9] ml-1.5 rtl:ml-0 rtl:mr-1.5 transition-all">
+                              {child.children.map((subChild) => {
+                                const isSubActive =
+                                  (activeView === 'organization' || activeView === 'profiles') &&
+                                  (activeSubTab === subChild.id ||
+                                    (!activeSubTab && subChild.id === 'organization') ||
+                                    (subChild.id === 'corporate' && (activeSubTab === 'corporate' || activeSubTab === 'diyafa_corporates')) ||
+                                    (subChild.id === 'guests' && (activeSubTab === 'guests' || activeSubTab === 'diyafa_guests')));
+                                return (
+                                  <button
+                                    key={subChild.id}
+                                    onClick={() => handleSelectChild(section.id, subChild.id)}
+                                    className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] font-medium transition-all cursor-pointer ${
+                                      isSubActive
+                                        ? 'bg-[#e8eeff] font-bold text-[#004a60]'
+                                        : 'text-[#50585e] hover:bg-[#f1f3ff] hover:text-[#161c27]'
+                                    }`}
+                                  >
+                                    <span className="truncate text-left rtl:text-right">
+                                      {isArabic ? subChild.nameAr : subChild.name}
                                     </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
+                                    {subChild.badge && (
+                                      <span className="rounded-full px-1.5 py-0.2 text-[8px] font-bold bg-[#e8eeff] text-[#004a60]">
+                                        {subChild.badge}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       );
                     }
