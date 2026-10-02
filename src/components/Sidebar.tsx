@@ -111,8 +111,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       name: 'Profiles',
       nameAr: 'الملفات',
       icon: Building2,
-      badge: 'Hub',
+      badge: 'CRM',
       children: [
+        {
+          id: 'crm',
+          name: 'Profiles CRM',
+          nameAr: 'نظام إدارة العملاء (CRM)',
+          badge: 'Live',
+        },
         {
           id: 'operators',
           name: 'Operators',
@@ -138,8 +144,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'products',
-      name: 'Plans',
-      nameAr: 'الخطط والباقات',
+      name: 'Plans & Tiers',
+      nameAr: 'الخطط والمستويات',
       icon: Package,
       children: [
         { id: 'catalog', name: 'Plans', nameAr: 'الخطط' },
@@ -400,7 +406,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       } else if (section.id === 'sales') {
         onSelectView('quotations');
       } else if (section.id === 'organization' || section.id === 'profiles') {
-        onSelectView('organization', 'organization');
+        onSelectView('organization', 'crm');
       } else if (section.id === 'guest_hub') {
         onSelectView('guest_hub', 'diyafa_guests');
       } else if (section.id === 'task_manager') {
@@ -699,7 +705,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     } else if (section.id === 'organization' || section.id === 'profiles') {
                       isChildActive =
                         (activeView === 'organization' || activeView === 'profiles') &&
-                        (activeSubTab === child.id || (!activeSubTab && child.id === 'organization'));
+                        (activeSubTab === child.id || (!activeSubTab && (child.id === 'crm' || child.id === 'organization')));
                     } else if (section.id === 'guest_hub') {
                       isChildActive =
                         activeView === 'guest_hub' &&

@@ -16,6 +16,7 @@ import { RaiseBillNoPOModal } from '../components/RaiseBillNoPOModal';
 import { OrganizationProfileTab } from '../components/organization/OrganizationProfileTab';
 import { OrganizationContactsTab } from '../components/organization/OrganizationContactsTab';
 import { OrganizationBranchesTab } from '../components/organization/OrganizationBranchesTab';
+import { ProfilesCrmView } from '../components/profiles/ProfilesCrmView';
 import {
   OrganizationBranch,
   INITIAL_BRANCHES,
@@ -72,6 +73,8 @@ import {
   MapPin,
   ExternalLink,
   UserCheck,
+  Sparkles,
+  UserPlus,
 } from 'lucide-react';
 
 interface SitemapModuleViewProps {
@@ -317,10 +320,11 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     profiles: {
       title: 'Profiles',
       titleAr: 'الملفات',
-      desc: 'Central platform managing profiles: Operators (Organizations, Properties, Contacts) and Guests (Guests, Corporate).',
-      descAr: 'المنصة المركزية لإدارة الملفات: المشغلون (المؤسسات، العقارات، جهات الاتصال) والنزلاء (النزلاء، الشركات).',
+      desc: 'Central CRM platform managing profiles: Profiles CRM Hub, Operators (Organizations, Properties, Contacts), and Guests (Guests, Corporate).',
+      descAr: 'المنصة المركزية لإدارة الملفات ونظام CRM: إدارة المستخدمين والعملاء المحتملين، المشغلون، والنزلاء.',
       icon: Building2,
       tabs: [
+        { id: 'crm', name: 'Profiles CRM', nameAr: 'نظام إدارة العملاء (CRM)', count: '6' },
         { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات', count: '8' },
         { id: 'branches', name: 'Properties', nameAr: 'العقارات والفروع', count: orgBranches.length.toString() },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: orgContacts.length.toString() },
@@ -331,10 +335,11 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     organization: {
       title: 'Profiles',
       titleAr: 'الملفات',
-      desc: 'Central platform managing profiles: Operators (Organizations, Properties, Contacts) and Guests (Guests, Corporate).',
-      descAr: 'المنصة المركزية لإدارة الملفات: المشغلون (المؤسسات، العقارات، جهات الاتصال) والنزلاء (النزلاء، الشركات).',
+      desc: 'Central CRM platform managing profiles: Profiles CRM Hub, Operators (Organizations, Properties, Contacts), and Guests (Guests, Corporate).',
+      descAr: 'المنصة المركزية لإدارة الملفات ونظام CRM: إدارة المستخدمين والعملاء المحتملين، المشغلون، والنزلاء.',
       icon: Building2,
       tabs: [
+        { id: 'crm', name: 'Profiles CRM', nameAr: 'نظام إدارة العملاء (CRM)', count: '6' },
         { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات', count: '8' },
         { id: 'branches', name: 'Properties', nameAr: 'العقارات والفروع', count: orgBranches.length.toString() },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: orgContacts.length.toString() },
@@ -402,7 +407,7 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
       icon: Package,
       tabs: [
         { id: 'catalog', name: 'Plans', nameAr: 'الخطط', count: '3' },
-        { id: 'categories', name: 'Tiers', nameAr: 'المستويات', count: '3' },
+        { id: 'categories', name: 'Tiers', nameAr: 'المستويات', count: '7' },
       ],
     },
     procurement: {
@@ -611,9 +616,14 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
   }, [subTab, module]);
 
   const isProfiles = module === 'organization' || module === 'profiles';
+  const isCrmSubRoute = activeTab === 'crm' || (!activeTab && isProfiles);
   const isGuestsSubRoute =
     ['guests', 'corporate', 'diyafa_corporates', 'diyafa_guests'].includes(activeTab);
-  const profilesLevel2: 'operators' | 'guests' = isGuestsSubRoute ? 'guests' : 'operators';
+  const profilesLevel2: 'crm' | 'operators' | 'guests' = isCrmSubRoute
+    ? 'crm'
+    : isGuestsSubRoute
+    ? 'guests'
+    : 'operators';
 
   const Icon = currentConfig.icon;
 
@@ -702,10 +712,37 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
       {isProfiles ? (
         <div className="bg-white border-b border-[#e3e8f9] px-4 lg:px-6 sticky top-0 z-10 shadow-xs">
           <div className="max-w-7xl mx-auto py-2.5 space-y-2.5">
-            {/* LEVEL 2 SUB-ROUTES: Operators vs Guests */}
+            {/* LEVEL 2 SUB-ROUTES: CRM vs Operators vs Guests */}
             <div className="flex items-center justify-between flex-wrap gap-2.5">
               <div className="flex items-center gap-1.5 p-1 bg-[#f1f3ff] rounded-xl border border-[#e3e8f9]">
-                {/* Level 2 Sub-Route 1: Operators */}
+                {/* Level 2 Sub-Route 1: Profiles CRM */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (profilesLevel2 !== 'crm') {
+                      setActiveTab('crm');
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    profilesLevel2 === 'crm'
+                      ? 'bg-[#004a60] text-white shadow-xs'
+                      : 'text-[#50585e] hover:text-[#004a60] hover:bg-white/60'
+                  }`}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>{isArabic ? 'نظام CRM للملفات' : 'Profiles CRM'}</span>
+                  <span
+                    className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                      profilesLevel2 === 'crm'
+                        ? 'bg-white/20 text-white'
+                        : 'bg-[#e8eeff] text-[#004a60]'
+                    }`}
+                  >
+                    6
+                  </span>
+                </button>
+
+                {/* Level 2 Sub-Route 2: Operators */}
                 <button
                   type="button"
                   onClick={() => {
@@ -732,7 +769,7 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
                   </span>
                 </button>
 
-                {/* Level 2 Sub-Route 2: Guests */}
+                {/* Level 2 Sub-Route 3: Guests */}
                 <button
                   type="button"
                   onClick={() => {
@@ -767,28 +804,48 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
                 </span>
                 <span className="text-[#c3cce6]">/</span>
                 <span className="font-semibold text-[#161c27]">
-                  {profilesLevel2 === 'operators'
+                  {profilesLevel2 === 'crm'
+                    ? isArabic ? 'نظام إدارة العملاء (CRM)' : 'Profiles CRM'
+                    : profilesLevel2 === 'operators'
                     ? isArabic ? 'المشغلون (Operators)' : 'Operators'
                     : isArabic ? 'النزلاء (Guests)' : 'Guests'}
                 </span>
-                <span className="text-[#c3cce6]">/</span>
-                <span className="font-bold text-[#004a60] underline">
-                  {activeTab === 'organization'
-                    ? isArabic ? 'المؤسسات' : 'Organizations'
-                    : activeTab === 'branches'
-                    ? isArabic ? 'العقارات والفروع' : 'Properties'
-                    : activeTab === 'contacts'
-                    ? isArabic ? 'جهات الاتصال' : 'Contacts'
-                    : activeTab === 'corporate' || activeTab === 'diyafa_corporates'
-                    ? isArabic ? 'الشركات' : 'Corporate'
-                    : isArabic ? 'النزلاء' : 'Guests'}
-                </span>
+                {profilesLevel2 !== 'crm' && (
+                  <>
+                    <span className="text-[#c3cce6]">/</span>
+                    <span className="font-bold text-[#004a60] underline">
+                      {activeTab === 'organization'
+                        ? isArabic ? 'المؤسسات' : 'Organizations'
+                        : activeTab === 'branches'
+                        ? isArabic ? 'العقارات والفروع' : 'Properties'
+                        : activeTab === 'contacts'
+                        ? isArabic ? 'جهات الاتصال' : 'Contacts'
+                        : activeTab === 'corporate' || activeTab === 'diyafa_corporates'
+                        ? isArabic ? 'الشركات' : 'Corporate'
+                        : isArabic ? 'النزلاء' : 'Guests'}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
             {/* LEVEL 3 SUB-ROUTES TABS */}
             <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pt-1 border-t border-[#f1f3ff] no-scrollbar">
-              {profilesLevel2 === 'operators' ? (
+              {profilesLevel2 === 'crm' ? (
+                <div className="flex items-center justify-between w-full py-1 text-xs text-[#70787d]">
+                  <span className="flex items-center gap-2 font-medium">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                    <span>
+                      {isArabic
+                        ? 'إدارة متكاملة لبيانات المشغلين والنزلاء، وتدقيق طلبات منصة مدبّر الذاتية، ومزامنة التعديلات مع المستخدمين'
+                        : 'Integrated CRM: ingest user submissions from Mudabbir, adjust terms, and push sync to user portal.'}
+                    </span>
+                  </span>
+                  <span className="text-[11px] font-bold text-[#004a60] bg-[#e8eeff] px-2.5 py-0.5 rounded-full shrink-0">
+                    {isArabic ? 'بوابة المزامنة نشطة ⚡' : 'Live Mudabbir Sync ⚡'}
+                  </span>
+                </div>
+              ) : profilesLevel2 === 'operators' ? (
                 <>
                   <button
                     type="button"
@@ -935,9 +992,17 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
 
       {/* Module Content */}
       <div className="p-4 lg:p-6 max-w-7xl mx-auto w-full flex-1">
-        {/* PROFILES MODULE (3-LEVEL NAVIGATION: OPERATORS & GUESTS) */}
+        {/* PROFILES MODULE (3-LEVEL NAVIGATION: CRM, OPERATORS & GUESTS) */}
         {isProfiles && (
           <div className="space-y-4">
+            {/* LEVEL 2: PROFILES CRM HUB */}
+            {(activeTab === 'crm' || (!activeTab && isProfiles)) && (
+              <ProfilesCrmView
+                isArabic={isArabic}
+                onNavigateToSection={(sec) => setActiveTab(sec)}
+              />
+            )}
+
             {/* LEVEL 2: OPERATORS -> LEVEL 3: ORGANIZATIONS */}
             {activeTab === 'organization' && (
               <OrganizationProfileTab

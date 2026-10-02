@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Building2,
   Home,
@@ -25,13 +25,26 @@ import {
   Percent,
   Plus,
   Trash2,
+  Layers,
+  Search,
+  ExternalLink,
+  Target,
+  ArrowUpDown,
+  Filter,
+  CheckSquare,
+  Package,
 } from 'lucide-react';
 import {
   PropertyPlan,
+  PlanTier,
   DEFAULT_PLANS,
+  DEFAULT_TIERS,
   getStoredPlans,
   saveStoredPlans,
+  getStoredTiers,
+  saveStoredTiers,
   calculatePlanCost,
+  getTiersForPlan,
 } from '../data/plansConfig';
 import { CreatePlanFormModal } from './CreatePlanFormModal';
 
@@ -53,6 +66,7 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
   onCloseCreatePlan,
 }) => {
   const [plans, setPlans] = useState<PropertyPlan[]>(() => getStoredPlans());
+  const [tiers, setTiers] = useState<PlanTier[]>(() => getStoredTiers());
   const [currentTab, setCurrentTab] = useState<string>(activeSubTab);
   const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
 
@@ -63,7 +77,7 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
     }
   }, [activeSubTab]);
 
-  // Simulator state
+  // Simulator state for Plans
   const [simulatedProperties, setSimulatedProperties] = useState<number>(12);
   const [selectedSimPlanId, setSelectedSimPlanId] = useState<string>('building-plans');
 
@@ -76,6 +90,16 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
   const [propCountToSubscribe, setPropCountToSubscribe] = useState<number>(5);
   const [subscribeSuccess, setSubscribeSuccess] = useState<boolean>(false);
 
+  // TIERS TAB STATE
+  const [selectedPlanFilter, setSelectedPlanFilter] = useState<string>('all');
+  const [tierSearchQuery, setTierSearchQuery] = useState<string>('');
+  const [editingTier, setEditingTier] = useState<PlanTier | null>(null);
+  const [isCreateTierModalOpen, setIsCreateTierModalOpen] = useState(false);
+  const [newTierPreselectedPlanId, setNewTierPreselectedPlanId] = useState<string>('building-plans');
+
+  // Quick repoint dropdown state
+  const [repointDropdownTierId, setRepointDropdownTierId] = useState<string | null>(null);
+
   const handleTabChange = (tabId: string) => {
     setCurrentTab(tabId);
     if (onNavigateToSubTab) {
@@ -83,7 +107,23 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
     }
   };
 
-  const handleToggleStatus = (planId: string) => {
+  const triggerSuccessNotice = (msg: string) => {
+    setSaveSuccessMsg(msg);
+    setTimeout(() => {
+      setSaveSuccessMsg(null);
+    }, 4000);
+  };
+
+  // Helper icon for plan id
+  const getPlanIcon = (planId: string) => {
+    if (planId.includes('bld') || planId.includes('building')) return Building2;
+    if (planId.includes('hom') || planId.includes('home')) return Home;
+    if (planId.includes('chl') || planId.includes('chalet')) return Tent;
+    return Building2;
+  };
+
+  // --- PLAN HANDLERS ---
+  const handleTogglePlanStatus = (planId: string) => {
     const updated = plans.map((p) => {
       if (p.id === planId) {
         let newStatus: PropertyPlan['status'] = 'active';
@@ -113,7 +153,7 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
     setPlans(updated);
     saveStoredPlans(updated);
     triggerSuccessNotice(
-      isArabic ? 'تم تحديث حالة الباقة بنجاح' : 'Plan status updated successfully'
+      isArabic ? 'تم تحديث حالة الخطة بنجاح' : 'Plan status updated successfully'
     );
   };
 
@@ -126,15 +166,6 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
       isArabic
         ? `تم حفظ وتحديث إعدادات ${updatedPlan.nameAr} بنجاح`
         : `Successfully saved ${updatedPlan.name} configuration`
-    );
-  };
-
-  const handleResetDefaults = () => {
-    setPlans(DEFAULT_PLANS);
-    saveStoredPlans(DEFAULT_PLANS);
-    setEditingPlan(null);
-    triggerSuccessNotice(
-      isArabic ? 'تمت استعادة الإعدادات الافتراضية للخطط' : 'Restored default plan configuration'
     );
   };
 
@@ -151,100 +182,326 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
     );
   };
 
-  const triggerSuccessNotice = (msg: string) => {
-    setSaveSuccessMsg(msg);
-    setTimeout(() => {
-      setSaveSuccessMsg(null);
-    }, 4000);
+  const handleResetPlansDefaults = () => {
+    setPlans(DEFAULT_PLANS);
+    saveStoredPlans(DEFAULT_PLANS);
+    setEditingPlan(null);
+    triggerSuccessNotice(
+      isArabic ? 'تمت استعادة الإعدادات الافتراضية للخطط' : 'Restored default plan configuration'
+    );
   };
 
-  const selectedSimPlan = plans.find((p) => p.id === selectedSimPlanId) || plans[0];
-  const simResult = calculatePlanCost(selectedSimPlan, simulatedProperties);
+  // --- TIER HANDLERS ---
+  const handleToggleTierStatus = (tierId: string) => {
+    const updated = tiers.map((t) => {
+      if (t.id === tierId) {
+        let newStatus: PlanTier['status'] = 'active';
+        if (t.status === 'active') {
+          newStatus = 'disabled';
+        } else if (t.status === 'disabled') {
+          newStatus = 'coming_soon';
+        } else {
+          newStatus = 'active';
+        }
+        return { ...t, status: newStatus };
+      }
+      return t;
+    });
 
-  const getPlanIcon = (id: string) => {
-    if (id === 'building-plans') return Building2;
-    if (id === 'home-plans') return Home;
-    return Tent;
+    setTiers(updated);
+    saveStoredTiers(updated);
+    triggerSuccessNotice(
+      isArabic ? 'تم تحديث حالة المستوى بنجاح' : 'Tier status updated successfully'
+    );
   };
+
+  // Re-pointing: Change the plan a tier points to
+  const handleRepointTier = (tierId: string, newPlanId: string) => {
+    const targetPlan = plans.find((p) => p.id === newPlanId);
+    if (!targetPlan) return;
+
+    const updated = tiers.map((t) => {
+      if (t.id === tierId) {
+        return {
+          ...t,
+          planId: targetPlan.id,
+          planName: targetPlan.name,
+          planNameAr: targetPlan.nameAr,
+        };
+      }
+      return t;
+    });
+
+    setTiers(updated);
+    saveStoredTiers(updated);
+    setRepointDropdownTierId(null);
+    triggerSuccessNotice(
+      isArabic
+        ? `تمت إعادة توجيه المستوى ليشاور على الخطة: ${targetPlan.nameAr} بنجاح`
+        : `Tier repointed to plan: ${targetPlan.name} successfully`
+    );
+  };
+
+  const handleSaveTier = (updatedTier: PlanTier) => {
+    const targetPlan = plans.find((p) => p.id === updatedTier.planId);
+    const enriched: PlanTier = {
+      ...updatedTier,
+      planName: targetPlan?.name || updatedTier.planName,
+      planNameAr: targetPlan?.nameAr || updatedTier.planNameAr,
+    };
+
+    const updated = tiers.map((t) => (t.id === enriched.id ? enriched : t));
+    setTiers(updated);
+    saveStoredTiers(updated);
+    setEditingTier(null);
+    triggerSuccessNotice(
+      isArabic
+        ? `تم تحديث المستوى "${enriched.nameAr}" وربطه بالخطة (${targetPlan?.nameAr || enriched.planId})`
+        : `Updated tier "${enriched.name}" pointing to plan (${targetPlan?.name || enriched.planId})`
+    );
+  };
+
+  const handleCreateTier = (newTier: PlanTier) => {
+    const targetPlan = plans.find((p) => p.id === newTier.planId);
+    const enriched: PlanTier = {
+      ...newTier,
+      planName: targetPlan?.name || newTier.planName,
+      planNameAr: targetPlan?.nameAr || newTier.planNameAr,
+    };
+
+    const updated = [...tiers, enriched];
+    setTiers(updated);
+    saveStoredTiers(updated);
+    setIsCreateTierModalOpen(false);
+    triggerSuccessNotice(
+      isArabic
+        ? `تم إنشاء المستوى "${enriched.nameAr}" وتعيين إشارته للخطة (${targetPlan?.nameAr || enriched.planId})`
+        : `Created tier "${enriched.name}" pointing to plan (${targetPlan?.name || enriched.planId})`
+    );
+  };
+
+  const handleDeleteTier = (tierId: string) => {
+    const target = tiers.find((t) => t.id === tierId);
+    if (!target) return;
+    if (
+      window.confirm(
+        isArabic
+          ? `هل أنت متأكد من حذف المستوى "${target.nameAr}"؟`
+          : `Are you sure you want to delete tier "${target.name}"?`
+      )
+    ) {
+      const updated = tiers.filter((t) => t.id !== tierId);
+      setTiers(updated);
+      saveStoredTiers(updated);
+      triggerSuccessNotice(
+        isArabic ? `تم حذف المستوى بنجاح` : `Tier deleted successfully`
+      );
+    }
+  };
+
+  const handleResetTiersDefaults = () => {
+    setTiers(DEFAULT_TIERS);
+    saveStoredTiers(DEFAULT_TIERS);
+    setEditingTier(null);
+    triggerSuccessNotice(
+      isArabic
+        ? 'تمت استعادة المستويات الافتراضية وربطها بالخطط الأصلية'
+        : 'Restored default tiers and plan references'
+    );
+  };
+
+  // Jump from Plan to Tiers filtered by that Plan
+  const handleJumpToPlanTiers = (planId: string) => {
+    setSelectedPlanFilter(planId);
+    handleTabChange('categories');
+  };
+
+  // Filtered tiers for the Tiers tab
+  const filteredTiers = useMemo(() => {
+    return tiers.filter((tier) => {
+      // Plan filter
+      if (selectedPlanFilter !== 'all' && tier.planId !== selectedPlanFilter) {
+        return false;
+      }
+      // Search filter
+      if (tierSearchQuery.trim()) {
+        const q = tierSearchQuery.toLowerCase();
+        const matchesName =
+          tier.name.toLowerCase().includes(q) || tier.nameAr.toLowerCase().includes(q);
+        const matchesCode = tier.code.toLowerCase().includes(q);
+        const matchesPlan =
+          (tier.planName && tier.planName.toLowerCase().includes(q)) ||
+          (tier.planNameAr && tier.planNameAr.toLowerCase().includes(q)) ||
+          tier.planId.toLowerCase().includes(q);
+        const matchesDesc =
+          (tier.description && tier.description.toLowerCase().includes(q)) ||
+          (tier.descriptionAr && tier.descriptionAr.toLowerCase().includes(q));
+        return matchesName || matchesCode || matchesPlan || matchesDesc;
+      }
+      return true;
+    });
+  }, [tiers, selectedPlanFilter, tierSearchQuery]);
+
+  // Selected plan in simulator
+  const selectedSimPlan =
+    plans.find((p) => p.id === selectedSimPlanId) || plans[0] || DEFAULT_PLANS[0];
+  const simCost = calculatePlanCost(selectedSimPlan, simulatedProperties);
 
   return (
     <div className="space-y-6">
-      {/* Toast Notice */}
+      {/* Toast Notification */}
       {saveSuccessMsg && (
-        <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-xl flex items-center justify-between shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-2 text-xs font-semibold">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span>{saveSuccessMsg}</span>
-          </div>
-          <button
-            onClick={() => setSaveSuccessMsg(null)}
-            className="text-emerald-700 hover:text-emerald-900"
-          >
-            <X className="h-4 w-4" />
-          </button>
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-[#004a60] text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-white/20 animate-fade-in text-xs font-semibold">
+          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+          <span>{saveSuccessMsg}</span>
         </div>
       )}
 
       {/* Hero Header */}
-      <div className="bg-gradient-to-r from-[#003848] via-[#004a60] to-[#0a5870] rounded-2xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-12 -translate-y-8 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-        <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-white text-xs font-medium mb-3 backdrop-blur-xs">
-            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-            <span>{isArabic ? 'هيكل الخطط والتسعير الذكي' : 'Modular Plan Catalog & Tiered Pricing'}</span>
+      <div className="rounded-2xl bg-gradient-to-r from-[#003848] via-[#004a60] to-[#0b637d] p-6 lg:p-8 text-white shadow-lg relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+        <div className="relative z-10 max-w-4xl">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-white/15 text-white backdrop-blur-xs border border-white/20">
+              <Package className="h-3.5 w-3.5" />
+              <span>{isArabic ? 'هيكلة منظومة الخطط والمستويات' : 'Plans & Tiers Architecture'}</span>
+            </span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-400/30">
+              <Check className="h-3 w-3" />
+              <span>{isArabic ? 'مفصولة ومنظمة بالكامل' : 'Decoupled & Referenced'}</span>
+            </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            {isArabic ? 'اختر باقتك' : 'Choose Your Plan'}
-          </h1>
-          <p className="text-white/85 text-sm sm:text-base mt-2 leading-relaxed font-normal">
+
+          <h2 className="text-xl lg:text-2xl font-black tracking-tight text-white mb-2">
             {isArabic
-              ? 'حدد الباقة التي تناسب حجم واحتياجات عقاراتك. باقات مخصصة للفنادق والشقق والمنازل والشاليهات مع سقف تسعير ثابت.'
-              : 'Select the plan that matches your property size and needs. Flexible pricing for hotels, serviced apartments, villas, and chalets.'}
+              ? 'الخطط والمستويات (Plans & Tiers)'
+              : 'Plans & Tiers Management'}
+          </h2>
+          <p className="text-xs lg:text-sm text-white/85 leading-relaxed max-w-2xl">
+            {isArabic
+              ? 'فصل تام بين الخطط والمستويات: الخطط تحدد نوع الخدمة وحزمة التغطية الفندقية، بينما يشاور كل مستوى على خطته التابعة مع مرونة كاملة في تعيين الحدود والأسعار.'
+              : 'Complete decoupling between Plans and Tiers: Plans define asset coverage and core suites, while each Tier explicitly points to its associated Plan with flexible pricing and property limits.'}
           </p>
 
-          {/* Quick Sub-navigation bar inside Plans */}
+          {/* Sub-navigation bar inside Plans */}
           <div className="flex flex-wrap items-center justify-between gap-3 mt-6 pt-5 border-t border-white/15">
             <div className="flex flex-wrap items-center gap-2">
               {[
-                { id: 'catalog', name: 'Plans', nameAr: 'الخطط' },
-                { id: 'categories', name: 'Tiers', nameAr: 'المستويات' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    currentTab === tab.id || (tab.id === 'catalog' && (currentTab === 'plans' || (currentTab !== 'categories' && currentTab !== 'tiers')))
-                      ? 'bg-white text-[#004a60] shadow-xs font-bold'
-                      : 'bg-white/10 text-white/90 hover:bg-white/20'
-                  }`}
-                >
-                  {isArabic ? tab.nameAr : tab.name}
-                </button>
-              ))}
+                {
+                  id: 'catalog',
+                  name: 'Plans',
+                  nameAr: 'الخطط',
+                  count: plans.length.toString(),
+                  icon: Package,
+                },
+                {
+                  id: 'categories',
+                  name: 'Tiers',
+                  nameAr: 'المستويات',
+                  count: tiers.length.toString(),
+                  icon: Layers,
+                },
+              ].map((tab) => {
+                const TabIcon = tab.icon;
+                const isSelected =
+                  currentTab === tab.id ||
+                  (tab.id === 'catalog' &&
+                    (currentTab === 'plans' ||
+                      (currentTab !== 'categories' && currentTab !== 'tiers')));
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-white text-[#004a60] shadow-md font-bold'
+                        : 'bg-white/10 text-white/90 hover:bg-white/20'
+                    }`}
+                  >
+                    <TabIcon className="h-3.5 w-3.5" />
+                    <span>{isArabic ? tab.nameAr : tab.name}</span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        isSelected
+                          ? 'bg-[#004a60]/10 text-[#004a60]'
+                          : 'bg-white/20 text-white'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsCreatePlanModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 text-xs font-bold shadow-xs transition-all cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>{isArabic ? 'إنشاء خطة جديدة (Form)' : 'Create Plan (Form)'}</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setNewTierPreselectedPlanId(plans[0]?.id || 'building-plans');
+                  setIsCreateTierModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white px-3.5 py-2 text-xs font-bold border border-white/25 shadow-xs transition-all cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5 text-amber-300" />
+                <span>{isArabic ? '+ إنشاء مستوى جديد (Tier)' : '+ Create New Tier'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsCreatePlanModalOpen(true)}
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 text-xs font-bold shadow-md transition-all cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>{isArabic ? '+ إنشاء خطة جديدة (Plan)' : '+ Create New Plan'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* TAB 1: PLANS (CHOOSE YOUR PLAN) */}
-      {(currentTab === 'catalog' || currentTab === 'plans' || (currentTab !== 'categories' && currentTab !== 'tiers')) && (
+      {/* ========================================================================= */}
+      {/* TAB 1: PLANS (الخطط) */}
+      {/* ========================================================================= */}
+      {(currentTab === 'catalog' ||
+        currentTab === 'plans' ||
+        (currentTab !== 'categories' && currentTab !== 'tiers')) && (
         <div className="space-y-6">
-          {/* Main 3 Plans Cards Grid */}
+          {/* Section Description */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-[#e3e8f9] shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-[#e8eeff] text-[#004a60] flex items-center justify-center font-bold">
+                <Package className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#161c27]">
+                  {isArabic ? 'كتالوج الخطط الأساسية' : 'Core Plans Catalog'}
+                </h3>
+                <p className="text-xs text-[#70787d]">
+                  {isArabic
+                    ? 'تعرض كل خطة تفاصيل أصولها ومستوياتها التابعة المرتبطة بها'
+                    : 'Each plan represents a core hospitality tier suite with linked child tiers'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleResetPlansDefaults}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#70787d] hover:text-[#004a60] px-3 py-1.5 rounded-lg border border-[#e3e8f9] hover:bg-gray-50 cursor-pointer"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>{isArabic ? 'استعادة الخطط الافتراضية' : 'Reset Plans'}</span>
+            </button>
+          </div>
+
+          {/* Main Plans Cards Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {plans.map((plan, idx) => {
+            {plans.map((plan) => {
               const Icon = getPlanIcon(plan.id);
               const isActive = plan.status === 'active';
               const isComingSoon = plan.status === 'coming_soon';
               const isDisabled = plan.status === 'disabled';
+              const linkedTiers = getTiersForPlan(plan.id, tiers);
 
               return (
                 <div
@@ -258,197 +515,188 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
                   }`}
                 >
                   {/* Top Popular or Available Banner */}
-                  {plan.popular && isActive && (
-                    <div className="bg-[#004a60] text-white text-center py-1 text-[11px] font-bold tracking-wider uppercase">
-                      {isArabic ? '★ الأكثر طلباً ومتاحة الآن' : '★ Most Popular & Available Now'}
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between px-5 pt-4 pb-2">
+                    <span className="text-[11px] font-mono font-bold text-[#70787d] bg-gray-100 px-2 py-0.5 rounded-md">
+                      {plan.code}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                        isActive
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : isComingSoon
+                          ? 'bg-amber-100 text-amber-900'
+                          : 'bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      {isArabic ? plan.badgeAr || plan.badge : plan.badge}
+                    </span>
+                  </div>
 
-                  <div className="p-6">
-                    {/* Header Row: Category Badge & Status Indicator */}
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                            isActive
-                              ? 'bg-[#e8eeff] text-[#004a60]'
-                              : 'bg-gray-100 text-gray-500'
-                          }`}
-                        >
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-bold font-mono tracking-wider text-[#70787d] uppercase">
-                            {isArabic ? `فئة #${idx + 1}` : `Tier #${idx + 1}`}
-                          </span>
-                        </div>
+                  {/* Plan Card Body */}
+                  <div className="p-5 flex-1 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-[#e8eeff] text-[#004a60] flex items-center justify-center shrink-0 shadow-xs">
+                        <Icon className="h-6 w-6" />
                       </div>
-
-                      {/* Status Tag */}
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleToggleStatus(plan.id)}
-                          title={isArabic ? 'اضغط لتغيير الحالة (متاحة / قريباً / معطلة)' : 'Click to cycle status'}
-                          className={`text-[11px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 transition-all ${
-                            isActive
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              : isComingSoon
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                              : 'bg-gray-200 text-gray-700 border border-gray-300'
-                          }`}
-                        >
-                          {isActive && <CheckCircle2 className="h-3 w-3 text-emerald-600" />}
-                          {isComingSoon && <Clock className="h-3 w-3 text-amber-600" />}
-                          {isDisabled && <AlertCircle className="h-3 w-3 text-gray-500" />}
-                          <span>
-                            {isArabic
-                              ? plan.status === 'active'
-                                ? 'متاحة الآن'
-                                : plan.status === 'coming_soon'
-                                ? 'قريباً'
-                                : 'معطلة'
-                              : plan.status === 'active'
-                              ? 'Available'
-                              : plan.status === 'coming_soon'
-                              ? 'Coming Soon'
-                              : 'Disabled'}
-                          </span>
-                        </button>
+                      <div>
+                        <h4 className="text-base font-black text-[#161c27]">
+                          {isArabic ? plan.nameAr : plan.name}
+                        </h4>
+                        <p className="text-xs font-semibold text-[#004a60] mt-0.5">
+                          {isArabic ? plan.subtitleAr : plan.subtitle}
+                        </p>
                       </div>
                     </div>
 
-                    {/* Plan Name & Target Properties Subtitle */}
-                    <h3 className="text-xl font-bold text-[#161c27]">
-                      {isArabic ? plan.nameAr : plan.name}
-                    </h3>
-                    <p className="text-xs font-semibold text-[#004a60] mt-0.5">
-                      {isArabic ? plan.subtitleAr : plan.subtitle}
+                    <p className="text-xs text-[#525e65] leading-relaxed line-clamp-3">
+                      {isArabic ? plan.descriptionAr : plan.description}
                     </p>
 
-                    {/* Target property tags */}
-                    <div className="flex flex-wrap gap-1.5 mt-2.5">
-                      {(isArabic ? plan.propertyTypesAr : plan.propertyTypes).map((pt, i) => (
-                        <span
-                          key={i}
-                          className="text-[10px] font-medium bg-[#f1f3ff] text-[#40484d] px-2 py-0.5 rounded-md"
-                        >
-                          {pt}
-                        </span>
-                      ))}
+                    {/* Target Property Types */}
+                    <div className="space-y-1.5 pt-2 border-t border-[#f0f3fa]">
+                      <span className="text-[11px] font-bold text-[#70787d] block">
+                        {isArabic ? 'أنواع العقارات المدعومة:' : 'Supported Property Types:'}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(isArabic ? plan.propertyTypesAr : plan.propertyTypes).map((pt, i) => (
+                          <span
+                            key={i}
+                            className="text-[10px] bg-[#f5f7fc] text-[#2c3840] border border-[#e3e8f9] px-2 py-0.5 rounded-md font-medium"
+                          >
+                            {pt}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Pricing Highlight Box */}
-                    <div className="mt-4 p-4 rounded-xl bg-[#f9f9ff] border border-[#e3e8f9]">
-                      {plan.id === 'building-plans' ? (
-                        <div>
-                          <div className="text-[11px] font-bold text-[#161c27] mb-1.5 flex items-center justify-between">
-                            <span>{isArabic ? 'هيكل التسعير للوحدات:' : 'Tiered Pricing Model:'}</span>
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
-                              {isArabic ? 'سقف ثابت' : 'Fixed Cap'}
+                    {/* Baseline Pricing Snapshot */}
+                    <div className="p-3 rounded-xl bg-[#f8fbff] border border-[#d8e6f5] space-y-1 text-xs">
+                      <div className="flex items-center justify-between text-[#70787d]">
+                        <span>{isArabic ? 'معدل التسعير الأساسي:' : 'Baseline Rate:'}</span>
+                        <span className="font-bold text-[#004a60] font-mono">
+                          {plan.tier1Rate} {plan.currency}{' '}
+                          <span className="text-[10px] font-normal">
+                            ({isArabic ? plan.billingFrequencyAr : plan.billingFrequency})
+                          </span>
+                        </span>
+                      </div>
+                      {plan.pricingModel === 'tiered_capped' && (
+                        <div className="flex items-center justify-between text-[#70787d]">
+                          <span>{isArabic ? 'سقف السعر الأقصى:' : 'Capped Price:'}</span>
+                          <span className="font-bold text-emerald-700 font-mono">
+                            {plan.cappedRate.toLocaleString()} {plan.currency}{' '}
+                            <span className="text-[10px] font-normal">
+                              ({plan.tierLimit}+ {isArabic ? 'عقار' : 'units'})
                             </span>
-                          </div>
-                          <div className="space-y-1.5 text-xs text-[#161c27]">
-                            <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-[#e3e8f9]/70">
-                              <span className="text-[#70787d]">
-                                {isArabic ? `من 1 إلى ${plan.tierLimit} عقار:` : `1 to ${plan.tierLimit} Properties:`}
-                              </span>
-                              <span className="font-extrabold text-[#004a60]">
-                                {plan.tier1Rate} {plan.currency}{' '}
-                                <span className="text-[10px] text-[#70787d] font-normal">
-                                  {isArabic ? '/ عقار' : '/ property'}
-                                </span>
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between bg-emerald-50/70 p-2 rounded-lg border border-emerald-200">
-                              <span className="text-emerald-900 font-medium">
-                                {isArabic ? `أكثر من ${plan.tierLimit}+ عقار:` : `${plan.tierLimit}+ Properties:`}
-                              </span>
-                              <span className="font-extrabold text-emerald-800">
-                                {plan.cappedRate.toLocaleString()} {plan.currency}{' '}
-                                <span className="text-[10px] font-normal">
-                                  {isArabic ? '(سعر سقف ثابت)' : '(Flat Fixed)'}
-                                </span>
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <div className="text-[11px] font-bold text-[#70787d] mb-1">
-                            {isArabic ? 'السعر المقترح عند الإطلاق:' : 'Projected Launch Rate:'}
-                          </div>
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-xl font-extrabold text-[#161c27]">
-                              {plan.tier1Rate} {plan.currency}
-                            </span>
-                            <span className="text-xs text-[#70787d]">
-                              {isArabic ? '/ عقار شهرياً' : '/ property / mo'}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-[#70787d] mt-1">
-                            {isArabic
-                              ? `سقف بعد ${plan.tierLimit} عقار بقيمة ${plan.cappedRate} ر.س`
-                              : `Capped after ${plan.tierLimit} properties at ${plan.cappedRate} SAR`}
-                          </p>
+                          </span>
                         </div>
                       )}
                     </div>
 
-                    {/* Features list */}
-                    <div className="mt-4 pt-4 border-t border-[#e3e8f9] space-y-2">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#161c27]">
-                        {isArabic ? 'المزايا والإمكانات المضمنة:' : 'Included Capabilities:'}
+                    {/* ========================================================================= */}
+                    {/* LINKED TIERS HIGHLIGHT SECTION ("المستويات التابعة لهذه الخطة") */}
+                    {/* ========================================================================= */}
+                    <div className="pt-3 border-t border-[#e3e8f9] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#161c27]">
+                          <Layers className="h-3.5 w-3.5 text-[#004a60]" />
+                          <span>
+                            {isArabic
+                              ? `المستويات التابعة (${linkedTiers.length}):`
+                              : `Linked Tiers (${linkedTiers.length}):`}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setNewTierPreselectedPlanId(plan.id);
+                            setIsCreateTierModalOpen(true);
+                          }}
+                          className="text-[11px] font-bold text-[#004a60] hover:underline flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <Plus className="h-3 w-3" />
+                          <span>{isArabic ? 'ربط مستوى' : 'Add Tier'}</span>
+                        </button>
                       </div>
-                      <ul className="space-y-2 text-xs text-[#40484d]">
-                        {(isArabic ? plan.featuresAr : plan.features).map((feat, fIdx) => (
-                          <li key={fIdx} className="flex items-start gap-2 text-[11px] leading-relaxed">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                            <span>{feat}</span>
-                          </li>
-                        ))}
-                      </ul>
+
+                      {linkedTiers.length === 0 ? (
+                        <div className="p-3 bg-gray-50 rounded-lg text-center text-xs text-gray-500">
+                          {isArabic
+                            ? 'لا توجد مستويات تشاور على هذه الخطة حالياً'
+                            : 'No tiers currently point to this plan'}
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {linkedTiers.map((t) => (
+                            <div
+                              key={t.id}
+                              className="p-2 rounded-lg bg-white border border-[#e3e8f9] hover:border-[#004a60]/40 transition-all flex items-center justify-between text-xs"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-md bg-[#004a60]/10 text-[#004a60] text-[10px] font-black flex items-center justify-center shrink-0">
+                                  {t.tierLevel}
+                                </span>
+                                <div>
+                                  <div className="font-bold text-[#161c27] text-[11px] line-clamp-1">
+                                    {isArabic ? t.nameAr : t.name}
+                                  </div>
+                                  <div className="text-[10px] text-[#70787d]">
+                                    {isArabic
+                                      ? `من ${t.minProperties} إلى ${t.maxProperties || 'غير محدود'} عقار`
+                                      : `${t.minProperties} - ${t.maxProperties || 'Unlimited'} units`}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="font-bold text-[#004a60] font-mono text-[11px]">
+                                  {t.ratePerUnit} {t.currency}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Jump button to view tiers in Tiers tab */}
+                      <button
+                        onClick={() => handleJumpToPlanTiers(plan.id)}
+                        className="w-full text-center text-xs font-bold text-[#004a60] bg-[#eef3fb] hover:bg-[#e2ebf8] py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-2"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span>
+                          {isArabic
+                            ? `إدارة مستويات (${isArabic ? plan.nameAr : plan.name})`
+                            : `Manage ${plan.name} Tiers`}
+                        </span>
+                      </button>
                     </div>
                   </div>
 
-                  {/* Card Bottom Actions */}
-                  <div className="p-6 pt-0 bg-white space-y-2">
-                    {isActive ? (
+                  {/* Plan Card Footer Actions */}
+                  <div className="p-4 bg-gray-50/80 border-t border-[#e3e8f9] flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => setEditingPlan(plan)}
+                      className="bg-white border border-[#e3e8f9] hover:border-[#004a60] hover:bg-[#f1f3ff] text-[#004a60] px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <Settings2 className="h-3.5 w-3.5" />
+                      <span>{isArabic ? 'تخصيص الخطة' : 'Configure'}</span>
+                    </button>
+
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
                           setSubscribePlan(plan);
                           setPropCountToSubscribe(5);
                         }}
-                        className="w-full bg-[#004a60] hover:bg-[#074e64] text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-xs flex items-center justify-center gap-1.5"
+                        className="bg-[#004a60] hover:bg-[#074e64] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
                       >
-                        <span>{isArabic ? 'اختيار هذه الباقة' : 'Choose This Plan'}</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleToggleStatus(plan.id)}
-                        className="w-full bg-gray-100 hover:bg-gray-200 text-[#40484d] font-semibold py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5"
-                      >
-                        <Clock className="h-3.5 w-3.5 text-amber-600" />
-                        <span>
-                          {isArabic ? 'قريباً (انقر لتفعيلها)' : 'Coming Soon (Click to Enable)'}
-                        </span>
-                      </button>
-                    )}
-
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        onClick={() => setEditingPlan(plan)}
-                        className="flex-1 border border-[#e3e8f9] hover:border-[#004a60] hover:bg-[#f1f3ff] text-[#004a60] py-1.5 px-3 rounded-lg text-[11px] font-semibold transition-all flex items-center justify-center gap-1"
-                      >
-                        <Settings2 className="h-3.5 w-3.5" />
-                        <span>{isArabic ? 'تخصيص الخطة والحدود' : 'Configure Plan & Limit'}</span>
+                        {isArabic ? 'تسجيل واشتراك' : 'Subscribe'}
                       </button>
                       <button
-                        onClick={() => handleToggleStatus(plan.id)}
-                        title={isArabic ? 'تبديل التفعيل / التعطيل' : 'Enable / Disable toggle'}
-                        className="p-1.5 border border-[#e3e8f9] hover:bg-gray-100 rounded-lg text-[#70787d]"
+                        onClick={() => handleTogglePlanStatus(plan.id)}
+                        className="p-1.5 border border-[#e3e8f9] hover:bg-gray-100 rounded-lg text-[#70787d] cursor-pointer"
+                        title={isArabic ? 'تبديل الحالة' : 'Toggle status'}
                       >
-                        {isActive ? (
+                        {plan.status === 'active' ? (
                           <ToggleRight className="h-5 w-5 text-emerald-600" />
                         ) : (
                           <ToggleLeft className="h-5 w-5 text-gray-400" />
@@ -461,34 +709,34 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
             })}
           </div>
 
-          {/* Interactive Live Pricing & Property Size Simulator */}
+          {/* Pricing Simulation & Cost Calculator */}
           <div className="bg-white rounded-2xl border border-[#e3e8f9] p-6 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e3e8f9]">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Calculator className="h-5 w-5 text-[#004a60]" />
-                  <h3 className="text-base font-bold text-[#161c27]">
-                    {isArabic
-                      ? 'محاكي وحاسبة التكلفة الفورية حسب حجم العقارات'
-                      : 'Interactive Property Size & Pricing Simulator'}
-                  </h3>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#e3e8f9]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#004a60]/10 text-[#004a60] flex items-center justify-center font-bold shrink-0">
+                  <Calculator className="h-5 w-5" />
                 </div>
-                <p className="text-xs text-[#70787d] mt-1">
-                  {isArabic
-                    ? 'جرب حساب التكلفة بناءً على عدد عقاراتك وشاهد تطبيق السعر الفردي أو السقف الثابت (3,000 ر.س بعد 20 عقار).'
-                    : 'Test plan calculation based on your portfolio size and verify the 150 SAR unit rate and 3,000 SAR fixed cap.'}
-                </p>
+                <div>
+                  <h3 className="text-base font-bold text-[#161c27]">
+                    {isArabic ? 'محاكي تكلفة الاشتراك الفوري' : 'Live Portfolio Pricing Calculator'}
+                  </h3>
+                  <p className="text-xs text-[#70787d]">
+                    {isArabic
+                      ? 'احسب قيمة الاشتراك الشهري وسقف التسعير بحسب عدد العقارات والوحدات'
+                      : 'Calculate estimated monthly subscription according to property volume and capped limits'}
+                  </p>
+                </div>
               </div>
 
-              {/* Plan Selector for Simulator */}
+              {/* Plan Picker for Simulator */}
               <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-[#70787d]">
-                  {isArabic ? 'الباقة المختبرة:' : 'Simulated Plan:'}
-                </label>
+                <span className="text-xs font-bold text-[#70787d]">
+                  {isArabic ? 'الخطة المختارة:' : 'Selected Plan:'}
+                </span>
                 <select
                   value={selectedSimPlanId}
                   onChange={(e) => setSelectedSimPlanId(e.target.value)}
-                  className="bg-[#f9f9ff] border border-[#e3e8f9] text-xs font-bold text-[#161c27] rounded-lg px-3 py-1.5 focus:outline-hidden focus:border-[#004a60]"
+                  className="rounded-lg border border-[#e3e8f9] bg-white px-3 py-1.5 text-xs font-bold text-[#004a60] focus:ring-2 focus:ring-[#004a60]/20"
                 >
                   {plans.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -499,176 +747,87 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
               </div>
             </div>
 
-            {/* Slider & Calculation Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
-              {/* Left Column: Property Count Input & Slider */}
-              <div className="lg:col-span-6 space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-[#161c27]">
-                      {isArabic ? 'عدد العقارات / الفنادق:' : 'Number of Properties:'}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={simulatedProperties}
-                        onChange={(e) => setSimulatedProperties(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-20 text-center font-bold text-sm bg-[#f1f3ff] border border-[#e3e8f9] rounded-lg py-1 text-[#004a60] focus:outline-hidden focus:border-[#004a60]"
-                      />
-                      <span className="text-xs text-[#70787d]">{isArabic ? 'عقار' : 'units'}</span>
-                    </div>
-                  </div>
-
-                  <input
-                    type="range"
-                    min="1"
-                    max="60"
-                    step="1"
-                    value={simulatedProperties}
-                    onChange={(e) => setSimulatedProperties(parseInt(e.target.value))}
-                    className="w-full h-2 bg-[#e3e8f9] rounded-lg appearance-none cursor-pointer accent-[#004a60]"
-                  />
-                  <div className="flex justify-between text-[10px] text-[#70787d] mt-1 font-mono">
-                    <span>1</span>
-                    <span>10</span>
-                    <span className="text-[#004a60] font-bold">20 ({isArabic ? 'حد السقف' : 'Cap Limit'})</span>
-                    <span>30</span>
-                    <span>40</span>
-                    <span>50</span>
-                    <span>60+</span>
-                  </div>
-                </div>
-
-                {/* Quick Presets */}
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <span className="text-xs text-[#70787d] self-center">
-                    {isArabic ? 'أمثلة سريعة:' : 'Quick Presets:'}
+            {/* Slider & Result */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#161c27]">
+                    {isArabic ? 'عدد العقارات المراد إدارتها:' : 'Number of Properties to Manage:'}
                   </span>
-                  {[
-                    { label: '1 Property (150 SAR)', count: 1 },
-                    { label: '5 Properties (750 SAR)', count: 5 },
-                    { label: '10 Properties (1,500 SAR)', count: 10 },
-                    { label: '20 Properties (3,000 SAR)', count: 20 },
-                    { label: '25 Properties (3,000 SAR Cap)', count: 25 },
-                    { label: '40 Properties (3,000 SAR Cap)', count: 40 },
-                  ].map((preset, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setSimulatedProperties(preset.count)}
-                      className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
-                        simulatedProperties === preset.count
-                          ? 'bg-[#004a60] text-white border-[#004a60]'
-                          : 'bg-gray-50 hover:bg-gray-100 text-[#40484d] border-gray-200'
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={simulatedProperties}
+                      onChange={(e) =>
+                        setSimulatedProperties(Math.max(1, parseInt(e.target.value) || 1))
+                      }
+                      className="w-20 p-1.5 text-center font-mono font-bold text-sm rounded-lg border border-[#e3e8f9]"
+                    />
+                    <span className="text-xs text-[#70787d]">
+                      {isArabic ? 'عقار / وحدة' : 'properties'}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Rule explanation banner */}
-                <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-start gap-2.5">
-                  <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                  <div className="leading-relaxed">
-                    <span className="font-bold">
-                      {isArabic ? 'قاعدة تسعير المباني:' : 'Building Plan Rule:'}
-                    </span>{' '}
-                    {isArabic
-                      ? `كل عقار يتم احتسابه بمبلغ ${selectedSimPlan.tier1Rate} ر.س للعقارات من 1 إلى ${selectedSimPlan.tierLimit} عقار. عند تجاوز ${selectedSimPlan.tierLimit} عقار، يتم تفعيل السعر الثابت الأقصى بقيمة ${selectedSimPlan.cappedRate.toLocaleString()} ر.س فقط مهما زاد عدد العقارات!`
-                      : `Each property is ${selectedSimPlan.tier1Rate} SAR for 1 to ${selectedSimPlan.tierLimit}, and after ${selectedSimPlan.tierLimit}+ it is capped at ${selectedSimPlan.cappedRate.toLocaleString()} SAR flat regardless of how many properties you manage!`}
-                  </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="50"
+                  value={simulatedProperties}
+                  onChange={(e) => setSimulatedProperties(parseInt(e.target.value))}
+                  className="w-full accent-[#004a60] cursor-pointer"
+                />
+
+                <div className="flex justify-between text-[11px] text-[#70787d]">
+                  <span>1 {isArabic ? 'عقار' : 'unit'}</span>
+                  <span>
+                    {selectedSimPlan.tierLimit} {isArabic ? 'عقار (سقف التسعير)' : 'units (Cap)'}
+                  </span>
+                  <span>50+ {isArabic ? 'عقار' : 'units'}</span>
                 </div>
               </div>
 
-              {/* Right Column: Live Calculated Breakdown */}
-              <div className="lg:col-span-6 bg-[#f9f9ff] border border-[#e3e8f9] rounded-xl p-5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between text-xs font-semibold text-[#70787d] mb-2">
-                    <span>{isArabic ? 'تفاصيل الحسبة الشهرية' : 'Monthly Calculation Breakdown'}</span>
-                    <span className="font-mono text-[#004a60]">
-                      {simulatedProperties}{' '}
-                      {isArabic ? 'عقارات مسجلة' : 'Properties Enrolled'}
-                    </span>
-                  </div>
-
-                  {/* Status of Capped vs Per-unit */}
-                  {simResult.isCapped ? (
-                    <div className="bg-emerald-100 text-emerald-900 border border-emerald-300 p-2.5 rounded-lg text-xs font-bold flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-1.5">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        <span>
-                          {isArabic
-                            ? `تم تطبيق السقف الثابت (${selectedSimPlan.tierLimit}+ عقار)`
-                            : `Fixed Cap Applied (${selectedSimPlan.tierLimit}+ Properties)`}
-                        </span>
-                      </div>
-                      <span className="bg-white/80 text-emerald-800 px-2 py-0.5 rounded text-[10px]">
-                        {isArabic
-                          ? `وفرت ${simResult.savings.toLocaleString()} ر.س/شهرياً!`
-                          : `Saved ${simResult.savings.toLocaleString()} SAR/mo!`}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="bg-blue-50 text-blue-900 border border-blue-200 p-2.5 rounded-lg text-xs font-medium mb-3 flex items-center justify-between">
-                      <span>
-                        {isArabic
-                          ? `احتساب فردي (${simulatedProperties} × ${selectedSimPlan.tier1Rate} ر.س)`
-                          : `Unit Rate Applied (${simulatedProperties} × ${selectedSimPlan.tier1Rate} SAR)`}
-                      </span>
-                      <span className="text-[11px] font-bold text-blue-800">
-                        {isArabic
-                          ? `باقي ${selectedSimPlan.tierLimit - simulatedProperties} عقار للسقف`
-                          : `${selectedSimPlan.tierLimit - simulatedProperties} units until cap`}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Figures Table */}
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between text-[#70787d]">
-                      <span>{isArabic ? 'القيمة قبل السقف / الخصم:' : 'Subtotal before cap:'}</span>
-                      <span className="font-mono line-through text-gray-400">
-                        {simResult.isCapped ? `${simResult.totalBeforeDiscount.toLocaleString()} SAR` : '-'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[#161c27] font-semibold">
-                      <span>{isArabic ? 'قيمة الاشتراك الأساسي:' : 'Base Monthly Subscription:'}</span>
-                      <span className="font-mono text-base font-bold text-[#004a60]">
-                        {simResult.finalPrice.toLocaleString()} SAR
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[#70787d]">
-                      <span>{isArabic ? 'ضريبة القيمة المضافة 15% (ZATCA):' : 'ZATCA 15% VAT:'}</span>
-                      <span className="font-mono">+{simResult.vatAmount.toLocaleString()} SAR</span>
-                    </div>
-                    <div className="pt-2 border-t border-[#e3e8f9] flex items-center justify-between">
-                      <span className="font-bold text-sm text-[#161c27]">
-                        {isArabic ? 'الإجمالي الشامل للضريبة:' : 'Grand Total (Incl. VAT):'}
-                      </span>
-                      <span className="font-black text-lg text-emerald-800 font-mono">
-                        {simResult.grandTotal.toLocaleString()} SAR
-                      </span>
-                    </div>
-                  </div>
+              {/* Calculator Output Card */}
+              <div className="p-5 rounded-xl bg-gradient-to-br from-[#f8fbff] to-[#eef4ff] border border-[#d8e6f5] space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#70787d]">
+                    {isArabic ? 'سعر الوحدة الافتراضي:' : 'Base Rate per Unit:'}
+                  </span>
+                  <span className="font-bold text-[#161c27] font-mono">
+                    {simCost.ratePerUnit} SAR
+                  </span>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-[#e3e8f9] flex items-center justify-between">
-                  <div className="text-[11px] text-[#70787d]">
-                    {isArabic
-                      ? 'مفوترة شهرياً مع خيار الدفع السنوي بخصم 15%'
-                      : 'Billed monthly with 15% annual prepayment advantage'}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#70787d]">
+                    {isArabic ? 'المجموع قبل السقف:' : 'Total Before Capped Discount:'}
+                  </span>
+                  <span className="font-mono text-[#70787d]">
+                    {simCost.totalBeforeDiscount.toLocaleString()} SAR
+                  </span>
+                </div>
+
+                {simCost.isCapped && (
+                  <div className="flex items-center justify-between text-xs p-2 rounded-lg bg-emerald-100 text-emerald-900 font-bold">
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-700" />
+                      <span>{isArabic ? 'تم تطبيق سقف السعر الثابت!' : 'Capped Price Active!'}</span>
+                    </span>
+                    <span className="font-mono">
+                      -{simCost.savings.toLocaleString()} SAR {isArabic ? 'توفير' : 'saved'}
+                    </span>
                   </div>
-                  <button
-                    onClick={() => {
-                      setSubscribePlan(selectedSimPlan);
-                      setPropCountToSubscribe(simulatedProperties);
-                    }}
-                    className="bg-[#004a60] hover:bg-[#074e64] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs"
-                  >
-                    {isArabic ? 'اعتماد واشتراك' : 'Enroll Portfolio'}
-                  </button>
+                )}
+
+                <div className="pt-2 border-t border-[#d8e6f5] flex items-center justify-between">
+                  <span className="text-xs font-black text-[#161c27]">
+                    {isArabic ? 'الإجمالي الشهري (مع 15% ضريبة):' : 'Grand Monthly (incl. VAT):'}
+                  </span>
+                  <span className="text-lg font-black text-[#004a60] font-mono">
+                    {simCost.grandTotal.toLocaleString()} SAR
+                  </span>
                 </div>
               </div>
             </div>
@@ -676,135 +835,394 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
         </div>
       )}
 
-      {/* TAB 2: TIERS (1 - Building Tiers, 2 - Home Tiers, 3 - Chalet Tiers) */}
+      {/* ========================================================================= */}
+      {/* TAB 2: TIERS (المستويات) - SEPARATE & POINTING TO ASSOCIATED PLAN */}
+      {/* ========================================================================= */}
       {(currentTab === 'categories' || currentTab === 'tiers') && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-[#e3e8f9] p-6 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
+          {/* Top Info Banner explaining the Decoupling and Pointer */}
+          <div className="bg-gradient-to-r from-emerald-50 via-[#f0f9ff] to-white p-5 rounded-2xl border border-emerald-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+                <Target className="h-5 w-5" />
+              </div>
               <div>
-                <h3 className="text-base font-bold text-[#161c27]">
-                  {isArabic ? 'مستويات وفئات الخطط الثلاث' : 'Plan Tiers (3 Core Tiers)'}
+                <h3 className="text-sm font-black text-[#161c27] flex items-center gap-2">
+                  <span>
+                    {isArabic
+                      ? 'إدارة المستويات (Tiers) والربط مع الخطط'
+                      : 'Decoupled Tiers & Plan Associations'}
+                  </span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                    {isArabic ? 'المستوي يشاور على خطته' : 'Plan Pointer Active'}
+                  </span>
                 </h3>
-                <p className="text-xs text-[#70787d] mt-1">
+                <p className="text-xs text-[#525e65] mt-1 leading-relaxed max-w-2xl">
                   {isArabic
-                    ? '1 - باقات ومستويات المباني (متاحة) | 2 - باقات ومستويات المنازل (قريباً) | 3 - باقات ومستويات الشاليهات (قريباً)'
-                    : '1 - Building Tiers (Available) | 2 - Home Tiers (Coming Soon) | 3 - Chalet Tiers (Coming Soon)'}
+                    ? 'تم فصل المستويات بالكامل بحيث يكون كل مستوى مستقلاً ويشاور بوضوح على الخطة التابعة له، مع إمكانية تعديل الخطة التابعة بضغطة زر وتعيين الأسعار والحدود.'
+                    : 'Tiers are fully separated from Plans. Each tier points explicitly to its associated plan with flexible re-assignment, custom rate caps, and property unit thresholds.'}
                 </p>
               </div>
-              <button
-                onClick={handleResetDefaults}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#70787d] hover:text-[#004a60] px-3 py-1.5 rounded-lg border border-[#e3e8f9] hover:bg-gray-50 cursor-pointer"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span>{isArabic ? 'إعادة ضبط المستويات' : 'Reset Tiers'}</span>
-              </button>
             </div>
 
-            <div className="space-y-4">
-              {plans.map((cat, idx) => {
-                const Icon = getPlanIcon(cat.id);
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleResetTiersDefaults}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#70787d] hover:text-[#004a60] px-3 py-2 rounded-xl border border-[#e3e8f9] hover:bg-gray-50 cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>{isArabic ? 'استعادة المستويات' : 'Reset Tiers'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setNewTierPreselectedPlanId(plans[0]?.id || 'building-plans');
+                  setIsCreateTierModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>{isArabic ? 'إنشاء مستوى جديد' : 'New Tier'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-[#e3e8f9] shadow-xs">
+              <div className="text-[11px] font-bold text-[#70787d]">
+                {isArabic ? 'إجمالي المستويات المُعرفة:' : 'Total Tiers:'}
+              </div>
+              <div className="text-xl font-black text-[#161c27] mt-1 font-mono">
+                {tiers.length}
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-[#e3e8f9] shadow-xs">
+              <div className="text-[11px] font-bold text-[#70787d]">
+                {isArabic ? 'المستويات النشطة:' : 'Active Tiers:'}
+              </div>
+              <div className="text-xl font-black text-emerald-700 mt-1 font-mono">
+                {tiers.filter((t) => t.status === 'active').length}
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-[#e3e8f9] shadow-xs">
+              <div className="text-[11px] font-bold text-[#70787d]">
+                {isArabic ? 'الخطط المرتبطة بها:' : 'Associated Plans:'}
+              </div>
+              <div className="text-xl font-black text-[#004a60] mt-1 font-mono">
+                {new Set(tiers.map((t) => t.planId)).size}
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-[#e3e8f9] shadow-xs">
+              <div className="text-[11px] font-bold text-[#70787d]">
+                {isArabic ? 'أعلى سقف تسعير:' : 'Max Capped Limit:'}
+              </div>
+              <div className="text-xl font-black text-[#161c27] mt-1 font-mono">
+                3,000 <span className="text-xs font-normal">SAR</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Bar: Filter Tiers by Associated Plan & Search */}
+          <div className="bg-white p-4 rounded-xl border border-[#e3e8f9] shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {/* Plan Selector Pills */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-[#70787d] flex items-center gap-1">
+                  <Filter className="h-3 w-3" />
+                  <span>{isArabic ? 'فلترة حسب الخطة التابعة:' : 'Filter by Associated Plan:'}</span>
+                </span>
+
+                <button
+                  onClick={() => setSelectedPlanFilter('all')}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    selectedPlanFilter === 'all'
+                      ? 'bg-[#004a60] text-white shadow-xs'
+                      : 'bg-gray-100 text-[#40484d] hover:bg-gray-200'
+                  }`}
+                >
+                  {isArabic ? 'جميع الخطط' : 'All Plans'} ({tiers.length})
+                </button>
+
+                {plans.map((p) => {
+                  const Icon = getPlanIcon(p.id);
+                  const pTiersCount = tiers.filter((t) => t.planId === p.id).length;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelectedPlanFilter(p.id)}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                        selectedPlanFilter === p.id
+                          ? 'bg-[#004a60] text-white shadow-xs'
+                          : 'bg-gray-100 text-[#40484d] hover:bg-gray-200'
+                      }`}
+                    >
+                      <Icon className="h-3 w-3" />
+                      <span>{isArabic ? p.nameAr : p.name}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                          selectedPlanFilter === p.id ? 'bg-white/20' : 'bg-gray-200'
+                        }`}
+                      >
+                        {pTiersCount}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative w-full sm:w-64">
+                <Search className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder={isArabic ? 'بحث في المستويات...' : 'Search tiers...'}
+                  value={tierSearchQuery}
+                  onChange={(e) => setTierSearchQuery(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-[#e3e8f9] pl-3 pr-9 py-2 bg-[#fcfdff]"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Tiers List with Clear Pointer to Associated Plan */}
+          <div className="space-y-4">
+            {filteredTiers.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-[#e3e8f9] p-12 text-center space-y-3">
+                <Layers className="h-10 w-10 text-gray-300 mx-auto" />
+                <h4 className="text-base font-bold text-[#161c27]">
+                  {isArabic ? 'لا توجد مستويات مطابقة' : 'No matching tiers found'}
+                </h4>
+                <p className="text-xs text-[#70787d]">
+                  {isArabic
+                    ? 'جرب تغيير معيار البحث أو فلتر الخطة التابعة'
+                    : 'Try changing your search query or plan filter'}
+                </p>
+              </div>
+            ) : (
+              filteredTiers.map((tier) => {
+                const parentPlan = plans.find((p) => p.id === tier.planId);
+                const ParentIcon = parentPlan ? getPlanIcon(parentPlan.id) : Package;
+
                 return (
                   <div
-                    key={cat.id}
-                    className="p-5 rounded-xl border border-[#e3e8f9] bg-[#fdfdff] hover:border-[#004a60]/30 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    key={tier.id}
+                    className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs hover:border-[#004a60]/40 transition-all space-y-4"
                   >
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#e8eeff] text-[#004a60] flex items-center justify-center font-bold text-lg shrink-0">
-                        {idx + 1}
+                    {/* PROMINENT PLAN POINTER BOX ("المستوي يشاور على الخطة التابعه له") */}
+                    <div className="p-3 rounded-xl bg-gradient-to-r from-[#eef7ff] via-[#f4f9ff] to-[#fcfdff] border border-[#bcd7f5] flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-[#004a60] text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+                          <ParentIcon className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-black uppercase text-[#004a60] bg-white px-2 py-0.5 rounded-md border border-[#bcd7f5]">
+                              {isArabic ? '🎯 يشاور على الخطة التابعة:' : '🎯 Points to Parent Plan:'}
+                            </span>
+                            <span className="text-xs font-black text-[#161c27]">
+                              {parentPlan
+                                ? isArabic
+                                  ? parentPlan.nameAr
+                                  : parentPlan.name
+                                : tier.planNameAr || tier.planId}
+                            </span>
+                            <span className="text-[10px] font-mono text-[#70787d] bg-gray-100 px-1.5 py-0.2 rounded">
+                              {parentPlan?.code || tier.planId}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-base font-bold text-[#161c27]">
-                            {idx + 1} - {isArabic ? cat.nameAr : cat.name}
+
+                      {/* Quick Repoint / Change Associated Plan Dropdown */}
+                      <div className="relative">
+                        <button
+                          onClick={() =>
+                            setRepointDropdownTierId(
+                              repointDropdownTierId === tier.id ? null : tier.id
+                            )
+                          }
+                          className="text-[11px] font-bold text-[#004a60] bg-white hover:bg-gray-50 border border-[#bcd7f5] px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                        >
+                          <ArrowUpDown className="h-3 w-3" />
+                          <span>{isArabic ? 'تغيير الخطة التابعة ▾' : 'Change Plan ▾'}</span>
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {repointDropdownTierId === tier.id && (
+                          <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-xl border border-[#e3e8f9] p-2 z-30 space-y-1">
+                            <div className="text-[10px] font-bold text-[#70787d] px-2 py-1">
+                              {isArabic ? 'اختر الخطة التي سيشاور عليها هذا المستوى:' : 'Select Plan to point this tier to:'}
+                            </div>
+                            {plans.map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={() => handleRepointTier(tier.id, p.id)}
+                                className={`w-full text-right px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between cursor-pointer transition-all ${
+                                  tier.planId === p.id
+                                    ? 'bg-[#004a60] text-white font-bold'
+                                    : 'hover:bg-gray-100 text-[#161c27]'
+                                }`}
+                              >
+                                <span>{isArabic ? p.nameAr : p.name}</span>
+                                {tier.planId === p.id && <Check className="h-3.5 w-3.5" />}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tier Body Details */}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      {/* Left: Tier identity & properties range */}
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="w-7 h-7 rounded-lg bg-[#004a60] text-white font-black text-xs flex items-center justify-center">
+                            {tier.tierLevel}
+                          </span>
+                          <h4 className="text-base font-black text-[#161c27]">
+                            {isArabic ? tier.nameAr : tier.name}
                           </h4>
+                          <span className="text-[10px] font-mono text-[#70787d] bg-gray-100 px-2 py-0.5 rounded-md">
+                            {tier.code}
+                          </span>
+
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              cat.status === 'active'
+                              tier.status === 'active'
                                 ? 'bg-emerald-100 text-emerald-800'
-                                : cat.status === 'coming_soon'
+                                : tier.status === 'coming_soon'
                                 ? 'bg-amber-100 text-amber-900'
                                 : 'bg-gray-200 text-gray-700'
                             }`}
                           >
-                            {isArabic
-                              ? cat.status === 'active'
-                                ? 'متاحة حالياً'
-                                : cat.status === 'coming_soon'
+                            {tier.status === 'active'
+                              ? isArabic
+                                ? 'مستوى مفعل'
+                                : 'Active'
+                              : tier.status === 'coming_soon'
+                              ? isArabic
                                 ? 'قريباً'
-                                : 'معطلة'
-                              : cat.status === 'active'
-                              ? 'Active / Available'
-                              : cat.status === 'coming_soon'
-                              ? 'Coming Soon'
+                                : 'Coming Soon'
+                              : isArabic
+                              ? 'معطل'
                               : 'Disabled'}
                           </span>
+
+                          {tier.badge && (
+                            <span className="text-[10px] font-bold bg-[#eef3fb] text-[#004a60] px-2 py-0.5 rounded-full">
+                              {isArabic ? tier.badgeAr || tier.badge : tier.badge}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-xs font-medium text-[#004a60] mt-0.5">
-                          {isArabic ? cat.subtitleAr : cat.subtitle}
-                        </p>
-                        <p className="text-xs text-[#70787d] mt-1 max-w-xl">
-                          {isArabic ? cat.descriptionAr : cat.description}
+
+                        <p className="text-xs text-[#525e65] max-w-2xl leading-relaxed">
+                          {isArabic ? tier.descriptionAr : tier.description}
                         </p>
 
-                        <div className="flex flex-wrap items-center gap-2 mt-3">
-                          <span className="text-[11px] font-semibold text-[#70787d]">
-                            {isArabic ? 'أنواع العقارات التابعة للمستوى:' : 'Target Property Types:'}
-                          </span>
-                          {(isArabic ? cat.propertyTypesAr : cat.propertyTypes).map((pt, i) => (
+                        {/* Range and SLA Badges */}
+                        <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
+                          <div className="flex items-center gap-1.5 text-[#004a60] font-bold bg-[#f1f6fd] px-2.5 py-1 rounded-md">
+                            <Sliders className="h-3.5 w-3.5" />
+                            <span>
+                              {isArabic ? 'نطاق العقارات:' : 'Units Range:'}{' '}
+                              {isArabic
+                                ? `من ${tier.minProperties} إلى ${
+                                    tier.maxProperties ? `${tier.maxProperties} عقار` : 'غير محدود (أبراج كبرى)'
+                                  }`
+                                : `${tier.minProperties} to ${tier.maxProperties || 'Unlimited'} units`}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 text-gray-600 bg-gray-100 px-2.5 py-1 rounded-md">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>
+                              {isArabic
+                                ? tier.supportLevelAr || `استجابة خلال ${tier.slaResponseHours || 4} ساعات`
+                                : `${tier.slaResponseHours || 4}h SLA Support`}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Features chips */}
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {(isArabic ? tier.featuresAr : tier.features).map((feat, fi) => (
                             <span
-                              key={i}
-                              className="text-[10px] bg-white border border-[#e3e8f9] text-[#161c27] px-2 py-0.5 rounded-md font-medium"
+                              key={fi}
+                              className="text-[10px] bg-white border border-[#e3e8f9] text-[#2c3840] px-2 py-0.5 rounded-md flex items-center gap-1"
                             >
-                              {pt}
+                              <Check className="h-2.5 w-2.5 text-emerald-600" />
+                              <span>{feat}</span>
                             </span>
                           ))}
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-row md:flex-col items-center md:items-end justify-between gap-2 border-t md:border-t-0 pt-3 md:pt-0 border-[#e3e8f9]">
-                      <div className="text-right">
-                        <div className="text-xs font-bold text-[#004a60]">
-                          {cat.tier1Rate} {cat.currency}{' '}
-                          <span className="text-[10px] text-[#70787d]">
-                            (1-{cat.tierLimit})
-                          </span>
-                        </div>
-                        <div className="text-[11px] font-bold text-emerald-700">
-                          {cat.cappedRate.toLocaleString()} {cat.currency}{' '}
-                          <span className="text-[10px]">({cat.tierLimit}+ cap)</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setEditingPlan(cat)}
-                          className="bg-white border border-[#e3e8f9] hover:border-[#004a60] hover:bg-[#f1f3ff] text-[#004a60] px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                          <span>{isArabic ? 'تعديل المستوى' : 'Edit Tier'}</span>
-                        </button>
-                        <button
-                          onClick={() => handleToggleStatus(cat.id)}
-                          className="p-1.5 border border-[#e3e8f9] hover:bg-gray-100 rounded-lg text-[#70787d] cursor-pointer"
-                        >
-                          {cat.status === 'active' ? (
-                            <ToggleRight className="h-5 w-5 text-emerald-600" />
-                          ) : (
-                            <ToggleLeft className="h-5 w-5 text-gray-400" />
+                      {/* Right: Pricing & Actions */}
+                      <div className="flex flex-col items-start lg:items-end justify-between gap-3 border-t lg:border-t-0 pt-3 lg:pt-0 border-[#e3e8f9]">
+                        <div className="text-left lg:text-right">
+                          <div className="text-sm font-black text-[#004a60] font-mono">
+                            {tier.ratePerUnit} {tier.currency}{' '}
+                            <span className="text-[10px] text-[#70787d] font-normal">
+                              ({isArabic ? tier.billingFrequencyAr : tier.billingFrequency})
+                            </span>
+                          </div>
+                          {tier.cappedRate && (
+                            <div className="text-xs font-bold text-emerald-700 font-mono mt-0.5">
+                              {tier.cappedRate.toLocaleString()} {tier.currency}{' '}
+                              <span className="text-[10px] text-[#70787d] font-normal">
+                                ({isArabic ? 'سقف السعر الأقصى' : 'Max Cap'})
+                              </span>
+                            </div>
                           )}
-                        </button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setEditingTier(tier)}
+                            className="bg-white border border-[#e3e8f9] hover:border-[#004a60] hover:bg-[#f1f3ff] text-[#004a60] px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                            <span>{isArabic ? 'تعديل المستوى' : 'Edit Tier'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleToggleTierStatus(tier.id)}
+                            className="p-1.5 border border-[#e3e8f9] hover:bg-gray-100 rounded-lg text-[#70787d] cursor-pointer"
+                            title={isArabic ? 'تبديل الحالة' : 'Toggle status'}
+                          >
+                            {tier.status === 'active' ? (
+                              <ToggleRight className="h-5 w-5 text-emerald-600" />
+                            ) : (
+                              <ToggleLeft className="h-5 w-5 text-gray-400" />
+                            )}
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteTier(tier.id)}
+                            className="p-1.5 border border-[#e3e8f9] hover:bg-red-50 hover:border-red-200 rounded-lg text-gray-400 hover:text-red-600 cursor-pointer"
+                            title={isArabic ? 'حذف المستوى' : 'Delete tier'}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 );
-              })}
-            </div>
+              })
+            )}
           </div>
         </div>
       )}
 
-      {/* PLAN CONFIGURATION MODAL */}
+      {/* ========================================================================= */}
+      {/* MODAL 1: PLAN CONFIGURATION / EDIT PLAN MODAL */}
+      {/* ========================================================================= */}
       {editingPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#e3e8f9] max-h-[90vh] overflow-y-auto">
@@ -813,7 +1231,7 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
                 <Settings2 className="h-5 w-5 text-[#004a60]" />
                 <h3 className="text-base font-bold text-[#161c27]">
                   {isArabic
-                    ? `تخصيص إعدادات: ${editingPlan.nameAr}`
+                    ? `تخصيص إعدادات الخطة: ${editingPlan.nameAr}`
                     : `Configure Plan: ${editingPlan.name}`}
                 </h3>
               </div>
@@ -835,51 +1253,38 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
               {/* Status Selector */}
               <div>
                 <label className="block font-bold text-[#161c27] mb-1">
-                  {isArabic ? 'حالة التفعيل:' : 'Plan Status:'}
+                  {isArabic ? 'حالة تفعيل الخطة:' : 'Plan Status:'}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'active', label: isArabic ? 'متاحة الآن' : 'Available / Active' },
-                    { id: 'coming_soon', label: isArabic ? 'قريباً' : 'Coming Soon' },
-                    { id: 'disabled', label: isArabic ? 'معطلة' : 'Disabled' },
-                  ].map((s) => (
+                  {(['active', 'coming_soon', 'disabled'] as const).map((st) => (
                     <button
-                      key={s.id}
+                      key={st}
                       type="button"
-                      onClick={() =>
-                        setEditingPlan({
-                          ...editingPlan,
-                          status: s.id as any,
-                          badge: s.id === 'active' ? 'Available' : s.id === 'coming_soon' ? 'Coming Soon' : 'Disabled',
-                          badgeAr: s.id === 'active' ? 'متاحة الآن' : s.id === 'coming_soon' ? 'قريباً' : 'معطلة',
-                        })
-                      }
-                      className={`py-2 px-3 rounded-lg border font-semibold text-center transition-all ${
-                        editingPlan.status === s.id
-                          ? 'bg-[#004a60] text-white border-[#004a60]'
-                          : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                      onClick={() => setEditingPlan({ ...editingPlan, status: st })}
+                      className={`p-2 rounded-lg border font-bold text-center cursor-pointer transition-all ${
+                        editingPlan.status === st
+                          ? 'border-[#004a60] bg-[#004a60] text-white shadow-xs'
+                          : 'border-[#e3e8f9] bg-white text-[#40484d] hover:bg-gray-50'
                       }`}
                     >
-                      {s.label}
+                      {st === 'active'
+                        ? isArabic
+                          ? 'متاحة الآن'
+                          : 'Active'
+                        : st === 'coming_soon'
+                        ? isArabic
+                          ? 'قريباً'
+                          : 'Coming Soon'
+                        : isArabic
+                        ? 'معطلة'
+                        : 'Disabled'}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Names */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-[#161c27] mb-1">
-                    {isArabic ? 'اسم الخطة (English)' : 'Plan Name (English)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={editingPlan.name}
-                    onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
-                    className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white text-[#161c27]"
-                    required
-                  />
-                </div>
+              {/* Name AR & EN */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-[#161c27] mb-1">
                     {isArabic ? 'اسم الخطة (عربي)' : 'Plan Name (Arabic)'}
@@ -888,139 +1293,76 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
                     type="text"
                     value={editingPlan.nameAr}
                     onChange={(e) => setEditingPlan({ ...editingPlan, nameAr: e.target.value })}
-                    className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white text-[#161c27]"
+                    className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-bold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-[#161c27] mb-1">
+                    {isArabic ? 'اسم الخطة (إنجليزي)' : 'Plan Name (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editingPlan.name}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
+                    className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white"
                     required
                   />
                 </div>
               </div>
 
-              {/* Subtitle / Property Scope */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Baseline Unit Rate & Cap */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-[#161c27] mb-1">
-                    {isArabic ? 'نوع العقارات المستهدفة (English)' : 'Target Scope (English)'}
+                    {isArabic ? 'سعر الوحدة (ر.س)' : 'Rate Per Unit (SAR)'}
                   </label>
                   <input
-                    type="text"
-                    value={editingPlan.subtitle}
-                    onChange={(e) => setEditingPlan({ ...editingPlan, subtitle: e.target.value })}
-                    className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white"
+                    type="number"
+                    value={editingPlan.tier1Rate}
+                    onChange={(e) =>
+                      setEditingPlan({
+                        ...editingPlan,
+                        tier1Rate: Math.max(1, parseInt(e.target.value) || 0),
+                      })
+                    }
+                    className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono font-bold"
+                    required
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-[#161c27] mb-1">
-                    {isArabic ? 'نوع العقارات المستهدفة (عربي)' : 'Target Scope (Arabic)'}
+                    {isArabic ? 'حد سقف التسعير (عقار)' : 'Capped Threshold'}
                   </label>
                   <input
-                    type="text"
-                    value={editingPlan.subtitleAr}
-                    onChange={(e) => setEditingPlan({ ...editingPlan, subtitleAr: e.target.value })}
-                    className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white"
+                    type="number"
+                    value={editingPlan.tierLimit}
+                    onChange={(e) =>
+                      setEditingPlan({
+                        ...editingPlan,
+                        tierLimit: Math.max(1, parseInt(e.target.value) || 0),
+                      })
+                    }
+                    className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono"
+                    required
                   />
                 </div>
-              </div>
-
-              {/* CRUCIAL TIER & CAP CONFIGURATION FIELDS */}
-              <div className="bg-[#f9f9ff] p-4 rounded-xl border border-[#e3e8f9] space-y-3">
-                <div className="font-bold text-xs text-[#004a60] flex items-center gap-1.5">
-                  <Sliders className="h-4 w-4" />
-                  <span>
-                    {isArabic
-                      ? 'إعدادات شرائح التسعير وسقف الخصم الثابت'
-                      : 'Tiered Rate & Fixed Cap Ceiling Rules'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block font-semibold text-[#161c27] mb-1">
-                      {isArabic ? 'سعر العقار للشريحة الأولى:' : 'Tier 1 Rate per Property:'}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="1"
-                        value={editingPlan.tier1Rate}
-                        onChange={(e) =>
-                          setEditingPlan({
-                            ...editingPlan,
-                            tier1Rate: Math.max(1, parseInt(e.target.value) || 0),
-                          })
-                        }
-                        className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono font-bold pr-12"
-                        required
-                      />
-                      <span className="absolute right-2 top-2 text-[#70787d] font-semibold text-[11px]">
-                        SAR
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-[#70787d]">
-                      {isArabic ? 'مثال: 150 ر.س' : 'Default: 150 SAR'}
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-[#161c27] mb-1">
-                      {isArabic ? 'حد الانتقال للسقف (عدد):' : 'Cap Limit Threshold:'}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="1"
-                        value={editingPlan.tierLimit}
-                        onChange={(e) =>
-                          setEditingPlan({
-                            ...editingPlan,
-                            tierLimit: Math.max(1, parseInt(e.target.value) || 1),
-                          })
-                        }
-                        className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono font-bold pr-12"
-                        required
-                      />
-                      <span className="absolute right-2 top-2 text-[#70787d] font-semibold text-[11px]">
-                        {isArabic ? 'عقار' : 'units'}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-[#70787d]">
-                      {isArabic ? 'مثال: 20 عقار' : 'Default: 20 units'}
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-[#161c27] mb-1">
-                      {isArabic ? 'السعر الثابت بعد الحد:' : 'Fixed Price After Limit:'}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="1"
-                        value={editingPlan.cappedRate}
-                        onChange={(e) =>
-                          setEditingPlan({
-                            ...editingPlan,
-                            cappedRate: Math.max(1, parseInt(e.target.value) || 0),
-                          })
-                        }
-                        className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono font-bold text-emerald-800 pr-12"
-                        required
-                      />
-                      <span className="absolute right-2 top-2 text-[#70787d] font-semibold text-[11px]">
-                        SAR
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-[#70787d]">
-                      {isArabic ? 'مثال: 3,000 ر.س ثابت' : 'Default: 3,000 SAR fixed'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-2.5 bg-white rounded-lg border border-[#e3e8f9] text-[11px] text-[#40484d] leading-relaxed">
-                  <span className="font-bold text-[#004a60]">
-                    {isArabic ? 'الملخص المطبق:' : 'Applied Formula:'}
-                  </span>{' '}
-                  {isArabic
-                    ? `من 1 إلى ${editingPlan.tierLimit} عقار: يتم احتساب ${editingPlan.tier1Rate} ر.س لكل عقار. وما زاد عن ${editingPlan.tierLimit} عقار يصبح بمبلغ ثابت قدره ${editingPlan.cappedRate.toLocaleString()} ر.س.`
-                    : `From 1 to ${editingPlan.tierLimit} properties: ${editingPlan.tier1Rate} SAR / property. For ${editingPlan.tierLimit}+ properties: Capped fixed at ${editingPlan.cappedRate.toLocaleString()} SAR flat.`}
+                <div>
+                  <label className="block font-semibold text-[#161c27] mb-1">
+                    {isArabic ? 'قيمة السقف الثابت (ر.س)' : 'Capped Rate (SAR)'}
+                  </label>
+                  <input
+                    type="number"
+                    value={editingPlan.cappedRate}
+                    onChange={(e) =>
+                      setEditingPlan({
+                        ...editingPlan,
+                        cappedRate: Math.max(1, parseInt(e.target.value) || 0),
+                      })
+                    }
+                    className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono font-bold text-emerald-800"
+                    required
+                  />
                 </div>
               </div>
 
@@ -1041,8 +1383,8 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
               <div className="pt-4 border-t border-[#e3e8f9] flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={handleResetDefaults}
-                  className="text-xs font-semibold text-gray-500 hover:text-red-700 flex items-center gap-1"
+                  onClick={handleResetPlansDefaults}
+                  className="text-xs font-semibold text-gray-500 hover:text-red-700 flex items-center gap-1 cursor-pointer"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   <span>{isArabic ? 'استعادة الافتراضي' : 'Reset to Default'}</span>
@@ -1052,13 +1394,13 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
                   <button
                     type="button"
                     onClick={() => setEditingPlan(null)}
-                    className="px-4 py-2 rounded-lg border border-[#e3e8f9] text-gray-700 font-semibold hover:bg-gray-50"
+                    className="px-4 py-2 rounded-lg border border-[#e3e8f9] text-gray-700 font-semibold hover:bg-gray-50 cursor-pointer"
                   >
                     {isArabic ? 'إلغاء' : 'Cancel'}
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-lg bg-[#004a60] text-white font-bold hover:bg-[#074e64] shadow-xs flex items-center gap-1.5"
+                    className="px-5 py-2 rounded-lg bg-[#004a60] text-white font-bold hover:bg-[#074e64] shadow-xs flex items-center gap-1.5 cursor-pointer"
                   >
                     <Check className="h-4 w-4" />
                     <span>{isArabic ? 'حفظ التغييرات' : 'Save Changes'}</span>
@@ -1070,7 +1412,65 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* MODAL 2: CREATE / EDIT TIER MODAL (WITH PLAN POINTER SELECTION) */}
+      {/* ========================================================================= */}
+      {(isCreateTierModalOpen || editingTier) && (
+        <TierConfigModal
+          isArabic={isArabic}
+          plans={plans}
+          initialTier={
+            editingTier || {
+              id: `tier-custom-${Date.now()}`,
+              code: `TR-CUST-${Math.floor(10 + Math.random() * 90)}`,
+              name: 'New Custom Tier',
+              nameAr: 'مستوى مخصص جديد',
+              planId: newTierPreselectedPlanId || plans[0]?.id || 'building-plans',
+              tierLevel: 1,
+              minProperties: 1,
+              maxProperties: 20,
+              pricingModel: 'tiered_capped',
+              ratePerUnit: 150,
+              cappedRate: 3000,
+              currency: 'SAR',
+              billingFrequency: 'per property / month',
+              billingFrequencyAr: 'لكل عقار / شهرياً',
+              status: 'active',
+              badge: 'Custom Tier',
+              badgeAr: 'مستوى مخصص',
+              description: 'Flexible tiered pricing structure connected to parent plan.',
+              descriptionAr: 'هيكلة تسعير متدرجة ومرنة تشاور على الخطة التابعة المحددة.',
+              features: [
+                'ZATCA Phase 2 Fatoora clearance',
+                'Multi-property inventory & folio management',
+              ],
+              featuresAr: [
+                'ربط الزكاة والضريبة والجمارك المرحلة الثانية',
+                'إدارة مكاتب الاستقبال ومخزون الوحدات العقارية',
+              ],
+              slaResponseHours: 4,
+              supportLevel: 'priority',
+              supportLevelAr: 'أولوية دعم تشغيلي',
+            }
+          }
+          isEditMode={!!editingTier}
+          onClose={() => {
+            setIsCreateTierModalOpen(false);
+            setEditingTier(null);
+          }}
+          onSave={(tierToSave) => {
+            if (editingTier) {
+              handleSaveTier(tierToSave);
+            } else {
+              handleCreateTier(tierToSave);
+            }
+          }}
+        />
+      )}
+
+      {/* ========================================================================= */}
       {/* QUICK SUBSCRIBE / CHECKOUT MODAL */}
+      {/* ========================================================================= */}
       {subscribePlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#e3e8f9]">
@@ -1112,7 +1512,7 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
                     setSubscribePlan(null);
                     setSubscribeSuccess(false);
                   }}
-                  className="bg-[#004a60] text-white px-6 py-2 rounded-xl text-xs font-bold"
+                  className="bg-[#004a60] text-white px-6 py-2 rounded-xl text-xs font-bold cursor-pointer"
                 >
                   {isArabic ? 'إغلاق ومتابعة' : 'Done & Close'}
                 </button>
@@ -1184,7 +1584,7 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
                   <button
                     type="button"
                     onClick={() => setSubscribePlan(null)}
-                    className="px-4 py-2 rounded-lg border border-[#e3e8f9] text-gray-700 font-semibold"
+                    className="px-4 py-2 rounded-lg border border-[#e3e8f9] text-gray-700 font-semibold cursor-pointer"
                   >
                     {isArabic ? 'إلغاء' : 'Cancel'}
                   </button>
@@ -1196,7 +1596,7 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
                       }
                       setSubscribeSuccess(true);
                     }}
-                    className="px-5 py-2 rounded-lg bg-[#004a60] text-white font-bold hover:bg-[#074e64] shadow-xs flex items-center gap-1.5"
+                    className="px-5 py-2 rounded-lg bg-[#004a60] text-white font-bold hover:bg-[#074e64] shadow-xs flex items-center gap-1.5 cursor-pointer"
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     <span>{isArabic ? 'تأكيد الاشتراك وتوليد الفاتورة' : 'Confirm & Generate Invoice'}</span>
@@ -1218,6 +1618,416 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
         isArabic={isArabic}
         onPlanCreated={handlePlanCreated}
       />
+    </div>
+  );
+};
+
+// =========================================================================
+// SUB-COMPONENT: TIER CONFIGURATION MODAL (CREATE / EDIT)
+// =========================================================================
+interface TierConfigModalProps {
+  isArabic: boolean;
+  plans: PropertyPlan[];
+  initialTier: PlanTier;
+  isEditMode: boolean;
+  onClose: () => void;
+  onSave: (tier: PlanTier) => void;
+}
+
+const TierConfigModal: React.FC<TierConfigModalProps> = ({
+  isArabic,
+  plans,
+  initialTier,
+  isEditMode,
+  onClose,
+  onSave,
+}) => {
+  const [formData, setFormData] = useState<PlanTier>(initialTier);
+  const [isUnlimitedMax, setIsUnlimitedMax] = useState<boolean>(
+    initialTier.maxProperties === null
+  );
+  const [newFeatureText, setNewFeatureText] = useState('');
+
+  const handleAddFeature = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFeatureText.trim()) return;
+    setFormData({
+      ...formData,
+      features: [...formData.features, newFeatureText.trim()],
+      featuresAr: [...formData.featuresAr, newFeatureText.trim()],
+    });
+    setNewFeatureText('');
+  };
+
+  const handleRemoveFeature = (idx: number) => {
+    setFormData({
+      ...formData,
+      features: formData.features.filter((_, i) => i !== idx),
+      featuresAr: formData.featuresAr.filter((_, i) => i !== idx),
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      ...formData,
+      maxProperties: isUnlimitedMax ? null : formData.maxProperties,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+      <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#e3e8f9] max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between pb-4 border-b border-[#e3e8f9]">
+          <div className="flex items-center gap-2">
+            <Layers className="h-5 w-5 text-[#004a60]" />
+            <h3 className="text-base font-bold text-[#161c27]">
+              {isEditMode
+                ? isArabic
+                  ? `تعديل المستوى: ${formData.nameAr}`
+                  : `Edit Tier: ${formData.name}`
+                : isArabic
+                ? 'إنشاء مستوى جديد وتحديد الخطة التابعة له'
+                : 'Create New Tier & Link to Plan'}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 p-1 rounded-lg cursor-pointer"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4 text-xs">
+          {/* CRITICAL: PLAN POINTER SELECTION ("المستوي يشاور على الخطة التابعه له") */}
+          <div className="p-3 rounded-xl bg-[#eef7ff] border-2 border-[#004a60]/30 space-y-2">
+            <label className="block font-black text-[#004a60] text-xs">
+              {isArabic
+                ? '🎯 الخطة التي يشاور عليها هذا المستوى (Associated Parent Plan):'
+                : '🎯 Plan Pointed to by this Tier:'}
+            </label>
+            <select
+              value={formData.planId}
+              onChange={(e) => {
+                const sel = plans.find((p) => p.id === e.target.value);
+                setFormData({
+                  ...formData,
+                  planId: e.target.value,
+                  planName: sel?.name,
+                  planNameAr: sel?.nameAr,
+                });
+              }}
+              className="w-full rounded-lg border border-[#bcd7f5] bg-white p-2.5 font-bold text-[#161c27] text-xs cursor-pointer focus:ring-2 focus:ring-[#004a60]/20"
+              required
+            >
+              {plans.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {isArabic ? p.nameAr : p.name} ({p.code})
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-[#425a70]">
+              {isArabic
+                ? 'يشير هذا الإعداد إلى الخطة الأم التي يتبع لها هذا المستوى ويعتمد عليها في منظومة التسعير.'
+                : 'Points this tier directly to the parent plan hierarchy.'}
+            </p>
+          </div>
+
+          {/* Tier Names */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-[#161c27] mb-1">
+                {isArabic ? 'اسم المستوى (عربي):' : 'Tier Name (Arabic):'}
+              </label>
+              <input
+                type="text"
+                value={formData.nameAr}
+                onChange={(e) => setFormData({ ...formData, nameAr: e.target.value })}
+                className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-bold"
+                required
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-[#161c27] mb-1">
+                {isArabic ? 'اسم المستوى (إنجليزي):' : 'Tier Name (English):'}
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Code & Level */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block font-semibold text-[#161c27] mb-1">
+                {isArabic ? 'كود المستوى:' : 'Tier Code:'}
+              </label>
+              <input
+                type="text"
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-[#161c27] mb-1">
+                {isArabic ? 'ترتيب المستوى (Grade):' : 'Tier Level (1,2,3):'}
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={formData.tierLevel}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    tierLevel: Math.max(1, parseInt(e.target.value) || 1),
+                  })
+                }
+                className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono font-bold"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-[#161c27] mb-1">
+                {isArabic ? 'الشارة الترويجية:' : 'Badge Label:'}
+              </label>
+              <input
+                type="text"
+                value={formData.badgeAr || formData.badge || ''}
+                onChange={(e) =>
+                  setFormData({ ...formData, badgeAr: e.target.value, badge: e.target.value })
+                }
+                placeholder={isArabic ? 'الأكثر طلباً' : 'Popular'}
+                className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white"
+              />
+            </div>
+          </div>
+
+          {/* Unit Threshold Range */}
+          <div className="p-3 bg-gray-50 rounded-xl border border-[#e3e8f9] space-y-2">
+            <span className="font-bold text-[#161c27] block">
+              {isArabic ? 'نطاق عدد العقارات / الوحدات:' : 'Property / Key Threshold Range:'}
+            </span>
+
+            <div className="grid grid-cols-2 gap-3 items-center">
+              <div>
+                <label className="block text-[11px] text-[#70787d] mb-1">
+                  {isArabic ? 'الحد الأدنى (عقار):' : 'Min Properties:'}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.minProperties}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      minProperties: Math.max(1, parseInt(e.target.value) || 1),
+                    })
+                  }
+                  className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#70787d] mb-1">
+                  {isArabic ? 'الحد الأقصى (عقار):' : 'Max Properties:'}
+                </label>
+                <input
+                  type="number"
+                  disabled={isUnlimitedMax}
+                  value={isUnlimitedMax ? '' : formData.maxProperties || 20}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      maxProperties: Math.max(1, parseInt(e.target.value) || 1),
+                    })
+                  }
+                  placeholder={isUnlimitedMax ? (isArabic ? 'غير محدود' : 'Unlimited') : '20'}
+                  className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono disabled:bg-gray-100"
+                />
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 pt-1 text-xs text-[#40484d] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isUnlimitedMax}
+                onChange={(e) => setIsUnlimitedMax(e.target.checked)}
+                className="rounded text-[#004a60] focus:ring-[#004a60]"
+              />
+              <span>
+                {isArabic
+                  ? 'سقف غير محدود (مهما زادت العقارات - Unlimited Capped)'
+                  : 'Unlimited units (Enterprise/Capped)'}
+              </span>
+            </label>
+          </div>
+
+          {/* Pricing Rates */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-[#161c27] mb-1">
+                {isArabic ? 'سعر الوحدة (ر.س شهرياً):' : 'Rate Per Unit (SAR):'}
+              </label>
+              <input
+                type="number"
+                value={formData.ratePerUnit}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    ratePerUnit: Math.max(1, parseInt(e.target.value) || 0),
+                  })
+                }
+                className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono font-bold text-[#004a60]"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-[#161c27] mb-1">
+                {isArabic ? 'سقف السعر الأقصى (ر.س Capped):' : 'Capped Price (SAR):'}
+              </label>
+              <input
+                type="number"
+                value={formData.cappedRate || 3000}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    cappedRate: Math.max(1, parseInt(e.target.value) || 0),
+                  })
+                }
+                className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono font-bold text-emerald-800"
+              />
+            </div>
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="block font-semibold text-[#161c27] mb-1">
+              {isArabic ? 'حالة المستوى:' : 'Tier Status:'}
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['active', 'coming_soon', 'disabled'] as const).map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, status: st })}
+                  className={`p-2 rounded-lg border font-bold text-center cursor-pointer transition-all ${
+                    formData.status === st
+                      ? 'border-[#004a60] bg-[#004a60] text-white'
+                      : 'border-[#e3e8f9] bg-white text-[#40484d] hover:bg-gray-50'
+                  }`}
+                >
+                  {st === 'active'
+                    ? isArabic
+                      ? 'مفعل'
+                      : 'Active'
+                    : st === 'coming_soon'
+                    ? isArabic
+                      ? 'قريباً'
+                      : 'Coming Soon'
+                    : isArabic
+                    ? 'معطل'
+                    : 'Disabled'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block font-semibold text-[#161c27] mb-1">
+              {isArabic ? 'وصف المستوى (عربي):' : 'Tier Description (Arabic):'}
+            </label>
+            <textarea
+              rows={2}
+              value={formData.descriptionAr}
+              onChange={(e) => setFormData({ ...formData, descriptionAr: e.target.value })}
+              className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white"
+            />
+          </div>
+
+          {/* Features Management */}
+          <div className="space-y-2">
+            <label className="block font-semibold text-[#161c27]">
+              {isArabic ? 'مزايا وخدمات هذا المستوى:' : 'Tier Features & Perks:'}
+            </label>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder={isArabic ? 'أضف ميزة جديدة للمستوى...' : 'Add a tier feature...'}
+                value={newFeatureText}
+                onChange={(e) => setNewFeatureText(e.target.value)}
+                className="flex-1 rounded-lg border border-[#e3e8f9] p-2 bg-white"
+              />
+              <button
+                type="button"
+                onClick={handleAddFeature}
+                className="bg-[#004a60] text-white px-3 py-2 rounded-lg font-bold hover:bg-[#074e64] cursor-pointer"
+              >
+                {isArabic ? 'إضافة' : 'Add'}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {formData.featuresAr.map((feat, fi) => (
+                <span
+                  key={fi}
+                  className="bg-gray-100 text-gray-800 border border-gray-200 px-2 py-0.5 rounded-md flex items-center gap-1.5 text-[11px]"
+                >
+                  <span>{feat}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveFeature(fi)}
+                    className="text-gray-400 hover:text-red-600 cursor-pointer"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Modal Actions */}
+          <div className="pt-4 border-t border-[#e3e8f9] flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg border border-[#e3e8f9] text-gray-700 font-semibold hover:bg-gray-50 cursor-pointer"
+            >
+              {isArabic ? 'إلغاء' : 'Cancel'}
+            </button>
+
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-lg bg-[#004a60] text-white font-bold hover:bg-[#074e64] shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <Check className="h-4 w-4" />
+              <span>
+                {isEditMode
+                  ? isArabic
+                    ? 'حفظ تعديلات المستوى'
+                    : 'Save Tier Changes'
+                  : isArabic
+                  ? 'إنشاء المستوى وربطه بالخطة'
+                  : 'Create Tier'}
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

@@ -104,9 +104,19 @@ export function App() {
       setActiveSubTab(subTab || 'contacts');
       return;
     }
+    if (view === 'crm') {
+      setActiveView('organization');
+      setActiveSubTab('crm');
+      return;
+    }
     if (view === 'operators') {
       setActiveView('organization');
       setActiveSubTab(subTab || 'organization');
+      return;
+    }
+    if (view === 'properties' || view === 'branches') {
+      setActiveView('organization');
+      setActiveSubTab('branches');
       return;
     }
     if (view === 'guests') {
@@ -117,6 +127,16 @@ export function App() {
     if (view === 'corporate' || view === 'guest_hub' || view === 'diyafa_guests' || view === 'diyafa_corporates') {
       setActiveView('organization');
       setActiveSubTab(subTab || (view === 'corporate' || view === 'diyafa_corporates' ? 'corporate' : 'guests'));
+      return;
+    }
+    if (view === 'plans' || view === 'catalog') {
+      setActiveView('products');
+      setActiveSubTab('catalog');
+      return;
+    }
+    if (view === 'tiers' || view === 'categories') {
+      setActiveView('products');
+      setActiveSubTab('categories');
       return;
     }
     setActiveView(view);

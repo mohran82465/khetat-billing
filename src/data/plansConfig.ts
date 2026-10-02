@@ -12,7 +12,7 @@ export interface PropertyPlan {
   badgeAr?: string;
   popular?: boolean;
 
-  // Tiered Capped Pricing
+  // Default / Baseline Pricing Model
   pricingModel: 'tiered_capped' | 'flat_rate' | 'per_key';
   tier1Rate: number; // e.g. 150 SAR per property
   tierLimit: number; // e.g. 20 properties
@@ -27,6 +27,41 @@ export interface PropertyPlan {
   featuresAr: string[];
   zatcaPhase2Included: boolean;
   minProperties: number;
+}
+
+export interface PlanTier {
+  id: string;
+  code: string;
+  name: string;
+  nameAr: string;
+  // Relationship / Pointer to the parent plan ("المستوى يشاور على الخطة التابعة له")
+  planId: string;
+  planName?: string;
+  planNameAr?: string;
+  
+  tierLevel: number; // 1, 2, 3...
+  minProperties: number;
+  maxProperties: number | null; // null for unlimited / cap threshold
+  
+  pricingModel: 'tiered_capped' | 'flat_rate' | 'per_key';
+  ratePerUnit: number;
+  cappedRate?: number;
+  currency: string;
+  billingFrequency: string;
+  billingFrequencyAr: string;
+
+  status: 'active' | 'coming_soon' | 'disabled';
+  badge?: string;
+  badgeAr?: string;
+  isPopular?: boolean;
+
+  description: string;
+  descriptionAr: string;
+  features: string[];
+  featuresAr: string[];
+  slaResponseHours?: number;
+  supportLevel?: 'standard' | 'priority' | 'dedicated_vip';
+  supportLevelAr?: string;
 }
 
 export const DEFAULT_PLANS: PropertyPlan[] = [
@@ -165,11 +200,300 @@ export const DEFAULT_PLANS: PropertyPlan[] = [
   },
 ];
 
-const LOCAL_STORAGE_KEY = 'mira_hospitality_plans_v1';
+// Separated Tiers that point to their parent Plan ("المستوى يشاور على الخطة التابعة له")
+export const DEFAULT_TIERS: PlanTier[] = [
+  // TIERS FOR BUILDING PLANS (باقات المباني والأبراج)
+  {
+    id: 'tier-bld-starter',
+    code: 'TR-BLD-01',
+    name: 'Building Starter Tier (1 - 10 Units)',
+    nameAr: 'المستوى الأول: النمو الأولي للأبراج (1 - 10 عقارات)',
+    planId: 'building-plans',
+    planName: 'Building Plans',
+    planNameAr: 'باقات المباني والأبراج',
+    tierLevel: 1,
+    minProperties: 1,
+    maxProperties: 10,
+    pricingModel: 'tiered_capped',
+    ratePerUnit: 160,
+    cappedRate: 1600,
+    currency: 'SAR',
+    billingFrequency: 'per property / month',
+    billingFrequencyAr: 'لكل عقار / شهرياً',
+    status: 'active',
+    badge: 'Starter',
+    badgeAr: 'المستوى الأساسي',
+    isPopular: false,
+    description: 'Designed for boutique hotels and early-stage serviced apartment buildings up to 10 units.',
+    descriptionAr: 'مخصص للمنشآت الفندقية والشقق المخدومة الناشئة من 1 إلى 10 وحدات أو عقارات مخدومة.',
+    features: [
+      'ZATCA Phase 2 Fatoora clearance',
+      'Front desk folio & key card integration',
+      'Direct WhatsApp booking links',
+      '12h SLA Support',
+    ],
+    featuresAr: [
+      'ربط الفوترة الإلكترونية مع الزكاة والضريبة',
+      'إدارة مكتب الاستقبال والنزلاء والمفاتيح',
+      'روابط حجز مباشرة عبر الواتساب',
+      'دعم فني خلال 12 ساعة',
+    ],
+    slaResponseHours: 12,
+    supportLevel: 'standard',
+    supportLevelAr: 'دعم قياسي خلال 12 ساعة',
+  },
+  {
+    id: 'tier-bld-growth',
+    code: 'TR-BLD-02',
+    name: 'Building Growth & Capped Tier (11 - 20 Units)',
+    nameAr: 'المستوى الثاني: الاحترافي المتدرج (11 - 20 عقار)',
+    planId: 'building-plans',
+    planName: 'Building Plans',
+    planNameAr: 'باقات المباني والأبراج',
+    tierLevel: 2,
+    minProperties: 11,
+    maxProperties: 20,
+    pricingModel: 'tiered_capped',
+    ratePerUnit: 150,
+    cappedRate: 3000,
+    currency: 'SAR',
+    billingFrequency: 'per property / month',
+    billingFrequencyAr: 'لكل عقار / شهرياً',
+    status: 'active',
+    badge: 'Most Popular / Capped',
+    badgeAr: 'الأكثر طلباً - سقف سعري',
+    isPopular: true,
+    description: 'The golden tier for growing hotel operators with 150 SAR/unit and automatic 3,000 SAR maximum ceiling.',
+    descriptionAr: 'المستوى الأكثر طلباً للمشغلين: 150 ر.س لكل عقار وسقف سعري أقصى 3,000 ر.س شهرياً.',
+    features: [
+      'Full ZATCA Phase 2 Real-Time Clearance',
+      '5% Saudi Tourism & Municipality Tax Calculation',
+      'OTA Channel Manager (Booking.com, Agoda)',
+      'Guaranteed 3,000 SAR Cap for over 20 properties',
+      '4h Priority Technical SLA',
+    ],
+    featuresAr: [
+      'ربط الزكاة والضريبة والجمارك المرحلة 2',
+      'احتساب رسوم السياحة والبلدية 5% تلقائياً',
+      'ربط قنوات الحجز الدولية OTA',
+      'سقف ثابت بحد أقصى 3,000 ر.س عند تجاوز 20 عقار',
+      'أولوية استجابة دعم فني خلال 4 ساعات',
+    ],
+    slaResponseHours: 4,
+    supportLevel: 'priority',
+    supportLevelAr: 'أولوية دعم تشغيلي خلال 4 ساعات',
+  },
+  {
+    id: 'tier-bld-enterprise',
+    code: 'TR-BLD-03',
+    name: 'Building Enterprise Towers Tier (21+ Units)',
+    nameAr: 'المستوى الثالث: المؤسسات والأبراج الكبرى (21+ عقار)',
+    planId: 'building-plans',
+    planName: 'Building Plans',
+    planNameAr: 'باقات المباني والأبراج',
+    tierLevel: 3,
+    minProperties: 21,
+    maxProperties: null, // Unlimited
+    pricingModel: 'tiered_capped',
+    ratePerUnit: 150,
+    cappedRate: 3000,
+    currency: 'SAR',
+    billingFrequency: 'fixed capped / month',
+    billingFrequencyAr: 'سقف ثابت شهرياً',
+    status: 'active',
+    badge: 'Unlimited Capped',
+    badgeAr: 'سعر سقف غير محدود',
+    isPopular: false,
+    description: 'Fixed flat rate of 3,000 SAR for enterprise operators managing unlimited properties and large hotel chains.',
+    descriptionAr: 'سعر سقف ثابت 3,000 ر.س شهرياً للمؤسسات الكبرى وسلاسل الأبراج الفندقية مهما بلغ عدد العقارات.',
+    features: [
+      'Unlimited properties under one single subscription',
+      'USALI Hotel Accounting ledger integration',
+      'Multi-branch central management',
+      'Dedicated Account Manager & 1h Critical SLA',
+      'Enterprise Custom API & Webhooks',
+    ],
+    featuresAr: [
+      'عدد عقارات وأبراج غير محدود باشتراك واحد',
+      'تكامل محاسبي مع معايير USALI الفندقية',
+      'إدارة مركزية متعددة الفروع والمشغلين',
+      'مدير حساب مخصص واستجابة فورية خلال ساعة واحدة',
+      'واجهات برمجة تطبيقات مخصصة API & Webhooks',
+    ],
+    slaResponseHours: 1,
+    supportLevel: 'dedicated_vip',
+    supportLevelAr: 'مدير حساب مخصص واستجابة خلال ساعة',
+  },
+
+  // TIERS FOR HOME PLANS (باقات المنازل والفلل)
+  {
+    id: 'tier-hom-basic',
+    code: 'TR-HOM-01',
+    name: 'Home Starter Tier (1 - 5 Villas)',
+    nameAr: 'المستوى الأول: فلل الضيافة المستقلة (1 - 5 فلل)',
+    planId: 'home-plans',
+    planName: 'Home Plans',
+    planNameAr: 'باقات المنازل والفلل',
+    tierLevel: 1,
+    minProperties: 1,
+    maxProperties: 5,
+    pricingModel: 'tiered_capped',
+    ratePerUnit: 130,
+    cappedRate: 650,
+    currency: 'SAR',
+    billingFrequency: 'per property / month',
+    billingFrequencyAr: 'لكل فيلا / شهرياً',
+    status: 'coming_soon',
+    badge: 'Coming Soon',
+    badgeAr: 'قريباً',
+    isPopular: false,
+    description: 'Ideal for individual owners and holiday home hosts managing up to 5 vacation houses.',
+    descriptionAr: 'مستوى مخصص لمالكي ومستضيفي بيوت العطلات والفلل المستقلة حتى 5 فلل.',
+    features: [
+      'Smart Door Lock PIN via WhatsApp on Check-in',
+      'Nafath e-ID Verification',
+      'Simplified ZATCA Tax Invoices',
+      'Standard Support',
+    ],
+    featuresAr: [
+      'إرسال رمز القفل الذكي عبر الواتساب عند الدخول',
+      'التحقق من هوية النزلاء عبر نفاذ',
+      'فواتير ضريبية مبسطة معتمدة',
+      'دعم فني قياسي',
+    ],
+    slaResponseHours: 12,
+    supportLevel: 'standard',
+    supportLevelAr: 'دعم قياسي',
+  },
+  {
+    id: 'tier-hom-portfolio',
+    code: 'TR-HOM-02',
+    name: 'Home Portfolio Tier (6 - 15 Villas)',
+    nameAr: 'المستوى الثاني: المحفظة السكنية والكمباوندات (6 - 15 فيلا)',
+    planId: 'home-plans',
+    planName: 'Home Plans',
+    planNameAr: 'باقات المنازل والفلل',
+    tierLevel: 2,
+    minProperties: 6,
+    maxProperties: 15,
+    pricingModel: 'tiered_capped',
+    ratePerUnit: 120,
+    cappedRate: 2000,
+    currency: 'SAR',
+    billingFrequency: 'per property / month',
+    billingFrequencyAr: 'لكل فيلا / شهرياً',
+    status: 'coming_soon',
+    badge: 'Capped at 2,000 SAR',
+    badgeAr: 'سقف 2,000 ر.س',
+    isPopular: true,
+    description: 'Designed for residential portfolio managers and gated compounds with up to 2,000 SAR capped fee.',
+    descriptionAr: 'مخصص للمجمعات السكنية الخاصة ومحافظ بيوت العطلات مع سقف أقصى 2,000 ر.س شهرياً.',
+    features: [
+      'Airbnb & Vrbo Real-time Calendar Sync',
+      'Balady Platform license sync',
+      'Automated Housekeeping Turnover Photos',
+      'Mada/Apple Pay Security Deposit Hold',
+      'Priority 4h SLA Support',
+    ],
+    featuresAr: [
+      'مزامنة فورية للتقويم مع منصات Airbnb و Vrbo',
+      'تكامل رخص منصة بلدي للضيافة السكنية',
+      'توثيق نظافة وصيانة الوحدات بالصور والتاريخ',
+      'حجز مبلغ التأمين تلقائياً عبر مدى و Apple Pay',
+      'دعم تشغيلي ذو أولوية خلال 4 ساعات',
+    ],
+    slaResponseHours: 4,
+    supportLevel: 'priority',
+    supportLevelAr: 'أولوية استجابة 4 ساعات',
+  },
+
+  // TIERS FOR CHALET PLANS (باقات الشاليهات والمنتجعات)
+  {
+    id: 'tier-chl-standard',
+    code: 'TR-CHL-01',
+    name: 'Chalet Standard Tier (1 - 5 Chalets)',
+    nameAr: 'المستوى الأول: الشاليهات والاستراحات (1 - 5 شاليهات)',
+    planId: 'chalet-plans',
+    planName: 'Chalet Plans',
+    planNameAr: 'باقات الشاليهات والمنتجعات',
+    tierLevel: 1,
+    minProperties: 1,
+    maxProperties: 5,
+    pricingModel: 'tiered_capped',
+    ratePerUnit: 110,
+    cappedRate: 550,
+    currency: 'SAR',
+    billingFrequency: 'per chalet / month',
+    billingFrequencyAr: 'لكل شاليه / شهرياً',
+    status: 'coming_soon',
+    badge: 'Coming Soon',
+    badgeAr: 'قريباً',
+    isPopular: false,
+    description: 'For private chalets, weekend retreats, and countryside lodges with self check-in.',
+    descriptionAr: 'للشاليهات الخاصة والاستراحات الريفية والنزل مع خدمات الدخول الذاتي.',
+    features: [
+      'Dynamic weekend & holiday pricing rules',
+      'Self check-in keyless entry',
+      'Instant SMS/WhatsApp payment links',
+      'Daily ZATCA sales invoices',
+    ],
+    featuresAr: [
+      'تسعير تلقائي لعطلات نهاية الأسبوع والمواسم',
+      'دخول ذاتي بدون مفاتيح تقليدية',
+      'روابط دفع سريعة عبر الرسائل النصية والواتساب',
+      'فواتير مبيعات إلكترونية معتمدة من الزكاة',
+    ],
+    slaResponseHours: 12,
+    supportLevel: 'standard',
+    supportLevelAr: 'دعم قياسي',
+  },
+  {
+    id: 'tier-chl-resort',
+    code: 'TR-CHL-02',
+    name: 'Chalet Resort & Camps Tier (6 - 10 Chalets)',
+    nameAr: 'المستوى الثاني: المنتجعات والمخيمات الفاخرة (6 - 10 وحدات)',
+    planId: 'chalet-plans',
+    planName: 'Chalet Plans',
+    planNameAr: 'باقات الشاليهات والمنتجعات',
+    tierLevel: 2,
+    minProperties: 6,
+    maxProperties: 10,
+    pricingModel: 'tiered_capped',
+    ratePerUnit: 100,
+    cappedRate: 1500,
+    currency: 'SAR',
+    billingFrequency: 'per chalet / month',
+    billingFrequencyAr: 'لكل شاليه / شهرياً',
+    status: 'coming_soon',
+    badge: 'Capped at 1,500 SAR',
+    badgeAr: 'سقف 1,500 ر.س',
+    isPopular: true,
+    description: 'For desert camps, mountain resorts, and chalet clusters with fixed 1,500 SAR maximum cap.',
+    descriptionAr: 'للمخيمات الصحراوية الفاخرة ومجموعات الشاليهات مع سقف سعري أقصى 1,500 ر.س شهرياً.',
+    features: [
+      'Bilingual digital rental contracts & signature',
+      'Swimming pool & facility maintenance inspection',
+      'Capped price at 1,500 SAR flat',
+      'Dedicated onboarding & technical setup',
+    ],
+    featuresAr: [
+      'عقود إيجار رقمية ثنائية اللغة وتوقيع إلكتروني',
+      'جداول متابعة صيانة المسابح والمرافق دورياً',
+      'سقف سعري أقصى بقيمة 1,500 ر.س فقط',
+      'تهيئة فنية وتشغيلية مخصصة للمنشأة',
+    ],
+    slaResponseHours: 4,
+    supportLevel: 'priority',
+    supportLevelAr: 'دعم ذو أولوية خلال 4 ساعات',
+  },
+];
+
+const LOCAL_STORAGE_PLANS_KEY = 'mira_hospitality_plans_v2';
+const LOCAL_STORAGE_TIERS_KEY = 'mira_hospitality_tiers_v2';
 
 export function getStoredPlans(): PropertyPlan[] {
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const raw = localStorage.getItem(LOCAL_STORAGE_PLANS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -184,10 +508,37 @@ export function getStoredPlans(): PropertyPlan[] {
 
 export function saveStoredPlans(plans: PropertyPlan[]): void {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(plans));
+    localStorage.setItem(LOCAL_STORAGE_PLANS_KEY, JSON.stringify(plans));
   } catch (e) {
     console.error('Failed to save plans to localStorage', e);
   }
+}
+
+export function getStoredTiers(): PlanTier[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_TIERS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load tiers from localStorage', e);
+  }
+  return DEFAULT_TIERS;
+}
+
+export function saveStoredTiers(tiers: PlanTier[]): void {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_TIERS_KEY, JSON.stringify(tiers));
+  } catch (e) {
+    console.error('Failed to save tiers to localStorage', e);
+  }
+}
+
+export function getTiersForPlan(planId: string, tiers: PlanTier[]): PlanTier[] {
+  return tiers.filter((t) => t.planId === planId);
 }
 
 export function calculatePlanCost(
