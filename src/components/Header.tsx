@@ -13,6 +13,8 @@ import {
   Settings,
   LogOut,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -20,6 +22,8 @@ interface HeaderProps {
   isArabic: boolean;
   onToggleLanguage: () => void;
   onOpenMobileMenu: () => void;
+  isSidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
   currentTenant: string;
   onChangeTenant: (tenant: string) => void;
   searchQuery: string;
@@ -32,6 +36,8 @@ export const Header: React.FC<HeaderProps> = ({
   isArabic,
   onToggleLanguage,
   onOpenMobileMenu,
+  isSidebarCollapsed = false,
+  onToggleSidebar,
   currentTenant,
   onChangeTenant,
   searchQuery,
@@ -81,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({
         return isArabic ? 'الاشتراكات / باقات الضيافة والفوترة' : 'Subscriptions / Hospitality OS Plans & Billing';
       case 'profiles':
       case 'organization':
-        return isArabic ? 'المؤسسات / التراخيص والاشتراكات النشطة' : 'Organizations / Active Subscriptions & Licenses';
+        return isArabic ? 'الملفات / مدبّر وضيافة ونظام CRM' : 'Profiles / Mudabbir, Diyafa & CRM';
       case 'sales_orders':
         return isArabic ? 'المبيعات / أوامر البيع' : 'Sales / Sales Orders';
       case 'invoices':
@@ -150,14 +156,57 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#e3e8f9] bg-white px-4 lg:px-6 shadow-xs">
-      {/* Left: Mobile hamburger & Breadcrumbs */}
+      {/* Left: ONE Unified Navigation Toggle Button & Breadcrumbs */}
       <div className="flex items-center gap-3">
+        {/* ONE Unified Navigation Toggle Button (Desktop & Mobile) */}
         <button
-          onClick={onOpenMobileMenu}
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#e3e8f9] text-[#40484d] hover:bg-[#f1f3ff] lg:hidden"
-          aria-label="Toggle menu"
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+              onOpenMobileMenu();
+            } else if (onToggleSidebar) {
+              onToggleSidebar();
+            } else {
+              onOpenMobileMenu();
+            }
+          }}
+          className={`group flex h-9.5 items-center gap-2 px-3 rounded-xl border transition-all duration-200 cursor-pointer select-none ${
+            isSidebarCollapsed
+              ? 'bg-[#004a60] text-white border-[#004a60] hover:bg-[#074e64] shadow-xs'
+              : 'bg-[#f9fbff] text-[#333d45] border-[#d3dbf0] hover:border-[#004a60]/50 hover:bg-[#eef4ff] hover:text-[#004a60] shadow-2xs'
+          }`}
+          title={
+            isSidebarCollapsed
+              ? isArabic
+                ? 'إظهار القائمة الجانبية (Ctrl+B)'
+                : 'Show Sidebar Menu (Ctrl+B)'
+              : isArabic
+              ? 'إخفاء القائمة الجانبية لتوسيع مساحة الصفحة (Ctrl+B)'
+              : 'Collapse Sidebar to expand page space (Ctrl+B)'
+          }
+          aria-label="Toggle navigation sidebar"
         >
-          <Menu className="h-5 w-5" />
+          {isSidebarCollapsed ? (
+            <>
+              <PanelLeftOpen className="h-4 w-4 text-emerald-300 transition-transform duration-200 group-hover:scale-110 shrink-0" />
+              <span className="text-xs font-bold whitespace-nowrap">
+                {isArabic ? 'إظهار القائمة' : 'Show Menu'}
+              </span>
+              <kbd className="hidden md:inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-white/20 text-white/90">
+                ⌘B
+              </kbd>
+            </>
+          ) : (
+            <>
+              <PanelLeftClose className="h-4 w-4 text-[#5c6670] group-hover:text-[#004a60] transition-transform duration-200 group-hover:scale-110 shrink-0" />
+              <span className="text-xs font-semibold whitespace-nowrap hidden sm:inline">
+                {isArabic ? 'إخفاء القائمة' : 'Hide Menu'}
+              </span>
+              <kbd className="hidden md:inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-white border border-[#d8e0f5] text-[#556068] group-hover:border-[#004a60]/30 group-hover:text-[#004a60]">
+                ⌘B
+              </kbd>
+            </>
+          )}
         </button>
 
         <div className="flex flex-col">

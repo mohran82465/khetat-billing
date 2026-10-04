@@ -30,6 +30,35 @@ export interface OrganizationHQ {
   signatoryRole: string;
 }
 
+export interface PropertyUnitType {
+  id: string;
+  name: string;
+  nameAr?: string;
+  dailyRate: number;
+  monthlyRate: number;
+  unitsCount?: number;
+}
+
+export interface PropertyFloor {
+  id: string;
+  name: string;
+  nameAr?: string;
+  order?: number;
+  roomCodes?: string[];
+}
+
+export interface PropertyUnit {
+  id: string;
+  unitNumber: string; // e.g. "Ground Floor-101"
+  floorId: string;
+  floorName: string;
+  unitTypeId: string;
+  unitTypeName: string;
+  dailyRate?: number;
+  monthlyRate?: number;
+  status?: 'Available' | 'Occupied' | 'Maintenance' | 'Reserved';
+}
+
 export interface OrganizationBranch {
   id: string;
   code: string;
@@ -43,6 +72,12 @@ export interface OrganizationBranch {
   buildingNameAr?: string;
   buildingType?: string;
   buildingTypeAr?: string;
+  country?: string;
+  stateRegion?: string;
+  postalCode?: string;
+  website?: string;
+  subscriptionPlanName?: string;
+  subscriptionLimit?: number; // عدد الوحدات الأقصى المسموح بها حسب الاشتراك المدفوع
   floorsCount?: number;
   totalUnitsInBuilding: number; // عدد العقارات / الوحدات الموجودة في المبنى
   unitBreakdown?: {
@@ -52,6 +87,9 @@ export interface OrganizationBranch {
     villas?: number;
     commercialUnits?: number;
   };
+  unitTypes?: PropertyUnitType[];
+  floors?: PropertyFloor[];
+  units?: PropertyUnit[];
   type: 'Headquarters' | 'Regional Hub' | 'Resort Hub' | 'Operations Node' | 'Hotel Property' | 'Residential Complex' | 'Tower';
   typeAr: string;
   city: string;
@@ -137,6 +175,170 @@ export const INITIAL_ORGANIZATION_HQ: OrganizationHQ = {
 };
 
 export const INITIAL_BRANCHES: OrganizationBranch[] = [
+  {
+    id: 'prop-mohran',
+    code: 'RHSA1234',
+    name: "Mohran's Property",
+    nameAr: 'عقار مهران الفندقي',
+    organizationId: 'ORG-KHETAT-HQ',
+    organizationName: 'Khetat Hospitality Hub & Operations Ltd.',
+    organizationNameAr: 'شركة خطط للضيافة وتقنية العمليات الفندقية',
+    organizationBadgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    buildingName: 'Mohran Grand Hotel & Suites',
+    buildingNameAr: 'فندق وأجنحة مهران جراند',
+    buildingType: 'Hotel',
+    buildingTypeAr: 'فندق سياحي متكامل',
+    country: 'Saudi Arabia',
+    stateRegion: 'Riyadh',
+    city: 'Riyadh',
+    cityAr: 'الرياض',
+    district: 'Al-Olaya District',
+    postalCode: '12345',
+    address: 'King Fahd Road, Al-Olaya, Riyadh 12345, Saudi Arabia',
+    addressAr: 'طريق الملك فهد، حي العليا، الرياض 12345، المملكة العربية السعودية',
+    shortAddress: 'RHSA1234',
+    phone: '+966 11 234 5678',
+    email: 'info@grandhotel.com',
+    website: 'https://www.grandhotel.com',
+    managerName: 'Mohran Al-Otaibi',
+    managerNameAr: 'مهران العتيبي',
+    managerPhone: '+966 50 123 4567',
+    assignedContactIds: ['ct-1', 'ct-4'],
+    managedKeys: 31,
+    status: 'Active',
+    floorsCount: 4,
+    totalUnitsInBuilding: 31,
+    subscriptionPlanName: 'Building Plans - Tier 2 (Growth & Capped)',
+    subscriptionLimit: 35, // مدفوع حتى 35 عقار/وحدة
+    unitBreakdown: { hotelRooms: 20, suites: 11 },
+    unitTypes: [
+      {
+        id: 'ut-deluxe',
+        name: 'Deluxe Room',
+        nameAr: 'غرفة ديلوكس فاخرة',
+        dailyRate: 400.0,
+        monthlyRate: 8000.0,
+        unitsCount: 10,
+      },
+      {
+        id: 'ut-exec',
+        name: 'Executive Room',
+        nameAr: 'غرفة رجال الأعمال التنفيذية',
+        dailyRate: 600.0,
+        monthlyRate: 12000.0,
+        unitsCount: 11,
+      },
+      {
+        id: 'ut-standard',
+        name: 'Standard Room',
+        nameAr: 'غرفة قياسية كلاسيكية',
+        dailyRate: 250.0,
+        monthlyRate: 5000.0,
+        unitsCount: 10,
+      },
+    ],
+    floors: [
+      {
+        id: 'fl-first',
+        name: 'First Floor',
+        nameAr: 'الدور الأول',
+        order: 2,
+        roomCodes: [
+          'First Floor-111',
+          'First Floor-112',
+          'First Floor-113',
+          'First Floor-114',
+          'First Floor-115',
+          'First Floor-116',
+          'First Floor-117',
+          'First Floor-118',
+          'First Floor-119',
+          'First Floor-120',
+        ],
+      },
+      {
+        id: 'fl-ground',
+        name: 'Ground Floor',
+        nameAr: 'الدور الأرضي',
+        order: 1,
+        roomCodes: [
+          'Ground Floor-101',
+          'Ground Floor-102',
+          'Ground Floor-103',
+          'Ground Floor-104',
+          'Ground Floor-105',
+          'Ground Floor-106',
+          'Ground Floor-107',
+          'Ground Floor-108',
+          'Ground Floor-109',
+          'Ground Floor-110',
+        ],
+      },
+      {
+        id: 'fl-second',
+        name: 'Second Floor',
+        nameAr: 'الدور الثاني',
+        order: 3,
+        roomCodes: [
+          'Second Floor-121',
+          'Second Floor-122',
+          'Second Floor-123',
+          'Second Floor-124',
+          'Second Floor-125',
+          'Second Floor-126',
+          'Second Floor-127',
+          'Second Floor-128',
+          'Second Floor-129',
+          'Second Floor-130',
+        ],
+      },
+      {
+        id: 'fl-secret',
+        name: 'secret floor',
+        nameAr: 'الدور السري / الرووف الخاص',
+        order: 4,
+        roomCodes: ['secret floor-450'],
+      },
+    ],
+    units: [
+      { id: 'u-101', unitNumber: 'Ground Floor-101', floorId: 'fl-ground', floorName: 'Ground Floor', unitTypeId: 'ut-standard', unitTypeName: 'Standard Room', dailyRate: 250, monthlyRate: 5000, status: 'Available' },
+      { id: 'u-102', unitNumber: 'Ground Floor-102', floorId: 'fl-ground', floorName: 'Ground Floor', unitTypeId: 'ut-standard', unitTypeName: 'Standard Room', dailyRate: 250, monthlyRate: 5000, status: 'Occupied' },
+      { id: 'u-103', unitNumber: 'Ground Floor-103', floorId: 'fl-ground', floorName: 'Ground Floor', unitTypeId: 'ut-standard', unitTypeName: 'Standard Room', dailyRate: 250, monthlyRate: 5000, status: 'Available' },
+      { id: 'u-104', unitNumber: 'Ground Floor-104', floorId: 'fl-ground', floorName: 'Ground Floor', unitTypeId: 'ut-standard', unitTypeName: 'Standard Room', dailyRate: 250, monthlyRate: 5000, status: 'Available' },
+      { id: 'u-105', unitNumber: 'Ground Floor-105', floorId: 'fl-ground', floorName: 'Ground Floor', unitTypeId: 'ut-standard', unitTypeName: 'Standard Room', dailyRate: 250, monthlyRate: 5000, status: 'Occupied' },
+      { id: 'u-106', unitNumber: 'Ground Floor-106', floorId: 'fl-ground', floorName: 'Ground Floor', unitTypeId: 'ut-standard', unitTypeName: 'Standard Room', dailyRate: 250, monthlyRate: 5000, status: 'Available' },
+      { id: 'u-107', unitNumber: 'Ground Floor-107', floorId: 'fl-ground', floorName: 'Ground Floor', unitTypeId: 'ut-standard', unitTypeName: 'Standard Room', dailyRate: 250, monthlyRate: 5000, status: 'Available' },
+      { id: 'u-108', unitNumber: 'Ground Floor-108', floorId: 'fl-ground', floorName: 'Ground Floor', unitTypeId: 'ut-standard', unitTypeName: 'Standard Room', dailyRate: 250, monthlyRate: 5000, status: 'Maintenance' },
+      { id: 'u-109', unitNumber: 'Ground Floor-109', floorId: 'fl-ground', floorName: 'Ground Floor', unitTypeId: 'ut-standard', unitTypeName: 'Standard Room', dailyRate: 250, monthlyRate: 5000, status: 'Available' },
+      { id: 'u-110', unitNumber: 'Ground Floor-110', floorId: 'fl-ground', floorName: 'Ground Floor', unitTypeId: 'ut-standard', unitTypeName: 'Standard Room', dailyRate: 250, monthlyRate: 5000, status: 'Available' },
+
+      { id: 'u-111', unitNumber: 'First Floor-111', floorId: 'fl-first', floorName: 'First Floor', unitTypeId: 'ut-deluxe', unitTypeName: 'Deluxe Room', dailyRate: 400, monthlyRate: 8000, status: 'Occupied' },
+      { id: 'u-112', unitNumber: 'First Floor-112', floorId: 'fl-first', floorName: 'First Floor', unitTypeId: 'ut-deluxe', unitTypeName: 'Deluxe Room', dailyRate: 400, monthlyRate: 8000, status: 'Occupied' },
+      { id: 'u-113', unitNumber: 'First Floor-113', floorId: 'fl-first', floorName: 'First Floor', unitTypeId: 'ut-deluxe', unitTypeName: 'Deluxe Room', dailyRate: 400, monthlyRate: 8000, status: 'Available' },
+      { id: 'u-114', unitNumber: 'First Floor-114', floorId: 'fl-first', floorName: 'First Floor', unitTypeId: 'ut-deluxe', unitTypeName: 'Deluxe Room', dailyRate: 400, monthlyRate: 8000, status: 'Available' },
+      { id: 'u-115', unitNumber: 'First Floor-115', floorId: 'fl-first', floorName: 'First Floor', unitTypeId: 'ut-deluxe', unitTypeName: 'Deluxe Room', dailyRate: 400, monthlyRate: 8000, status: 'Occupied' },
+      { id: 'u-116', unitNumber: 'First Floor-116', floorId: 'fl-first', floorName: 'First Floor', unitTypeId: 'ut-deluxe', unitTypeName: 'Deluxe Room', dailyRate: 400, monthlyRate: 8000, status: 'Available' },
+      { id: 'u-117', unitNumber: 'First Floor-117', floorId: 'fl-first', floorName: 'First Floor', unitTypeId: 'ut-deluxe', unitTypeName: 'Deluxe Room', dailyRate: 400, monthlyRate: 8000, status: 'Available' },
+      { id: 'u-118', unitNumber: 'First Floor-118', floorId: 'fl-first', floorName: 'First Floor', unitTypeId: 'ut-deluxe', unitTypeName: 'Deluxe Room', dailyRate: 400, monthlyRate: 8000, status: 'Occupied' },
+      { id: 'u-119', unitNumber: 'First Floor-119', floorId: 'fl-first', floorName: 'First Floor', unitTypeId: 'ut-deluxe', unitTypeName: 'Deluxe Room', dailyRate: 400, monthlyRate: 8000, status: 'Available' },
+      { id: 'u-120', unitNumber: 'First Floor-120', floorId: 'fl-first', floorName: 'First Floor', unitTypeId: 'ut-deluxe', unitTypeName: 'Deluxe Room', dailyRate: 400, monthlyRate: 8000, status: 'Reserved' },
+
+      { id: 'u-121', unitNumber: 'Second Floor-121', floorId: 'fl-second', floorName: 'Second Floor', unitTypeId: 'ut-exec', unitTypeName: 'Executive Room', dailyRate: 600, monthlyRate: 12000, status: 'Occupied' },
+      { id: 'u-122', unitNumber: 'Second Floor-122', floorId: 'fl-second', floorName: 'Second Floor', unitTypeId: 'ut-exec', unitTypeName: 'Executive Room', dailyRate: 600, monthlyRate: 12000, status: 'Available' },
+      { id: 'u-123', unitNumber: 'Second Floor-123', floorId: 'fl-second', floorName: 'Second Floor', unitTypeId: 'ut-exec', unitTypeName: 'Executive Room', dailyRate: 600, monthlyRate: 12000, status: 'Available' },
+      { id: 'u-124', unitNumber: 'Second Floor-124', floorId: 'fl-second', floorName: 'Second Floor', unitTypeId: 'ut-exec', unitTypeName: 'Executive Room', dailyRate: 600, monthlyRate: 12000, status: 'Occupied' },
+      { id: 'u-125', unitNumber: 'Second Floor-125', floorId: 'fl-second', floorName: 'Second Floor', unitTypeId: 'ut-exec', unitTypeName: 'Executive Room', dailyRate: 600, monthlyRate: 12000, status: 'Occupied' },
+      { id: 'u-126', unitNumber: 'Second Floor-126', floorId: 'fl-second', floorName: 'Second Floor', unitTypeId: 'ut-exec', unitTypeName: 'Executive Room', dailyRate: 600, monthlyRate: 12000, status: 'Available' },
+      { id: 'u-127', unitNumber: 'Second Floor-127', floorId: 'fl-second', floorName: 'Second Floor', unitTypeId: 'ut-exec', unitTypeName: 'Executive Room', dailyRate: 600, monthlyRate: 12000, status: 'Reserved' },
+      { id: 'u-128', unitNumber: 'Second Floor-128', floorId: 'fl-second', floorName: 'Second Floor', unitTypeId: 'ut-exec', unitTypeName: 'Executive Room', dailyRate: 600, monthlyRate: 12000, status: 'Available' },
+      { id: 'u-129', unitNumber: 'Second Floor-129', floorId: 'fl-second', floorName: 'Second Floor', unitTypeId: 'ut-exec', unitTypeName: 'Executive Room', dailyRate: 600, monthlyRate: 12000, status: 'Available' },
+      { id: 'u-130', unitNumber: 'Second Floor-130', floorId: 'fl-second', floorName: 'Second Floor', unitTypeId: 'ut-exec', unitTypeName: 'Executive Room', dailyRate: 600, monthlyRate: 12000, status: 'Occupied' },
+
+      { id: 'u-450', unitNumber: 'secret floor-450', floorId: 'fl-secret', floorName: 'secret floor', unitTypeId: 'ut-exec', unitTypeName: 'Executive Room', dailyRate: 600, monthlyRate: 12000, status: 'Occupied' },
+    ],
+    type: 'Hotel Property',
+    typeAr: 'فندق سياحي',
+  },
   {
     id: 'br-1',
     code: 'BR-RYD-01',

@@ -663,9 +663,9 @@ export const ProfilesCrmView: React.FC<ProfilesCrmViewProps> = ({
               className="rounded-lg border border-[#c3cce6] bg-[#f9f9ff] py-1 px-2 text-[11px] font-semibold text-[#004a60] outline-hidden cursor-pointer"
             >
               <option value="all">{isArabic ? 'جميع الأنواع' : 'All Types'}</option>
-              <option value="operator">{isArabic ? 'مشغلو منشآت وفنادق' : 'Operators'}</option>
+              <option value="operator">{isArabic ? 'مشغلو مدبّر (Mudabbir)' : 'Mudabbir Operators'}</option>
               <option value="corporate">{isArabic ? 'شركات سياحية متعاقدة' : 'Corporate'}</option>
-              <option value="guest">{isArabic ? 'نزلاء وعملاء أفراد' : 'Guests'}</option>
+              <option value="guest">{isArabic ? 'نزلاء ضيافة (Diyafa)' : 'Diyafa Guests'}</option>
               <option value="property_owner">{isArabic ? 'ملاك ومستثمرون' : 'Property Owners'}</option>
             </select>
           </div>
@@ -1084,10 +1084,10 @@ export const ProfilesCrmView: React.FC<ProfilesCrmViewProps> = ({
                     onChange={(e) => setNewUserType(e.target.value as any)}
                     className="w-full rounded-lg border border-[#c3cce6] p-2 text-xs focus:border-[#004a60] outline-hidden font-medium"
                   >
-                    <option value="operator">{isArabic ? 'مشغل منشأة فندقية (Operator)' : 'Operator'}</option>
+                    <option value="operator">{isArabic ? 'مشغل منشأة - مدبّر (Mudabbir Operator)' : 'Mudabbir Operator'}</option>
                     <option value="corporate">{isArabic ? 'شركة وسياحة متعاقدة (Corporate)' : 'Corporate'}</option>
                     <option value="property_owner">{isArabic ? 'مالك ومستثمر عقاري (Owner)' : 'Property Owner'}</option>
-                    <option value="guest">{isArabic ? 'نزيل / عميل فردي VIP (Guest)' : 'Guest VIP'}</option>
+                    <option value="guest">{isArabic ? 'نزيل - ضيافة (Diyafa Guest)' : 'Diyafa Guest'}</option>
                   </select>
                 </div>
 

@@ -63,6 +63,13 @@ export function App() {
   const [isArabic, setIsArabic] = useState<boolean>(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('khetat_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [currentTenant, setCurrentTenant] = useState<string>('Nuzul Saudi Hospitality OS Hub');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -93,6 +100,31 @@ export function App() {
     document.documentElement.lang = isArabic ? 'ar' : 'en';
   }, [isArabic]);
 
+  // Sidebar collapse toggle handler with persistence
+  const handleToggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('khetat_sidebar_collapsed', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  // Keyboard shortcut Ctrl+B or Cmd+B to toggle sidebar navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        handleToggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Actions
   const handleToggleLanguage = () => {
     setIsArabic((prev) => !prev);
@@ -109,7 +141,7 @@ export function App() {
       setActiveSubTab('crm');
       return;
     }
-    if (view === 'operators') {
+    if (view === 'operators' || view === 'mudabbir') {
       setActiveView('organization');
       setActiveSubTab(subTab || 'organization');
       return;
@@ -119,7 +151,7 @@ export function App() {
       setActiveSubTab('branches');
       return;
     }
-    if (view === 'guests') {
+    if (view === 'guests' || view === 'diyafa') {
       setActiveView('organization');
       setActiveSubTab(subTab || 'guests');
       return;
@@ -296,16 +328,20 @@ export function App() {
         isArabic={isArabic}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
       />
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0 transition-all duration-300">
         {/* Top Header */}
         <Header
           activeView={activeView}
           isArabic={isArabic}
           onToggleLanguage={handleToggleLanguage}
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
+          isSidebarCollapsed={isSidebarCollapsed}
+          onToggleSidebar={handleToggleSidebar}
           currentTenant={currentTenant}
           onChangeTenant={setCurrentTenant}
           searchQuery={searchQuery}

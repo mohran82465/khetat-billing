@@ -320,8 +320,8 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     profiles: {
       title: 'Profiles',
       titleAr: 'الملفات',
-      desc: 'Central CRM platform managing profiles: Profiles CRM Hub, Operators (Organizations, Properties, Contacts), and Guests (Guests, Corporate).',
-      descAr: 'المنصة المركزية لإدارة الملفات ونظام CRM: إدارة المستخدمين والعملاء المحتملين، المشغلون، والنزلاء.',
+      desc: 'Central CRM platform managing profiles: Profiles CRM Hub, Mudabbir (Organizations, Properties, Contacts), and Diyafa (Guests, Corporate).',
+      descAr: 'المنصة المركزية لإدارة الملفات ونظام CRM: إدارة المستخدمين والعملاء، مدبّر (المؤسسات، العقارات، جهات الاتصال)، وضيافة (النزلاء والشركات).',
       icon: Building2,
       tabs: [
         { id: 'crm', name: 'Profiles CRM', nameAr: 'نظام إدارة العملاء (CRM)', count: '6' },
@@ -335,8 +335,8 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     organization: {
       title: 'Profiles',
       titleAr: 'الملفات',
-      desc: 'Central CRM platform managing profiles: Profiles CRM Hub, Operators (Organizations, Properties, Contacts), and Guests (Guests, Corporate).',
-      descAr: 'المنصة المركزية لإدارة الملفات ونظام CRM: إدارة المستخدمين والعملاء المحتملين، المشغلون، والنزلاء.',
+      desc: 'Central CRM platform managing profiles: Profiles CRM Hub, Mudabbir (Organizations, Properties, Contacts), and Diyafa (Guests, Corporate).',
+      descAr: 'المنصة المركزية لإدارة الملفات ونظام CRM: إدارة المستخدمين والعملاء، مدبّر (المؤسسات، العقارات، جهات الاتصال)، وضيافة (النزلاء والشركات).',
       icon: Building2,
       tabs: [
         { id: 'crm', name: 'Profiles CRM', nameAr: 'نظام إدارة العملاء (CRM)', count: '6' },
@@ -618,7 +618,7 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
   const isProfiles = module === 'organization' || module === 'profiles';
   const isCrmSubRoute = activeTab === 'crm' || (!activeTab && isProfiles);
   const isGuestsSubRoute =
-    ['guests', 'corporate', 'diyafa_corporates', 'diyafa_guests'].includes(activeTab);
+    ['guests', 'corporate', 'diyafa_corporates', 'diyafa_guests', 'diyafa'].includes(activeTab);
   const profilesLevel2: 'crm' | 'operators' | 'guests' = isCrmSubRoute
     ? 'crm'
     : isGuestsSubRoute
@@ -708,129 +708,12 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
         </div>
       </div>
 
-      {/* 3-LEVEL NAVIGATION FOR PROFILES MODULE OR STANDARD TABS */}
+      {/* NAVIGATION FOR PROFILES MODULE OR STANDARD TABS */}
       {isProfiles ? (
         <div className="bg-white border-b border-[#e3e8f9] px-4 lg:px-6 sticky top-0 z-10 shadow-xs">
-          <div className="max-w-7xl mx-auto py-2.5 space-y-2.5">
-            {/* LEVEL 2 SUB-ROUTES: CRM vs Operators vs Guests */}
-            <div className="flex items-center justify-between flex-wrap gap-2.5">
-              <div className="flex items-center gap-1.5 p-1 bg-[#f1f3ff] rounded-xl border border-[#e3e8f9]">
-                {/* Level 2 Sub-Route 1: Profiles CRM */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (profilesLevel2 !== 'crm') {
-                      setActiveTab('crm');
-                    }
-                  }}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    profilesLevel2 === 'crm'
-                      ? 'bg-[#004a60] text-white shadow-xs'
-                      : 'text-[#50585e] hover:text-[#004a60] hover:bg-white/60'
-                  }`}
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>{isArabic ? 'نظام CRM للملفات' : 'Profiles CRM'}</span>
-                  <span
-                    className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
-                      profilesLevel2 === 'crm'
-                        ? 'bg-white/20 text-white'
-                        : 'bg-[#e8eeff] text-[#004a60]'
-                    }`}
-                  >
-                    6
-                  </span>
-                </button>
-
-                {/* Level 2 Sub-Route 2: Operators */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (profilesLevel2 !== 'operators') {
-                      setActiveTab('organization');
-                    }
-                  }}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    profilesLevel2 === 'operators'
-                      ? 'bg-[#004a60] text-white shadow-xs'
-                      : 'text-[#50585e] hover:text-[#004a60] hover:bg-white/60'
-                  }`}
-                >
-                  <Building2 className="h-3.5 w-3.5" />
-                  <span>{isArabic ? 'المشغلون (Operators)' : 'Operators'}</span>
-                  <span
-                    className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
-                      profilesLevel2 === 'operators'
-                        ? 'bg-white/20 text-white'
-                        : 'bg-[#e8eeff] text-[#004a60]'
-                    }`}
-                  >
-                    3
-                  </span>
-                </button>
-
-                {/* Level 2 Sub-Route 3: Guests */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (profilesLevel2 !== 'guests') {
-                      setActiveTab('guests');
-                    }
-                  }}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    profilesLevel2 === 'guests'
-                      ? 'bg-[#004a60] text-white shadow-xs'
-                      : 'text-[#50585e] hover:text-[#004a60] hover:bg-white/60'
-                  }`}
-                >
-                  <Users className="h-3.5 w-3.5" />
-                  <span>{isArabic ? 'النزلاء (Guests)' : 'Guests'}</span>
-                  <span
-                    className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
-                      profilesLevel2 === 'guests'
-                        ? 'bg-white/20 text-white'
-                        : 'bg-[#e8eeff] text-[#004a60]'
-                    }`}
-                  >
-                    2
-                  </span>
-                </button>
-              </div>
-
-              {/* Breadcrumb Hierarchy Indicator (3 Levels) */}
-              <div className="flex items-center gap-1.5 text-xs text-[#70787d]">
-                <span className="font-semibold text-[#004a60] bg-[#e8eeff] px-2 py-0.5 rounded-md">
-                  {isArabic ? 'الملفات (Profiles)' : 'Profiles'}
-                </span>
-                <span className="text-[#c3cce6]">/</span>
-                <span className="font-semibold text-[#161c27]">
-                  {profilesLevel2 === 'crm'
-                    ? isArabic ? 'نظام إدارة العملاء (CRM)' : 'Profiles CRM'
-                    : profilesLevel2 === 'operators'
-                    ? isArabic ? 'المشغلون (Operators)' : 'Operators'
-                    : isArabic ? 'النزلاء (Guests)' : 'Guests'}
-                </span>
-                {profilesLevel2 !== 'crm' && (
-                  <>
-                    <span className="text-[#c3cce6]">/</span>
-                    <span className="font-bold text-[#004a60] underline">
-                      {activeTab === 'organization'
-                        ? isArabic ? 'المؤسسات' : 'Organizations'
-                        : activeTab === 'branches'
-                        ? isArabic ? 'العقارات والفروع' : 'Properties'
-                        : activeTab === 'contacts'
-                        ? isArabic ? 'جهات الاتصال' : 'Contacts'
-                        : activeTab === 'corporate' || activeTab === 'diyafa_corporates'
-                        ? isArabic ? 'الشركات' : 'Corporate'
-                        : isArabic ? 'النزلاء' : 'Guests'}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* LEVEL 3 SUB-ROUTES TABS */}
-            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pt-1 border-t border-[#f1f3ff] no-scrollbar">
+          <div className="max-w-7xl mx-auto py-2.5">
+            {/* LEVEL 3 SUB-ROUTES TABS (KEPT DIRECTLY ON THE PAGE AS REQUESTED) */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               {profilesLevel2 === 'crm' ? (
                 <div className="flex items-center justify-between w-full py-1 text-xs text-[#70787d]">
                   <span className="flex items-center gap-2 font-medium">
@@ -846,113 +729,151 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
                   </span>
                 </div>
               ) : profilesLevel2 === 'operators' ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('organization')}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                      activeTab === 'organization'
-                        ? 'bg-[#004a60] text-white shadow-xs font-bold'
-                        : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
-                    }`}
-                  >
-                    <Building className="h-3.5 w-3.5" />
-                    <span>{isArabic ? 'المؤسسات' : 'Organizations'}</span>
-                    <span
-                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                        activeTab === 'organization' ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                <div className="flex items-center justify-between w-full flex-wrap gap-2.5">
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('organization')}
+                      className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                        activeTab === 'organization' || activeTab === 'operators' || activeTab === 'mudabbir'
+                          ? 'bg-[#004a60] text-white shadow-xs font-bold'
+                          : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
                       }`}
                     >
-                      8
-                    </span>
-                  </button>
+                      <Building className="h-3.5 w-3.5" />
+                      <span>{isArabic ? 'المؤسسات' : 'Organizations'}</span>
+                      <span
+                        className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                          activeTab === 'organization' || activeTab === 'operators' || activeTab === 'mudabbir'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-[#e8eeff] text-[#004a60]'
+                        }`}
+                      >
+                        8
+                      </span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('branches')}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                      activeTab === 'branches'
-                        ? 'bg-[#004a60] text-white shadow-xs font-bold'
-                        : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
-                    }`}
-                  >
-                    <Hotel className="h-3.5 w-3.5" />
-                    <span>{isArabic ? 'العقارات والفروع' : 'Properties'}</span>
-                    <span
-                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                        activeTab === 'branches' ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('branches')}
+                      className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                        activeTab === 'branches' || activeTab === 'properties'
+                          ? 'bg-[#004a60] text-white shadow-xs font-bold'
+                          : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
                       }`}
                     >
-                      {orgBranches.length}
-                    </span>
-                  </button>
+                      <Hotel className="h-3.5 w-3.5" />
+                      <span>{isArabic ? 'العقارات والفروع' : 'Properties'}</span>
+                      <span
+                        className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                          activeTab === 'branches' || activeTab === 'properties'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-[#e8eeff] text-[#004a60]'
+                        }`}
+                      >
+                        {orgBranches.length}
+                      </span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('contacts')}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                      activeTab === 'contacts'
-                        ? 'bg-[#004a60] text-white shadow-xs font-bold'
-                        : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
-                    }`}
-                  >
-                    <Users className="h-3.5 w-3.5" />
-                    <span>{isArabic ? 'جهات الاتصال' : 'Contacts'}</span>
-                    <span
-                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                        activeTab === 'contacts' ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('contacts')}
+                      className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                        activeTab === 'contacts'
+                          ? 'bg-[#004a60] text-white shadow-xs font-bold'
+                          : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
                       }`}
                     >
-                      {orgContacts.length}
+                      <Users className="h-3.5 w-3.5" />
+                      <span>{isArabic ? 'جهات الاتصال' : 'Contacts'}</span>
+                      <span
+                        className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                          activeTab === 'contacts' ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                        }`}
+                      >
+                        {orgContacts.length}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Section Breadcrumb Indicator: Mudabbir */}
+                  <div className="flex items-center gap-1.5 text-xs text-[#70787d]">
+                    <span className="font-semibold text-[#004a60] bg-[#e8eeff] px-2.5 py-1 rounded-md flex items-center gap-1">
+                      <Building2 className="h-3.5 w-3.5 text-[#004a60]" />
+                      <span>{isArabic ? 'مدبّر (Mudabbir)' : 'Mudabbir'}</span>
                     </span>
-                  </button>
-                </>
+                    <span className="text-[#c3cce6]">/</span>
+                    <span className="font-bold text-[#161c27]">
+                      {activeTab === 'organization' || activeTab === 'operators' || activeTab === 'mudabbir'
+                        ? isArabic ? 'المؤسسات' : 'Organizations'
+                        : activeTab === 'branches' || activeTab === 'properties'
+                        ? isArabic ? 'العقارات والفروع' : 'Properties'
+                        : isArabic ? 'جهات الاتصال' : 'Contacts'}
+                    </span>
+                  </div>
+                </div>
               ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('guests')}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                      activeTab === 'guests' || activeTab === 'diyafa_guests'
-                        ? 'bg-[#004a60] text-white shadow-xs font-bold'
-                        : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
-                    }`}
-                  >
-                    <Users className="h-3.5 w-3.5" />
-                    <span>{isArabic ? 'النزلاء' : 'Guests'}</span>
-                    <span
-                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                        activeTab === 'guests' || activeTab === 'diyafa_guests'
-                          ? 'bg-white/20 text-white'
-                          : 'bg-[#e8eeff] text-[#004a60]'
+                <div className="flex items-center justify-between w-full flex-wrap gap-2.5">
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('guests')}
+                      className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                        activeTab === 'guests' || activeTab === 'diyafa_guests' || activeTab === 'diyafa'
+                          ? 'bg-[#004a60] text-white shadow-xs font-bold'
+                          : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
                       }`}
                     >
-                      20
-                    </span>
-                  </button>
+                      <Users className="h-3.5 w-3.5" />
+                      <span>{isArabic ? 'النزلاء' : 'Guests'}</span>
+                      <span
+                        className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                          activeTab === 'guests' || activeTab === 'diyafa_guests' || activeTab === 'diyafa'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-[#e8eeff] text-[#004a60]'
+                        }`}
+                      >
+                        20
+                      </span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('corporate')}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                      activeTab === 'corporate' || activeTab === 'diyafa_corporates'
-                        ? 'bg-[#004a60] text-white shadow-xs font-bold'
-                        : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
-                    }`}
-                  >
-                    <Building className="h-3.5 w-3.5" />
-                    <span>{isArabic ? 'الشركات' : 'Corporate'}</span>
-                    <span
-                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('corporate')}
+                      className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                         activeTab === 'corporate' || activeTab === 'diyafa_corporates'
-                          ? 'bg-white/20 text-white'
-                          : 'bg-[#e8eeff] text-[#004a60]'
+                          ? 'bg-[#004a60] text-white shadow-xs font-bold'
+                          : 'text-[#40484d] hover:bg-[#f1f3ff] hover:text-[#004a60]'
                       }`}
                     >
-                      4
+                      <Building className="h-3.5 w-3.5" />
+                      <span>{isArabic ? 'الشركات' : 'Corporate'}</span>
+                      <span
+                        className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                          activeTab === 'corporate' || activeTab === 'diyafa_corporates'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-[#e8eeff] text-[#004a60]'
+                        }`}
+                      >
+                        4
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Section Breadcrumb Indicator: Diyafa */}
+                  <div className="flex items-center gap-1.5 text-xs text-[#70787d]">
+                    <span className="font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md flex items-center gap-1">
+                      <Users className="h-3.5 w-3.5 text-emerald-700" />
+                      <span>{isArabic ? 'ضيافة (Diyafa)' : 'Diyafa'}</span>
                     </span>
-                  </button>
-                </>
+                    <span className="text-[#c3cce6]">/</span>
+                    <span className="font-bold text-[#161c27]">
+                      {activeTab === 'corporate' || activeTab === 'diyafa_corporates'
+                        ? isArabic ? 'الشركات' : 'Corporate'
+                        : isArabic ? 'النزلاء' : 'Guests'}
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -1003,8 +924,8 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
               />
             )}
 
-            {/* LEVEL 2: OPERATORS -> LEVEL 3: ORGANIZATIONS */}
-            {activeTab === 'organization' && (
+            {/* LEVEL 2: MUDABBIR -> LEVEL 3: ORGANIZATIONS */}
+            {(activeTab === 'organization' || activeTab === 'operators' || activeTab === 'mudabbir') && (
               <OrganizationProfileTab
                 isArabic={isArabic}
                 branches={orgBranches}
@@ -1013,8 +934,8 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
               />
             )}
 
-            {/* LEVEL 2: OPERATORS -> LEVEL 3: PROPERTIES */}
-            {activeTab === 'branches' && (
+            {/* LEVEL 2: MUDABBIR -> LEVEL 3: PROPERTIES */}
+            {(activeTab === 'branches' || activeTab === 'properties') && (
               <OrganizationBranchesTab
                 isArabic={isArabic}
                 branches={orgBranches}
@@ -1025,7 +946,7 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
               />
             )}
 
-            {/* LEVEL 2: OPERATORS -> LEVEL 3: CONTACTS */}
+            {/* LEVEL 2: MUDABBIR -> LEVEL 3: CONTACTS */}
             {activeTab === 'contacts' && (
               <OrganizationContactsTab
                 isArabic={isArabic}
@@ -1036,8 +957,8 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
               />
             )}
 
-            {/* LEVEL 2: GUESTS -> LEVEL 3: GUESTS */}
-            {(activeTab === 'guests' || activeTab === 'diyafa_guests') && (
+            {/* LEVEL 2: DIYAFA -> LEVEL 3: GUESTS */}
+            {(activeTab === 'guests' || activeTab === 'diyafa_guests' || activeTab === 'diyafa') && (
               <ProfilesGuestsView isArabic={isArabic} />
             )}
 

@@ -46,6 +46,8 @@ import {
   Lock,
   Radio,
   Sliders,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -55,6 +57,8 @@ interface SidebarProps {
   isArabic: boolean;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 interface NavSubItem {
@@ -82,6 +86,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isArabic,
   isOpenMobile,
   onCloseMobile,
+  isCollapsed = false,
+  onToggleCollapse,
 }) => {
   // Navigation structure strictly matching the user's sitemap
   const navSections: NavSection[] = [
@@ -121,24 +127,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'operators',
-          name: 'Operators',
-          nameAr: 'المشغلون',
-          isGroup: true,
-          children: [
-            { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات' },
-            { id: 'branches', name: 'Properties', nameAr: 'العقارات والفروع' },
-            { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال' },
-          ],
+          name: 'Mudabbir',
+          nameAr: 'مدبّر',
         },
         {
           id: 'guests',
-          name: 'Guests',
-          nameAr: 'النزلاء',
-          isGroup: true,
-          children: [
-            { id: 'guests', name: 'Guests', nameAr: 'النزلاء' },
-            { id: 'corporate', name: 'Corporate', nameAr: 'الشركات' },
-          ],
+          name: 'Diyafa',
+          nameAr: 'ضيافة',
         },
       ],
     },
@@ -422,7 +417,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       // Direct sales views
       onSelectView(childId);
     } else if (sectionId === 'organization' || sectionId === 'profiles') {
-      onSelectView('organization', childId);
+      if (childId === 'operators' || childId === 'mudabbir') {
+        onSelectView('organization', 'organization');
+      } else if (childId === 'guests' || childId === 'diyafa') {
+        onSelectView('organization', 'guests');
+      } else {
+        onSelectView('organization', childId);
+      }
     } else if (sectionId === 'guest_hub') {
       onSelectView('guest_hub', childId);
     } else if (sectionId === 'task_manager') {
@@ -465,7 +466,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          {/* Close button for mobile */}
+          {/* Close button for mobile drawer */}
           <button
             onClick={onCloseMobile}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-[#70787d] hover:bg-[#f1f3ff] lg:hidden cursor-pointer"
@@ -703,9 +704,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         activeView === 'projects' &&
                         (activeSubTab === child.id || (!activeSubTab && child.id === 'task_list'));
                     } else if (section.id === 'organization' || section.id === 'profiles') {
-                      isChildActive =
-                        (activeView === 'organization' || activeView === 'profiles') &&
-                        (activeSubTab === child.id || (!activeSubTab && (child.id === 'crm' || child.id === 'organization')));
+                      if (child.id === 'operators' || child.id === 'mudabbir') {
+                        isChildActive =
+                          (activeView === 'organization' || activeView === 'profiles') &&
+                          (activeSubTab === 'organization' ||
+                            activeSubTab === 'branches' ||
+                            activeSubTab === 'contacts' ||
+                            activeSubTab === 'operators' ||
+                            activeSubTab === 'mudabbir');
+                      } else if (child.id === 'guests' || child.id === 'diyafa') {
+                        isChildActive =
+                          (activeView === 'organization' || activeView === 'profiles') &&
+                          (activeSubTab === 'guests' ||
+                            activeSubTab === 'corporate' ||
+                            activeSubTab === 'diyafa_guests' ||
+                            activeSubTab === 'diyafa_corporates' ||
+                            activeSubTab === 'diyafa');
+                      } else {
+                        isChildActive =
+                          (activeView === 'organization' || activeView === 'profiles') &&
+                          (activeSubTab === child.id || (!activeSubTab && child.id === 'crm'));
+                      }
                     } else if (section.id === 'guest_hub') {
                       isChildActive =
                         activeView === 'guest_hub' &&
@@ -770,8 +789,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:block shrink-0">{sidebarContent}</aside>
+      {/* Desktop Sidebar with smooth collapse/expand animation */}
+      <aside
+        className={`hidden lg:block shrink-0 transition-all duration-300 ease-in-out overflow-hidden z-20 ${
+          isCollapsed
+            ? 'w-0 -translate-x-full rtl:translate-x-full opacity-0 pointer-events-none'
+            : 'w-64 translate-x-0 opacity-100'
+        }`}
+      >
+        <div className="w-64 h-full">
+          {sidebarContent}
+        </div>
+      </aside>
 
       {/* Mobile Drawer */}
       {isOpenMobile && (

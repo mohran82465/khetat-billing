@@ -29,12 +29,14 @@ import {
   Sparkles,
   Briefcase,
   SlidersHorizontal,
+  Edit3,
 } from 'lucide-react';
 import {
   OrganizationBranch,
   OrgContact,
 } from '../../data/organizationData';
 import { HOSPITALITY_ORGANIZATIONS } from '../../data/hospitalityData';
+import { EditPropertyModal } from './EditPropertyModal';
 
 interface OrganizationBranchesTabProps {
   isArabic: boolean;
@@ -68,36 +70,39 @@ export const OrganizationBranchesTab: React.FC<OrganizationBranchesTabProps> = (
   // Inspection Modal for Property & Building details
   const [inspectingBranch, setInspectingBranch] = useState<OrganizationBranch | null>(null);
 
-  // Manage Assigned Workforce modal
-  const [managingWorkforceBranch, setManagingWorkforceBranch] = useState<OrganizationBranch | null>(null);
-  const [tempAssignedContactIds, setTempAssignedContactIds] = useState<string[]>([]);
+  // Edit Property & Structure Modal State
+  const [editingPropertyBranch, setEditingPropertyBranch] = useState<OrganizationBranch | null>(null);
 
-  // Add Branch modal
+  const handleSavePropertyFromModal = (updated: OrganizationBranch) => {
+    if (onUpdateBranch) {
+      onUpdateBranch(updated);
+    }
+    setInternalBranches((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+    setEditingPropertyBranch(null);
+    showToast(
+      isArabic
+        ? `تم حفظ وتحديث بيانات وهيكل العقار "${updated.nameAr}" بنجاح!`
+        : `Saved property "${updated.name}" and unit structure successfully!`
+    );
+  };
+
+  // Add Property modal state
   const [isAddBranchModalOpen, setIsAddBranchModalOpen] = useState(false);
-  const [newOrgId, setNewOrgId] = useState('ORG-KHETAT-HQ');
-  const [newCode, setNewCode] = useState('');
-  const [newName, setNewName] = useState('');
-  const [newNameAr, setNewNameAr] = useState('');
-  const [newBuildingName, setNewBuildingName] = useState('');
-  const [newBuildingNameAr, setNewBuildingNameAr] = useState('');
-  const [newBuildingType, setNewBuildingType] = useState('Tower');
-  const [newFloorsCount, setNewFloorsCount] = useState('12');
-  const [newTotalUnits, setNewTotalUnits] = useState('150');
-  const [newApartments, setNewApartments] = useState('80');
-  const [newSuites, setNewSuites] = useState('40');
-  const [newHotelRooms, setNewHotelRooms] = useState('30');
-  const [newVillas, setNewVillas] = useState('0');
-  const [newCommercial, setNewCommercial] = useState('0');
-  const [newType, setNewType] = useState<OrganizationBranch['type']>('Hotel Property');
-  const [newCity, setNewCity] = useState('Riyadh');
-  const [newCityAr, setNewCityAr] = useState('الرياض');
-  const [newDistrict, setNewDistrict] = useState('Al-Olaya District');
-  const [newAddress, setNewAddress] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newManagerName, setNewManagerName] = useState('');
-  const [newManagedKeys, setNewManagedKeys] = useState('120');
-  const [newBranchContacts, setNewBranchContacts] = useState<string[]>([]);
+
+  const handleCreatePropertyFromModal = (created: OrganizationBranch) => {
+    if (onAddBranch) {
+      onAddBranch(created);
+    } else if (onUpdateBranch) {
+      onUpdateBranch(created);
+    }
+    setInternalBranches((prev) => [created, ...prev]);
+    setIsAddBranchModalOpen(false);
+    showToast(
+      isArabic
+        ? `تم تأسيس وتسجيل العقار الجديد "${created.nameAr || created.name}" بنجاح!`
+        : `Created new property "${created.name}" successfully!`
+    );
+  };
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -195,158 +200,6 @@ export const OrganizationBranchesTab: React.FC<OrganizationBranchesTabProps> = (
   const averageUnitsPerBuilding =
     totalBuildingsCount > 0 ? Math.round(totalUnitsInAllBuildings / totalBuildingsCount) : 0;
 
-  // Open Workforce Management modal
-  const handleOpenManageWorkforce = (branch: OrganizationBranch) => {
-    const assignedIds = contacts
-      .filter((c) => c.assignedBranchIds.includes(branch.id))
-      .map((c) => c.id);
-
-    setManagingWorkforceBranch(branch);
-    setTempAssignedContactIds(assignedIds);
-  };
-
-  // Save Workforce assignment for this branch
-  const handleSaveBranchWorkforce = () => {
-    if (!managingWorkforceBranch) return;
-
-    contacts.forEach((c) => {
-      const isSelected = tempAssignedContactIds.includes(c.id);
-      const currentlyHas = c.assignedBranchIds.includes(managingWorkforceBranch.id);
-
-      if (isSelected && !currentlyHas) {
-        onUpdateContactBranches?.(c.id, [...c.assignedBranchIds, managingWorkforceBranch.id]);
-      } else if (!isSelected && currentlyHas) {
-        onUpdateContactBranches?.(
-          c.id,
-          c.assignedBranchIds.filter((id) => id !== managingWorkforceBranch.id)
-        );
-      }
-    });
-
-    const updatedBranch: OrganizationBranch = {
-      ...managingWorkforceBranch,
-      assignedContactIds: tempAssignedContactIds,
-    };
-
-    if (onUpdateBranch) {
-      onUpdateBranch(updatedBranch);
-    } else {
-      setInternalBranches((prev) =>
-        prev.map((b) => (b.id === updatedBranch.id ? updatedBranch : b))
-      );
-    }
-
-    setManagingWorkforceBranch(null);
-    showToast(
-      isArabic
-        ? `تم تحديث الكوادر وفريق العمل المسند لـ ${managingWorkforceBranch.nameAr} بنجاح`
-        : `Updated linked workforce for ${managingWorkforceBranch.name}`
-    );
-  };
-
-  // Toggle Contact Checkbox
-  const handleToggleContactCheck = (contactId: string) => {
-    setTempAssignedContactIds((prev) =>
-      prev.includes(contactId) ? prev.filter((id) => id !== contactId) : [...prev, contactId]
-    );
-  };
-
-  // Add Branch Submit
-  const handleCreateBranch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName) return;
-
-    const orgMatch = organizationsList.find((o) => o.id === newOrgId);
-    const generatedId = `br-${Date.now()}`;
-    const unitsTotal = parseInt(newTotalUnits, 10) || 100;
-    const floors = parseInt(newFloorsCount, 10) || 10;
-
-    const branch: OrganizationBranch = {
-      id: generatedId,
-      code: newCode || `BR-${newCity.slice(0, 3).toUpperCase()}-${Math.floor(10 + Math.random() * 90)}`,
-      name: newName,
-      nameAr: newNameAr || newName,
-      organizationId: newOrgId,
-      organizationName: orgMatch?.name || 'Khetat Hospitality Hub & Operations Ltd.',
-      organizationNameAr: orgMatch?.nameAr || 'شركة خطط للضيافة وتقنية العمليات الفندقية',
-      organizationBadgeColor: orgMatch?.badgeColor || 'bg-[#e8eeff] text-[#004a60] border-[#c3cce6]',
-      buildingName: newBuildingName || newName,
-      buildingNameAr: newBuildingNameAr || newNameAr || newName,
-      buildingType: newBuildingType,
-      buildingTypeAr:
-        newBuildingType === 'Executive Tower'
-          ? 'برج إداري وفندقي'
-          : newBuildingType === 'Mixed-Use Luxury Tower'
-          ? 'برج فاخر متعدد الاستخدامات'
-          : newBuildingType === '5-Star Hotel Building'
-          ? 'مبنى فندقي 5 نجوم'
-          : newBuildingType === 'Residential Compound'
-          ? 'مجمع فلل ومساكن فندقية'
-          : 'مبنى فندقي مخدوم',
-      floorsCount: floors,
-      totalUnitsInBuilding: unitsTotal,
-      unitBreakdown: {
-        apartments: parseInt(newApartments, 10) || 0,
-        suites: parseInt(newSuites, 10) || 0,
-        hotelRooms: parseInt(newHotelRooms, 10) || 0,
-        villas: parseInt(newVillas, 10) || 0,
-        commercialUnits: parseInt(newCommercial, 10) || 0,
-      },
-      type: newType,
-      typeAr:
-        newType === 'Headquarters'
-          ? 'المقر الرئيسي'
-          : newType === 'Regional Hub'
-          ? 'فرع إقليمي'
-          : newType === 'Resort Hub'
-          ? 'فرع منتجعات التراث'
-          : newType === 'Hotel Property'
-          ? 'فندق سياحي فاخر'
-          : newType === 'Tower'
-          ? 'برج وأبراج فندقية'
-          : 'مجمع سكني وفندقي',
-      city: newCity,
-      cityAr: newCityAr || newCity,
-      district: newDistrict || 'Central Sector',
-      address: newAddress || `${newCity}, Saudi Arabia`,
-      addressAr: newAddress || `${newCityAr}، المملكة العربية السعودية`,
-      shortAddress: `${newCity.slice(0, 3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}-4401`,
-      phone: newPhone || '+966 11 456 7890',
-      email: newEmail || `property.${newCity.toLowerCase()}@khetat.sa`,
-      managerName: newManagerName || 'General Property Manager',
-      managerNameAr: newManagerName || 'المدير العام للعقار',
-      managerPhone: '+966 50 123 4567',
-      assignedContactIds: newBranchContacts,
-      managedKeys: parseInt(newManagedKeys, 10) || unitsTotal,
-      status: 'Active',
-    };
-
-    newBranchContacts.forEach((cId) => {
-      const contact = contacts.find((c) => c.id === cId);
-      if (contact && !contact.assignedBranchIds.includes(generatedId)) {
-        onUpdateContactBranches?.(cId, [...contact.assignedBranchIds, generatedId]);
-      }
-    });
-
-    if (onAddBranch) {
-      onAddBranch(branch);
-    } else {
-      setInternalBranches((prev) => [...prev, branch]);
-    }
-
-    setIsAddBranchModalOpen(false);
-    setNewName('');
-    setNewNameAr('');
-    setNewCode('');
-    setNewBuildingName('');
-    setNewBuildingNameAr('');
-    showToast(
-      isArabic
-        ? `تم تأسيس العقار والمبنى الجديد ${branch.nameAr} بنجاح`
-        : `Established property & building ${branch.name}`
-    );
-  };
-
   return (
     <div className="space-y-4" dir={isArabic ? 'rtl' : 'ltr'}>
       {/* Toast Notification */}
@@ -435,6 +288,18 @@ export const OrganizationBranchesTab: React.FC<OrganizationBranchesTabProps> = (
               <span>{isArabic ? 'بطاقات' : 'Cards'}</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              const target = activeBranches.find((b) => b.id === 'prop-mohran') || activeBranches[0];
+              if (target) setEditingPropertyBranch(target);
+            }}
+            className="flex items-center gap-1.5 rounded-xl border border-[#c3cce6] bg-white px-3.5 py-2 text-xs font-bold text-[#004a60] hover:bg-[#f9f9ff] shadow-2xs transition-all cursor-pointer shrink-0"
+          >
+            <Edit3 className="h-3.5 w-3.5 text-[#004a60]" />
+            <span>{isArabic ? 'تعديل العقار (Edit Property)' : 'Edit Property Form'}</span>
+          </button>
 
           <button
             type="button"
@@ -681,16 +546,12 @@ export const OrganizationBranchesTab: React.FC<OrganizationBranchesTabProps> = (
                   </th>
                   <th className="py-3 px-4">{isArabic ? 'نوع المبنى' : 'Building Type'}</th>
                   <th className="py-3 px-4">{isArabic ? 'المدير والاتصال' : 'Manager'}</th>
-                  <th className="py-3 px-4">{isArabic ? 'الكوادر المسندة' : 'Workforce'}</th>
                   <th className="py-3 px-4 text-center">{isArabic ? 'الحالة' : 'Status'}</th>
                   <th className="py-3 px-4 text-center">{isArabic ? 'الإجراءات' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e3e8f9]">
                 {filteredBranches.map((branch) => {
-                  const linkedContacts = contacts.filter((c) =>
-                    c.assignedBranchIds.includes(branch.id)
-                  );
                   const units = branch.totalUnitsInBuilding || branch.managedKeys || 0;
                   const floors = branch.floorsCount || (units > 200 ? 24 : units > 80 ? 12 : 4);
 
@@ -790,30 +651,6 @@ export const OrganizationBranchesTab: React.FC<OrganizationBranchesTabProps> = (
                         </div>
                       </td>
 
-                      {/* Workforce */}
-                      <td className="py-3.5 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-1.5">
-                          <div className="flex -space-x-1.5 rtl:space-x-reverse overflow-hidden">
-                            {linkedContacts.slice(0, 3).map((c) => (
-                              <div
-                                key={c.id}
-                                className={`h-6 w-6 rounded-full text-white font-bold text-[9px] flex items-center justify-center border border-white ${c.avatarColor}`}
-                                title={`${isArabic ? c.nameAr : c.name} (${isArabic ? c.roleAr : c.role})`}
-                              >
-                                {c.initials}
-                              </div>
-                            ))}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenManageWorkforce(branch)}
-                            className="text-[10px] font-bold text-[#004a60] hover:underline px-2 py-0.5 bg-[#e8eeff] rounded-md cursor-pointer"
-                          >
-                            {linkedContacts.length} {isArabic ? 'كوادر' : 'Staff'}
-                          </button>
-                        </div>
-                      </td>
-
                       {/* Status */}
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
@@ -827,19 +664,19 @@ export const OrganizationBranchesTab: React.FC<OrganizationBranchesTabProps> = (
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
+                            onClick={() => setEditingPropertyBranch(branch)}
+                            className="p-1.5 rounded-lg text-[#004a60] hover:text-[#074e64] hover:bg-[#e8eeff] cursor-pointer"
+                            title={isArabic ? 'تعديل العقار وهيكل الوحدات (Edit Property)' : 'Edit Property & Structure'}
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setInspectingBranch(branch)}
                             className="p-1.5 rounded-lg text-[#70787d] hover:text-[#004a60] hover:bg-[#e8eeff] cursor-pointer"
                             title={isArabic ? 'عرض تفاصيل المبنى والعقارات' : 'View Building Details'}
                           >
                             <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenManageWorkforce(branch)}
-                            className="p-1.5 rounded-lg text-[#70787d] hover:text-[#004a60] hover:bg-[#e8eeff] cursor-pointer"
-                            title={isArabic ? 'إدارة فريق العمل المسند' : 'Manage Workforce'}
-                          >
-                            <Sliders className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -856,9 +693,6 @@ export const OrganizationBranchesTab: React.FC<OrganizationBranchesTabProps> = (
       {viewMode === 'cards' && filteredBranches.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredBranches.map((branch) => {
-            const linkedContacts = contacts.filter((c) =>
-              c.assignedBranchIds.includes(branch.id)
-            );
             const units = branch.totalUnitsInBuilding || branch.managedKeys || 0;
             const floors = branch.floorsCount || (units > 200 ? 24 : units > 80 ? 12 : 4);
 
@@ -966,81 +800,29 @@ export const OrganizationBranchesTab: React.FC<OrganizationBranchesTabProps> = (
                       </div>
                     </div>
                   </div>
-
-                  {/* Linked Workforce */}
-                  <div className="mt-3.5 pt-3 border-t border-[#e3e8f9]">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold text-[#161c27] flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-[#004a60]" />
-                        <span>
-                          {isArabic
-                            ? `الكوادر وفريق العمل المسند (${linkedContacts.length})`
-                            : `Workforce Linked (${linkedContacts.length})`}
-                        </span>
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => handleOpenManageWorkforce(branch)}
-                        className="text-xs font-bold text-[#004a60] hover:underline flex items-center gap-1 cursor-pointer"
-                      >
-                        <Sliders className="h-3 w-3" />
-                        <span>{isArabic ? 'ربط كوادر / تعديل' : 'Manage'}</span>
-                      </button>
-                    </div>
-
-                    {linkedContacts.length === 0 ? (
-                      <div className="p-2.5 text-center bg-[#f9f9ff] rounded-xl border border-dashed border-[#c3cce6] text-xs text-[#70787d]">
-                        {isArabic
-                          ? 'لم يتم إسناد أي موظف أو كادر لهذا العقار حتى الآن'
-                          : 'No workforce currently assigned to this property'}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {linkedContacts.map((contact) => (
-                          <div
-                            key={contact.id}
-                            className="flex items-center gap-2 p-2 rounded-xl bg-[#f9f9ff] border border-[#e3e8f9]"
-                          >
-                            <div
-                              className={`h-7 w-7 rounded-lg text-white font-bold text-[10px] flex items-center justify-center shrink-0 ${contact.avatarColor}`}
-                            >
-                              {contact.initials}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-bold text-xs text-[#161c27] truncate">
-                                {isArabic ? contact.nameAr : contact.name}
-                              </div>
-                              <div className="text-[10px] text-[#70787d] truncate">
-                                {isArabic ? contact.roleAr : contact.role}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 {/* Bottom Card Footer */}
-                <div className="mt-4 pt-3 border-t border-[#e3e8f9] flex items-center justify-between text-xs">
+                <div className="mt-4 pt-3 border-t border-[#e3e8f9] flex items-center justify-between text-xs gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setInspectingBranch(branch)}
                     className="flex items-center gap-1.5 text-[#004a60] hover:underline font-bold text-xs cursor-pointer"
                   >
                     <Eye className="h-3.5 w-3.5" />
-                    <span>{isArabic ? 'عرض بطاقة المبنى الكاملة' : 'View Building Card'}</span>
+                    <span>{isArabic ? 'عرض بطاقة المبنى' : 'View Card'}</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleOpenManageWorkforce(branch)}
-                    className="px-3 py-1.5 rounded-lg bg-[#004a60] hover:bg-[#074e64] text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Users className="h-3 w-3" />
-                    <span>{isArabic ? 'إدارة الكوادر' : 'Link Workforce'}</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setEditingPropertyBranch(branch)}
+                      className="px-3.5 py-1.5 rounded-lg border border-[#c3cce6] hover:bg-[#e8eeff] text-[#004a60] font-bold text-xs shadow-2xs transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                      <span>{isArabic ? 'تعديل العقار' : 'Edit Property'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -1196,12 +978,12 @@ export const OrganizationBranchesTab: React.FC<OrganizationBranchesTabProps> = (
                 onClick={() => {
                   const b = inspectingBranch;
                   setInspectingBranch(null);
-                  handleOpenManageWorkforce(b);
+                  setEditingPropertyBranch(b);
                 }}
-                className="px-4 py-2 rounded-xl bg-[#004a60] text-white text-xs font-bold hover:bg-[#074e64] cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5 shadow-xs"
               >
-                <Users className="h-4 w-4" />
-                <span>{isArabic ? 'إدارة الكوادر المسندة' : 'Manage Workforce'}</span>
+                <Edit3 className="h-4 w-4" />
+                <span>{isArabic ? 'تعديل بيانات وهيكل العقار (Edit)' : 'Edit Property Structure'}</span>
               </button>
               <button
                 type="button"
@@ -1215,389 +997,28 @@ export const OrganizationBranchesTab: React.FC<OrganizationBranchesTabProps> = (
         </div>
       )}
 
-      {/* MANAGE WORKFORCE MODAL */}
-      {managingWorkforceBranch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#e3e8f9] my-auto animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e3e8f9] mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-[#e8eeff] text-[#004a60]">
-                  <Building2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#161c27]">
-                    {isArabic
-                      ? `ربط الكوادر وفريق العمل بعقار: ${managingWorkforceBranch.nameAr}`
-                      : `Link Workforce to: ${managingWorkforceBranch.name}`}
-                  </h3>
-                  <p className="text-[11px] text-[#70787d]">
-                    {isArabic
-                      ? 'حدد أعضاء فريق العمل المعتمدين والمكلفين بالعمل في هذا الموقع والعقار'
-                      : 'Select authorized workforce contacts stationed or assigned to this property.'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setManagingWorkforceBranch(null)}
-                className="text-[#70787d] hover:text-[#161c27] p-1 rounded-lg"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 py-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#161c27]">
-                  {isArabic ? 'قائمة جميع جهات الاتصال المتاحة:' : 'Available Contacts Directory:'}
-                </span>
-                <span className="text-[11px] text-[#70787d]">
-                  {isArabic ? 'المحدد حالياً:' : 'Assigned:'}{' '}
-                  <span className="font-bold text-[#004a60]">{tempAssignedContactIds.length}</span>
-                </span>
-              </div>
-
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {contacts.map((contact) => {
-                  const isChecked = tempAssignedContactIds.includes(contact.id);
-                  return (
-                    <label
-                      key={contact.id}
-                      onClick={() => handleToggleContactCheck(contact.id)}
-                      className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                        isChecked
-                          ? 'bg-[#e8eeff]/60 border-[#004a60]'
-                          : 'bg-[#f9f9ff] border-[#e3e8f9] hover:bg-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {}}
-                          className="rounded text-[#004a60] focus:ring-[#004a60] cursor-pointer"
-                        />
-                        <div
-                          className={`h-8 w-8 rounded-lg text-white font-bold text-[11px] flex items-center justify-center shrink-0 ${contact.avatarColor}`}
-                        >
-                          {contact.initials}
-                        </div>
-                        <div className="text-xs">
-                          <div className="font-bold text-[#161c27]">
-                            {isArabic ? contact.nameAr : contact.name}
-                          </div>
-                          <div className="text-[11px] text-[#70787d]">
-                            {isArabic ? contact.roleAr : contact.role} • {contact.city}
-                          </div>
-                        </div>
-                      </div>
-
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          contact.affiliation === 'internal'
-                            ? 'bg-blue-100 text-blue-800'
-                            : contact.affiliation === 'external'
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-slate-200 text-slate-800'
-                        }`}
-                      >
-                        {contact.affiliation === 'internal'
-                          ? isArabic ? 'داخلي' : 'Internal'
-                          : contact.affiliation === 'external'
-                          ? isArabic ? 'جهة أخرى' : 'External'
-                          : isArabic ? 'مستقل' : 'Independent'}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-4 mt-3 border-t border-[#e3e8f9]">
-              <button
-                type="button"
-                onClick={() => setManagingWorkforceBranch(null)}
-                className="px-4 py-2 rounded-xl border border-[#c3cce6] text-[#70787d] hover:bg-[#f9f9ff] text-xs font-semibold cursor-pointer"
-              >
-                {isArabic ? 'إلغاء' : 'Cancel'}
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveBranchWorkforce}
-                className="px-5 py-2 rounded-xl bg-[#004a60] hover:bg-[#074e64] text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5"
-              >
-                <Check className="h-4 w-4" />
-                <span>{isArabic ? 'حفظ إسناد الكوادر' : 'Save Linked Workforce'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ADD NEW PROPERTY & BUILDING MODAL */}
+      {/* ADD PROPERTY MODAL (EXACT SAME FORM & STRUCTURE AS EDIT PROPERTY) */}
       {isAddBranchModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#e3e8f9] my-auto animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e3e8f9] mb-4">
-              <div>
-                <h3 className="text-base font-bold text-[#161c27]">
-                  {isArabic ? 'إضافة وتسجيل عقار ومبنى جديد' : 'Add New Property & Building'}
-                </h3>
-                <p className="text-xs text-[#70787d]">
-                  {isArabic
-                    ? 'تسجيل منشأة أو مبنى فندقي، وتحديد عدد الوحدات والعقارات بالمبنى والمؤسسة التابعة'
-                    : 'Register operating building, units count, and affiliated organization'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAddBranchModalOpen(false)}
-                className="text-[#70787d] hover:text-[#161c27] p-1 rounded-lg"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateBranch} className="space-y-3 text-xs">
-              {/* Organization Selector */}
-              <div>
-                <label className="font-bold text-[#161c27] block mb-1">
-                  {isArabic ? 'المؤسسة المشغلة التابع لها العقار *' : 'Operating Organization *'}
-                </label>
-                <select
-                  value={newOrgId}
-                  onChange={(e) => setNewOrgId(e.target.value)}
-                  className="w-full rounded-lg border border-[#c3cce6] p-2 text-xs font-bold text-[#004a60] focus:border-[#004a60] outline-hidden"
-                >
-                  {organizationsList.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {isArabic ? org.nameAr : org.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Property Names */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-[#161c27] block mb-1">
-                    {isArabic ? 'اسم العقار (English) *' : 'Property Name (English) *'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="e.g. Al-Olaya Executive Tower & Hotel"
-                    className="w-full rounded-lg border border-[#c3cce6] p-2 text-xs focus:border-[#004a60] outline-hidden"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-[#161c27] block mb-1">
-                    {isArabic ? 'اسم العقار بالعربية *' : 'Property Name (Arabic) *'}
-                  </label>
-                  <input
-                    type="text"
-                    value={newNameAr}
-                    onChange={(e) => setNewNameAr(e.target.value)}
-                    placeholder="مثال: فندق وبرج العليا الفندقي"
-                    className="w-full rounded-lg border border-[#c3cce6] p-2 text-xs focus:border-[#004a60] outline-hidden"
-                  />
-                </div>
-              </div>
-
-              {/* Building Name & Units in Building */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-[#e8eeff]/40 p-3 rounded-xl border border-[#c3cce6]">
-                <div>
-                  <label className="font-bold text-[#004a60] block mb-1">
-                    {isArabic ? 'اسم المبنى / البرج' : 'Building Name'}
-                  </label>
-                  <input
-                    type="text"
-                    value={newBuildingName}
-                    onChange={(e) => setNewBuildingName(e.target.value)}
-                    placeholder="e.g. Tower 4 / Block A"
-                    className="w-full rounded-lg border border-[#c3cce6] bg-white p-2 text-xs focus:border-[#004a60] outline-hidden font-medium"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-[#004a60] block mb-1">
-                    {isArabic ? 'عدد العقارات / الوحدات *' : 'Total Units in Building *'}
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={newTotalUnits}
-                    onChange={(e) => setNewTotalUnits(e.target.value)}
-                    placeholder="e.g. 150"
-                    className="w-full rounded-lg border border-[#c3cce6] bg-white p-2 text-xs focus:border-[#004a60] outline-hidden font-mono font-bold text-[#004a60]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-[#004a60] block mb-1">
-                    {isArabic ? 'عدد الطوابق' : 'Building Floors'}
-                  </label>
-                  <input
-                    type="number"
-                    value={newFloorsCount}
-                    onChange={(e) => setNewFloorsCount(e.target.value)}
-                    placeholder="e.g. 16"
-                    className="w-full rounded-lg border border-[#c3cce6] bg-white p-2 text-xs focus:border-[#004a60] outline-hidden font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* City and Location */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="font-semibold text-[#161c27] block mb-1">
-                    {isArabic ? 'نوع المنشأة' : 'Property Type'}
-                  </label>
-                  <select
-                    value={newType}
-                    onChange={(e) => setNewType(e.target.value as any)}
-                    className="w-full rounded-lg border border-[#c3cce6] p-2 text-xs focus:border-[#004a60] outline-hidden"
-                  >
-                    <option value="Hotel Property">Hotel Property (فندق سياحي)</option>
-                    <option value="Tower">Tower (برج فندقي شاهق)</option>
-                    <option value="Residential Complex">Residential Complex (مجمع شقق / فلل)</option>
-                    <option value="Resort Hub">Resort Hub (منتجع تراثي أو ساحلي)</option>
-                    <option value="Headquarters">Headquarters (المقر الرئيسي)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-semibold text-[#161c27] block mb-1">
-                    {isArabic ? 'المدينة' : 'City'}
-                  </label>
-                  <select
-                    value={newCity}
-                    onChange={(e) => {
-                      setNewCity(e.target.value);
-                      setNewCityAr(
-                        e.target.value === 'Riyadh'
-                          ? 'الرياض'
-                          : e.target.value === 'Jeddah'
-                          ? 'جدة'
-                          : e.target.value === 'Makkah'
-                          ? 'مكة المكرمة'
-                          : e.target.value === 'Madinah'
-                          ? 'المدينة المنورة'
-                          : e.target.value === 'AlUla'
-                          ? 'العلا'
-                          : e.target.value === 'Al Khobar'
-                          ? 'الخبر'
-                          : e.target.value
-                      );
-                    }}
-                    className="w-full rounded-lg border border-[#c3cce6] p-2 text-xs focus:border-[#004a60] outline-hidden"
-                  >
-                    <option value="Riyadh">Riyadh (الرياض)</option>
-                    <option value="Jeddah">Jeddah (جدة)</option>
-                    <option value="Makkah">Makkah (مكة المكرمة)</option>
-                    <option value="Madinah">Madinah (المدينة المنورة)</option>
-                    <option value="AlUla">AlUla (العلا)</option>
-                    <option value="Al Khobar">Al Khobar (الخبر)</option>
-                    <option value="Taif">Taif (الطائف)</option>
-                    <option value="Red Sea">Red Sea (البحر الأحمر)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-semibold text-[#161c27] block mb-1">
-                    {isArabic ? 'الحي' : 'District'}
-                  </label>
-                  <input
-                    type="text"
-                    value={newDistrict}
-                    onChange={(e) => setNewDistrict(e.target.value)}
-                    placeholder="Al-Olaya / Corniche"
-                    className="w-full rounded-lg border border-[#c3cce6] p-2 text-xs focus:border-[#004a60] outline-hidden"
-                  />
-                </div>
-              </div>
-
-              {/* Manager & Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-[#161c27] block mb-1">
-                    {isArabic ? 'اسم مدير العقار' : 'Property Manager'}
-                  </label>
-                  <input
-                    type="text"
-                    value={newManagerName}
-                    onChange={(e) => setNewManagerName(e.target.value)}
-                    placeholder="Eng. Abdullah Al-Harbi"
-                    className="w-full rounded-lg border border-[#c3cce6] p-2 text-xs focus:border-[#004a60] outline-hidden"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-[#161c27] block mb-1">
-                    {isArabic ? 'هاتف التواصل' : 'Phone'}
-                  </label>
-                  <input
-                    type="text"
-                    value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
-                    placeholder="+966 50 123 4567"
-                    className="w-full rounded-lg border border-[#c3cce6] p-2 text-xs focus:border-[#004a60] outline-hidden font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Initial Workforce Assignment */}
-              <div className="pt-2 border-t border-[#e3e8f9]">
-                <label className="font-bold text-[#161c27] block mb-1">
-                  {isArabic ? 'إسناد الكوادر الأولية للعقار:' : 'Assign Initial Workforce:'}
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-28 overflow-y-auto p-1.5 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
-                  {contacts.map((c) => {
-                    const isChecked = newBranchContacts.includes(c.id);
-                    return (
-                      <label
-                        key={c.id}
-                        className="flex items-center gap-2 p-1.5 rounded-lg bg-white border border-[#e3e8f9] text-xs cursor-pointer hover:bg-[#e8eeff]/50"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setNewBranchContacts((prev) => [...prev, c.id]);
-                            } else {
-                              setNewBranchContacts((prev) => prev.filter((id) => id !== c.id));
-                            }
-                          }}
-                          className="rounded text-[#004a60] focus:ring-[#004a60]"
-                        />
-                        <span className="font-medium text-[#161c27] truncate">
-                          {isArabic ? c.nameAr : c.name}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#e3e8f9]">
-                <button
-                  type="button"
-                  onClick={() => setIsAddBranchModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-[#c3cce6] text-[#70787d] hover:bg-[#f9f9ff] font-semibold"
-                >
-                  {isArabic ? 'إلغاء' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#004a60] hover:bg-[#074e64] text-white font-bold shadow-xs flex items-center gap-1.5"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>{isArabic ? 'تأسيس العقار والمبنى' : 'Create Property'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <EditPropertyModal
+          isOpen={isAddBranchModalOpen}
+          isCreate={true}
+          onClose={() => setIsAddBranchModalOpen(false)}
+          isArabic={isArabic}
+          branch={null}
+          onSave={handleCreatePropertyFromModal}
+          organizationsList={organizationsList}
+        />
+      )}
+      {/* EDIT PROPERTY & STRUCTURE MODAL */}
+      {editingPropertyBranch && (
+        <EditPropertyModal
+          isOpen={!!editingPropertyBranch}
+          onClose={() => setEditingPropertyBranch(null)}
+          isArabic={isArabic}
+          branch={editingPropertyBranch}
+          onSave={handleSavePropertyFromModal}
+          organizationsList={organizationsList}
+        />
       )}
     </div>
   );
