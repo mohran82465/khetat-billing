@@ -87,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({
         return isArabic ? 'الاشتراكات / باقات الضيافة والفوترة' : 'Subscriptions / Hospitality OS Plans & Billing';
       case 'profiles':
       case 'organization':
-        return isArabic ? 'الملفات / مدبّر وضيافة ونظام CRM' : 'Profiles / Mudabbir, Diyafa & CRM';
+        return isArabic ? 'الملفات / مدبّر وضيافة' : 'Profiles / Mudabbir & Diyafa';
       case 'sales_orders':
         return isArabic ? 'المبيعات / أوامر البيع' : 'Sales / Sales Orders';
       case 'invoices':
@@ -122,7 +122,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'observability':
         return isArabic ? 'المراقبة / صحة بوابة ZATCA وسجلات السحاب' : 'Observability / ZATCA Gateway Health & Telemetry';
       case 'settings':
-        return isArabic ? 'الإعدادات / تهيئة المنشأة وبوابات الدفع' : 'Settings / Company & Payment Gateways';
+        return isArabic ? 'الإعدادات / إعدادات الضرائب والامتثال المالي' : 'Settings / Tax & Financial Settings';
       default:
         return isArabic ? 'لوحة التحكم المؤسسية' : 'Hospitality OS Hub';
     }

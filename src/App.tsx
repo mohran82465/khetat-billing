@@ -138,7 +138,7 @@ export function App() {
     }
     if (view === 'crm') {
       setActiveView('organization');
-      setActiveSubTab('crm');
+      setActiveSubTab('organization');
       return;
     }
     if (view === 'operators' || view === 'mudabbir') {
@@ -169,6 +169,11 @@ export function App() {
     if (view === 'tiers' || view === 'categories') {
       setActiveView('products');
       setActiveSubTab('categories');
+      return;
+    }
+    if (view === 'tax_financial') {
+      setActiveView('settings');
+      setActiveSubTab('tax_financial');
       return;
     }
     setActiveView(view);
@@ -240,7 +245,7 @@ export function App() {
     setQuotations((prev) =>
       prev.map((q) => (q.id === quote.id ? { ...q, status: 'Accepted', convertedSo: newSOId } : q))
     );
-    setActiveView('sales_orders');
+    setActiveView('invoices');
   };
 
   const handleCreateOrderForCustomer = (customer: Customer) => {
@@ -502,13 +507,13 @@ export function App() {
             <span>Subs</span>
           </button>
           <button
-            onClick={() => setActiveView('sales_orders')}
+            onClick={() => setActiveView('quotations')}
             className={`flex flex-col items-center gap-1 text-[10px] ${
-              activeView === 'sales_orders' ? 'font-bold text-[#004a60]' : 'text-[#70787d]'
+              activeView === 'quotations' ? 'font-bold text-[#004a60]' : 'text-[#70787d]'
             }`}
           >
-            <Layers className="h-4 w-4" />
-            <span>Orders</span>
+            <FileCheck2 className="h-4 w-4" />
+            <span>Quotes</span>
           </button>
           <button
             onClick={() => setActiveView('invoices')}

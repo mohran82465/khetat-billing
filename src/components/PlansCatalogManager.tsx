@@ -33,6 +33,7 @@ import {
   Filter,
   CheckSquare,
   Package,
+  Receipt,
 } from 'lucide-react';
 import {
   PropertyPlan,
@@ -46,6 +47,12 @@ import {
   calculatePlanCost,
   getTiersForPlan,
 } from '../data/plansConfig';
+import {
+  TaxConfig,
+  getStoredTaxes,
+  saveStoredTaxes,
+  calculateTierTaxes,
+} from '../data/taxSettingsData';
 import { CreatePlanFormModal } from './CreatePlanFormModal';
 
 interface PlansCatalogManagerProps {
@@ -99,6 +106,13 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
 
   // Quick repoint dropdown state
   const [repointDropdownTierId, setRepointDropdownTierId] = useState<string | null>(null);
+
+  // Taxes Configuration State
+  const [availableTaxes, setAvailableTaxes] = useState<TaxConfig[]>(() => getStoredTaxes());
+
+  useEffect(() => {
+    setAvailableTaxes(getStoredTaxes());
+  }, [currentTab, isCreateTierModalOpen, editingTier]);
 
   const handleTabChange = (tabId: string) => {
     setCurrentTab(tabId);
@@ -1179,9 +1193,57 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
                               </span>
                             </div>
                           )}
+
+                          {/* Applied Taxes Badges & Total with Tax */}
+                          {(() => {
+                            const taxRes = calculateTierTaxes(
+                              tier.ratePerUnit,
+                              tier.appliedTaxIds && tier.appliedTaxIds.length > 0
+                                ? tier.appliedTaxIds
+                                : ['tax-vat-15'],
+                              availableTaxes
+                            );
+                            return (
+                              <div className="mt-1.5 text-left lg:text-right space-y-1">
+                                <div className="flex flex-wrap items-center gap-1 lg:justify-end">
+                                  {taxRes.breakdown.map((tb) => (
+                                    <span
+                                      key={tb.taxId}
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-[#e8eeff] text-[#004a60] border border-[#c3cce6]"
+                                    >
+                                      <Receipt className="h-2.5 w-2.5 text-[#004a60]" />
+                                      <span>
+                                        {isArabic ? tb.nameAr : tb.name}: {tb.rate}%
+                                      </span>
+                                    </span>
+                                  ))}
+                                </div>
+                                <div className="text-[11px] font-bold text-[#161c27] flex items-center gap-1 lg:justify-end">
+                                  <span className="text-[#70787d] font-normal">
+                                    {isArabic ? 'الإجمالي شامل الضرائب:' : 'Total incl. Tax:'}
+                                  </span>
+                                  <span className="font-mono text-[#004a60] font-black">
+                                    {taxRes.grandTotal.toFixed(2)} {tier.currency}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            onClick={() => setEditingTier(tier)}
+                            className="bg-[#f0f6ff] border border-[#bcd7f5] hover:bg-[#e4efff] text-[#004a60] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                            title={isArabic ? 'تعديل الضرائب والرسوم المطبقة على هذا المستوى' : 'Configure taxes for this tier'}
+                          >
+                            <Receipt className="h-3.5 w-3.5 text-[#004a60]" />
+                            <span>{isArabic ? 'الضرائب والرسوم' : 'Taxes'}</span>
+                            <span className="bg-[#004a60] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full font-mono">
+                              {tier.appliedTaxIds && tier.appliedTaxIds.length > 0 ? tier.appliedTaxIds.length : 1}
+                            </span>
+                          </button>
+
                           <button
                             onClick={() => setEditingTier(tier)}
                             className="bg-white border border-[#e3e8f9] hover:border-[#004a60] hover:bg-[#f1f3ff] text-[#004a60] px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
@@ -1419,6 +1481,8 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
         <TierConfigModal
           isArabic={isArabic}
           plans={plans}
+          availableTaxes={availableTaxes}
+          onRefreshTaxes={() => setAvailableTaxes(getStoredTaxes())}
           initialTier={
             editingTier || {
               id: `tier-custom-${Date.now()}`,
@@ -1451,6 +1515,7 @@ export const PlansCatalogManager: React.FC<PlansCatalogManagerProps> = ({
               slaResponseHours: 4,
               supportLevel: 'priority',
               supportLevelAr: 'أولوية دعم تشغيلي',
+              appliedTaxIds: ['tax-vat-15'],
             }
           }
           isEditMode={!!editingTier}
@@ -1630,6 +1695,8 @@ interface TierConfigModalProps {
   plans: PropertyPlan[];
   initialTier: PlanTier;
   isEditMode: boolean;
+  availableTaxes?: TaxConfig[];
+  onRefreshTaxes?: () => void;
   onClose: () => void;
   onSave: (tier: PlanTier) => void;
 }
@@ -1639,14 +1706,65 @@ const TierConfigModal: React.FC<TierConfigModalProps> = ({
   plans,
   initialTier,
   isEditMode,
+  availableTaxes,
+  onRefreshTaxes,
   onClose,
   onSave,
 }) => {
   const [formData, setFormData] = useState<PlanTier>(initialTier);
+  const [taxesList, setTaxesList] = useState<TaxConfig[]>(() => availableTaxes || getStoredTaxes());
+  const [appliedTaxIds, setAppliedTaxIds] = useState<string[]>(
+    initialTier.appliedTaxIds && initialTier.appliedTaxIds.length > 0
+      ? initialTier.appliedTaxIds
+      : ['tax-vat-15']
+  );
+  const [isQuickAddTaxOpen, setIsQuickAddTaxOpen] = useState(false);
+  const [newTaxForm, setNewTaxForm] = useState({
+    code: `TAX-0${taxesList.length + 1}`,
+    name: '',
+    nameAr: '',
+    rate: 5,
+    type: 'percentage' as 'percentage' | 'fixed_sar',
+    taxCategory: 'Custom' as TaxConfig['taxCategory'],
+  });
+
   const [isUnlimitedMax, setIsUnlimitedMax] = useState<boolean>(
     initialTier.maxProperties === null
   );
   const [newFeatureText, setNewFeatureText] = useState('');
+
+  const handleQuickAddTaxSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaxForm.code || !newTaxForm.name) return;
+    const newTax: TaxConfig = {
+      id: `tax-custom-${Date.now()}`,
+      code: newTaxForm.code.trim().toUpperCase(),
+      name: newTaxForm.name.trim(),
+      nameAr: newTaxForm.nameAr.trim() || newTaxForm.name.trim(),
+      rate: Number(newTaxForm.rate) || 0,
+      type: newTaxForm.type,
+      typeAr: newTaxForm.type === 'percentage' ? 'نسبة مئوية (%)' : 'مبلغ ثابت (ر.س)',
+      taxCategory: newTaxForm.taxCategory,
+      taxCategoryAr: 'ضريبة مخصصة',
+      status: 'active',
+      isRecoverable: false,
+      zatcaCode: 'O',
+    };
+    const updated = [...taxesList, newTax];
+    setTaxesList(updated);
+    saveStoredTaxes(updated);
+    if (onRefreshTaxes) onRefreshTaxes();
+    setAppliedTaxIds((prev) => [...prev, newTax.id]);
+    setIsQuickAddTaxOpen(false);
+    setNewTaxForm({
+      code: `TAX-0${updated.length + 1}`,
+      name: '',
+      nameAr: '',
+      rate: 5,
+      type: 'percentage',
+      taxCategory: 'Custom',
+    });
+  };
 
   const handleAddFeature = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1671,9 +1789,15 @@ const TierConfigModal: React.FC<TierConfigModalProps> = ({
     e.preventDefault();
     onSave({
       ...formData,
+      appliedTaxIds,
       maxProperties: isUnlimitedMax ? null : formData.maxProperties,
     });
   };
+
+  const currentTaxCalculation = calculateTierTaxes(formData.ratePerUnit, appliedTaxIds, taxesList);
+  const cappedTaxCalculation = formData.cappedRate
+    ? calculateTierTaxes(formData.cappedRate, appliedTaxIds, taxesList)
+    : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
@@ -1909,6 +2033,196 @@ const TierConfigModal: React.FC<TierConfigModalProps> = ({
                 }
                 className="w-full rounded-lg border border-[#e3e8f9] p-2 bg-white font-mono font-bold text-emerald-800"
               />
+            </div>
+          </div>
+
+          {/* Applied Taxes & Financial Surcharges Section */}
+          <div className="p-3.5 bg-gradient-to-r from-[#f9fbff] via-[#f0f6ff] to-[#f9fbff] rounded-xl border-2 border-[#004a60]/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-[#004a60]" />
+                <label className="font-black text-[#004a60] text-xs">
+                  {isArabic
+                    ? 'الضرائب والرسوم المالية المطبقة على هذا المستوى (Applied Taxes & Fees):'
+                    : 'Applied Taxes & Surcharges for this Tier:'}
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickAddTaxOpen((prev) => !prev)}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#004a60] hover:text-[#074e64] bg-white border border-[#bcd7f5] px-2.5 py-1 rounded-lg shadow-2xs transition-all cursor-pointer"
+              >
+                <Plus className="h-3 w-3" />
+                <span>{isArabic ? 'إضافة نوع ضريبة جديد' : '+ New Tax'}</span>
+              </button>
+            </div>
+
+            {/* Quick Add Tax Inline Form */}
+            {isQuickAddTaxOpen && (
+              <div className="p-3 bg-white rounded-xl border border-[#bcd7f5] space-y-2.5 shadow-xs animate-in fade-in">
+                <div className="text-[11px] font-bold text-[#161c27] flex items-center justify-between">
+                  <span>{isArabic ? 'إضافة ضريبة جديدة وربطها بالمستوى فوراً:' : 'Quick Add & Attach Tax:'}</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickAddTaxOpen(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div>
+                    <label className="block text-[#70787d] font-semibold mb-0.5">{isArabic ? 'كود الضريبة:' : 'Tax Code:'}</label>
+                    <input
+                      type="text"
+                      value={newTaxForm.code}
+                      onChange={(e) => setNewTaxForm({ ...newTaxForm, code: e.target.value.toUpperCase() })}
+                      placeholder="e.g. MUN-05"
+                      className="w-full rounded-md border border-[#c3cce6] p-1.5 font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#70787d] font-semibold mb-0.5">{isArabic ? 'نسبة الضريبة (%):' : 'Rate (%):'}</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={newTaxForm.rate}
+                      onChange={(e) => setNewTaxForm({ ...newTaxForm, rate: parseFloat(e.target.value) || 0 })}
+                      className="w-full rounded-md border border-[#c3cce6] p-1.5 font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#70787d] font-semibold mb-0.5">{isArabic ? 'اسم الضريبة (عربي):' : 'Name (Arabic):'}</label>
+                    <input
+                      type="text"
+                      value={newTaxForm.nameAr}
+                      onChange={(e) => setNewTaxForm({ ...newTaxForm, nameAr: e.target.value })}
+                      placeholder="مثال: رسوم بلدية"
+                      className="w-full rounded-md border border-[#c3cce6] p-1.5 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#70787d] font-semibold mb-0.5">{isArabic ? 'اسم الضريبة (إنجليزي):' : 'Name (English):'}</label>
+                    <input
+                      type="text"
+                      value={newTaxForm.name}
+                      onChange={(e) => setNewTaxForm({ ...newTaxForm, name: e.target.value })}
+                      placeholder="e.g. Municipal Fee"
+                      className="w-full rounded-md border border-[#c3cce6] p-1.5 font-semibold"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickAddTaxOpen(false)}
+                    className="px-2.5 py-1 text-[11px] text-gray-500 hover:bg-gray-100 rounded-md"
+                  >
+                    {isArabic ? 'إلغاء' : 'Cancel'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleQuickAddTaxSubmit}
+                    className="px-3 py-1 bg-[#004a60] text-white font-bold text-[11px] rounded-md hover:bg-[#074e64]"
+                  >
+                    {isArabic ? 'حفظ وتطبيق' : 'Save & Attach'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Taxes Toggles List */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {taxesList.map((tx) => {
+                const isApplied = appliedTaxIds.includes(tx.id);
+                return (
+                  <button
+                    key={tx.id}
+                    type="button"
+                    onClick={() => {
+                      if (isApplied) {
+                        setAppliedTaxIds((prev) => prev.filter((id) => id !== tx.id));
+                      } else {
+                        setAppliedTaxIds((prev) => [...prev, tx.id]);
+                      }
+                    }}
+                    className={`p-2 rounded-xl border text-right rtl:text-right flex items-center justify-between transition-all cursor-pointer ${
+                      isApplied
+                        ? 'bg-[#004a60] text-white border-[#004a60] shadow-2xs'
+                        : 'bg-white text-[#40484d] border-[#bcd7f5] hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="min-w-0 pr-1">
+                      <div className="flex items-center gap-1.5 font-bold text-[11px]">
+                        <span className={`font-mono text-[10px] px-1 py-0.2 rounded ${isApplied ? 'bg-white/20 text-white' : 'bg-[#e8eeff] text-[#004a60]'}`}>
+                          {tx.code}
+                        </span>
+                        <span className="truncate">{isArabic ? tx.nameAr : tx.name}</span>
+                      </div>
+                      <div className={`text-[10px] mt-0.5 ${isApplied ? 'text-white/80' : 'text-[#70787d]'}`}>
+                        {tx.type === 'percentage' ? `${tx.rate}% نسبة مئوية` : `${tx.rate} SAR مبلغ ثابت`}
+                      </div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                      isApplied ? 'bg-white text-[#004a60]' : 'border border-gray-300 text-transparent'
+                    }`}>
+                      <Check className="h-3.5 w-3.5" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Real-time Tax Calculation Breakdown Card */}
+            <div className="p-3 bg-white rounded-xl border border-[#bcd7f5] space-y-2 text-xs">
+              <div className="font-bold text-[#161c27] flex items-center justify-between pb-1.5 border-b border-[#eef3fb]">
+                <span className="flex items-center gap-1.5 text-[#004a60]">
+                  <Calculator className="h-3.5 w-3.5" />
+                  <span>{isArabic ? 'تفاصيل احتساب السعر شامل الضرائب:' : 'Price Breakdown (incl. Taxes):'}</span>
+                </span>
+                <span className="font-mono text-[11px] text-[#70787d]">
+                  {formData.ratePerUnit} SAR {isArabic ? 'السعر الصافي' : 'Net'}
+                </span>
+              </div>
+
+              <div className="space-y-1 text-[11px]">
+                {currentTaxCalculation.breakdown.length === 0 ? (
+                  <div className="text-gray-400 italic py-1">{isArabic ? 'لا توجد ضرائب مطبقة على هذا المستوى' : 'No taxes applied to this tier'}</div>
+                ) : (
+                  currentTaxCalculation.breakdown.map((tb) => (
+                    <div key={tb.taxId} className="flex items-center justify-between text-[#50585e]">
+                      <span className="flex items-center gap-1">
+                        <span className="font-mono font-bold text-[#004a60]">[{tb.code}]</span>
+                        <span>{isArabic ? tb.nameAr : tb.name} ({tb.rate}%):</span>
+                      </span>
+                      <span className="font-mono font-bold text-[#161c27]">+{tb.amount.toFixed(2)} SAR</span>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-[#eef3fb] flex items-center justify-between">
+                <div>
+                  <span className="font-black text-[#161c27] text-xs block">
+                    {isArabic ? 'السعر الشهري الإجمالي (شامل الضرائب):' : 'Total Monthly Rate (incl. Tax):'}
+                  </span>
+                  {cappedTaxCalculation && (
+                    <span className="text-[10px] text-emerald-700 font-semibold block">
+                      {isArabic ? 'السقف الأقصى شامل الضريبة:' : 'Max Capped (incl. Tax):'}{' '}
+                      <span className="font-mono font-bold">{cappedTaxCalculation.grandTotal.toFixed(2)} SAR</span>
+                    </span>
+                  )}
+                </div>
+                <div className="text-right rtl:text-left">
+                  <span className="text-base font-black font-mono text-[#004a60]">
+                    {currentTaxCalculation.grandTotal.toFixed(2)} SAR
+                  </span>
+                  <span className="text-[10px] text-[#70787d] block">
+                    {isArabic ? 'لكل عقار / شهرياً' : 'per unit / mo'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 

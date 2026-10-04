@@ -62,6 +62,9 @@ export interface PlanTier {
   slaResponseHours?: number;
   supportLevel?: 'standard' | 'priority' | 'dedicated_vip';
   supportLevelAr?: string;
+
+  // Taxes & Financial Settings Integration
+  appliedTaxIds?: string[];
 }
 
 export const DEFAULT_PLANS: PropertyPlan[] = [
@@ -241,6 +244,7 @@ export const DEFAULT_TIERS: PlanTier[] = [
     slaResponseHours: 12,
     supportLevel: 'standard',
     supportLevelAr: 'دعم قياسي خلال 12 ساعة',
+    appliedTaxIds: ['tax-vat-15'],
   },
   {
     id: 'tier-bld-growth',
@@ -282,6 +286,7 @@ export const DEFAULT_TIERS: PlanTier[] = [
     slaResponseHours: 4,
     supportLevel: 'priority',
     supportLevelAr: 'أولوية دعم تشغيلي خلال 4 ساعات',
+    appliedTaxIds: ['tax-vat-15', 'tax-mun-05'],
   },
   {
     id: 'tier-bld-enterprise',
@@ -323,6 +328,7 @@ export const DEFAULT_TIERS: PlanTier[] = [
     slaResponseHours: 1,
     supportLevel: 'dedicated_vip',
     supportLevelAr: 'مدير حساب مخصص واستجابة خلال ساعة',
+    appliedTaxIds: ['tax-vat-15', 'tax-mun-05', 'tax-tour-25'],
   },
 
   // TIERS FOR HOME PLANS (باقات المنازل والفلل)
@@ -364,6 +370,7 @@ export const DEFAULT_TIERS: PlanTier[] = [
     slaResponseHours: 12,
     supportLevel: 'standard',
     supportLevelAr: 'دعم قياسي',
+    appliedTaxIds: ['tax-vat-15'],
   },
   {
     id: 'tier-hom-portfolio',

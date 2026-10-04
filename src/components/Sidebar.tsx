@@ -120,12 +120,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: 'CRM',
       children: [
         {
-          id: 'crm',
-          name: 'Profiles CRM',
-          nameAr: 'نظام إدارة العملاء (CRM)',
-          badge: 'Live',
-        },
-        {
           id: 'operators',
           name: 'Mudabbir',
           nameAr: 'مدبّر',
@@ -154,10 +148,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Layers,
       children: [
         { id: 'quotations', name: 'Quotations', nameAr: 'عروض الأسعار' },
-        { id: 'sales_orders', name: 'Sales Orders', nameAr: 'أوامر البيع' },
         { id: 'invoices', name: 'Invoices', nameAr: 'فواتير المبيعات', badge: 'ZATCA' },
         { id: 'receipts', name: 'Receipts', nameAr: 'سندات القبض' },
-        { id: 'balances', name: 'Balances & Reports', nameAr: 'الأرصدة والتقارير' },
       ],
     },
     {
@@ -401,7 +393,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       } else if (section.id === 'sales') {
         onSelectView('quotations');
       } else if (section.id === 'organization' || section.id === 'profiles') {
-        onSelectView('organization', 'crm');
+        onSelectView('organization', 'organization');
       } else if (section.id === 'guest_hub') {
         onSelectView('guest_hub', 'diyafa_guests');
       } else if (section.id === 'task_manager') {
@@ -711,7 +703,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             activeSubTab === 'branches' ||
                             activeSubTab === 'contacts' ||
                             activeSubTab === 'operators' ||
-                            activeSubTab === 'mudabbir');
+                            activeSubTab === 'mudabbir' ||
+                            !activeSubTab);
                       } else if (child.id === 'guests' || child.id === 'diyafa') {
                         isChildActive =
                           (activeView === 'organization' || activeView === 'profiles') &&
@@ -723,7 +716,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       } else {
                         isChildActive =
                           (activeView === 'organization' || activeView === 'profiles') &&
-                          (activeSubTab === child.id || (!activeSubTab && child.id === 'crm'));
+                          activeSubTab === child.id;
                       }
                     } else if (section.id === 'guest_hub') {
                       isChildActive =

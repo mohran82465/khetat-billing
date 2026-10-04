@@ -17,6 +17,7 @@ import { OrganizationProfileTab } from '../components/organization/OrganizationP
 import { OrganizationContactsTab } from '../components/organization/OrganizationContactsTab';
 import { OrganizationBranchesTab } from '../components/organization/OrganizationBranchesTab';
 import { ProfilesCrmView } from '../components/profiles/ProfilesCrmView';
+import { TaxFinancialSettingsManager } from '../components/settings/TaxFinancialSettingsManager';
 import {
   OrganizationBranch,
   INITIAL_BRANCHES,
@@ -320,11 +321,10 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     profiles: {
       title: 'Profiles',
       titleAr: 'الملفات',
-      desc: 'Central CRM platform managing profiles: Profiles CRM Hub, Mudabbir (Organizations, Properties, Contacts), and Diyafa (Guests, Corporate).',
-      descAr: 'المنصة المركزية لإدارة الملفات ونظام CRM: إدارة المستخدمين والعملاء، مدبّر (المؤسسات، العقارات، جهات الاتصال)، وضيافة (النزلاء والشركات).',
+      desc: 'Central platform managing profiles: Mudabbir (Organizations, Properties, Contacts), and Diyafa (Guests, Corporate).',
+      descAr: 'المنصة المركزية لإدارة الملفات: مدبّر (المؤسسات، العقارات، جهات الاتصال)، وضيافة (النزلاء والشركات).',
       icon: Building2,
       tabs: [
-        { id: 'crm', name: 'Profiles CRM', nameAr: 'نظام إدارة العملاء (CRM)', count: '6' },
         { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات', count: '8' },
         { id: 'branches', name: 'Properties', nameAr: 'العقارات والفروع', count: orgBranches.length.toString() },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: orgContacts.length.toString() },
@@ -335,11 +335,10 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
     organization: {
       title: 'Profiles',
       titleAr: 'الملفات',
-      desc: 'Central CRM platform managing profiles: Profiles CRM Hub, Mudabbir (Organizations, Properties, Contacts), and Diyafa (Guests, Corporate).',
-      descAr: 'المنصة المركزية لإدارة الملفات ونظام CRM: إدارة المستخدمين والعملاء، مدبّر (المؤسسات، العقارات، جهات الاتصال)، وضيافة (النزلاء والشركات).',
+      desc: 'Central platform managing profiles: Mudabbir (Organizations, Properties, Contacts), and Diyafa (Guests, Corporate).',
+      descAr: 'المنصة المركزية لإدارة الملفات: مدبّر (المؤسسات، العقارات، جهات الاتصال)، وضيافة (النزلاء والشركات).',
       icon: Building2,
       tabs: [
-        { id: 'crm', name: 'Profiles CRM', nameAr: 'نظام إدارة العملاء (CRM)', count: '6' },
         { id: 'organization', name: 'Organizations', nameAr: 'المؤسسات', count: '8' },
         { id: 'branches', name: 'Properties', nameAr: 'العقارات والفروع', count: orgBranches.length.toString() },
         { id: 'contacts', name: 'Contacts', nameAr: 'جهات الاتصال', count: orgContacts.length.toString() },
@@ -616,12 +615,9 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
   }, [subTab, module]);
 
   const isProfiles = module === 'organization' || module === 'profiles';
-  const isCrmSubRoute = activeTab === 'crm' || (!activeTab && isProfiles);
   const isGuestsSubRoute =
     ['guests', 'corporate', 'diyafa_corporates', 'diyafa_guests', 'diyafa'].includes(activeTab);
-  const profilesLevel2: 'crm' | 'operators' | 'guests' = isCrmSubRoute
-    ? 'crm'
-    : isGuestsSubRoute
+  const profilesLevel2: 'operators' | 'guests' = isGuestsSubRoute
     ? 'guests'
     : 'operators';
 
@@ -714,21 +710,7 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
           <div className="max-w-7xl mx-auto py-2.5">
             {/* LEVEL 3 SUB-ROUTES TABS (KEPT DIRECTLY ON THE PAGE AS REQUESTED) */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              {profilesLevel2 === 'crm' ? (
-                <div className="flex items-center justify-between w-full py-1 text-xs text-[#70787d]">
-                  <span className="flex items-center gap-2 font-medium">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                    <span>
-                      {isArabic
-                        ? 'إدارة متكاملة لبيانات المشغلين والنزلاء، وتدقيق طلبات منصة مدبّر الذاتية، ومزامنة التعديلات مع المستخدمين'
-                        : 'Integrated CRM: ingest user submissions from Mudabbir, adjust terms, and push sync to user portal.'}
-                    </span>
-                  </span>
-                  <span className="text-[11px] font-bold text-[#004a60] bg-[#e8eeff] px-2.5 py-0.5 rounded-full shrink-0">
-                    {isArabic ? 'بوابة المزامنة نشطة ⚡' : 'Live Mudabbir Sync ⚡'}
-                  </span>
-                </div>
-              ) : profilesLevel2 === 'operators' ? (
+              {profilesLevel2 === 'operators' ? (
                 <div className="flex items-center justify-between w-full flex-wrap gap-2.5">
                   <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                     <button
@@ -913,19 +895,11 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
 
       {/* Module Content */}
       <div className="p-4 lg:p-6 max-w-7xl mx-auto w-full flex-1">
-        {/* PROFILES MODULE (3-LEVEL NAVIGATION: CRM, OPERATORS & GUESTS) */}
+        {/* PROFILES MODULE (MUDABBIR & DIYAFA) */}
         {isProfiles && (
           <div className="space-y-4">
-            {/* LEVEL 2: PROFILES CRM HUB */}
-            {(activeTab === 'crm' || (!activeTab && isProfiles)) && (
-              <ProfilesCrmView
-                isArabic={isArabic}
-                onNavigateToSection={(sec) => setActiveTab(sec)}
-              />
-            )}
-
             {/* LEVEL 2: MUDABBIR -> LEVEL 3: ORGANIZATIONS */}
-            {(activeTab === 'organization' || activeTab === 'operators' || activeTab === 'mudabbir') && (
+            {(activeTab === 'organization' || activeTab === 'operators' || activeTab === 'mudabbir' || (!activeTab && isProfiles)) && (
               <OrganizationProfileTab
                 isArabic={isArabic}
                 branches={orgBranches}
@@ -1496,41 +1470,16 @@ export const SitemapModuleView: React.FC<SitemapModuleViewProps> = ({
             )}
 
             {activeTab === 'tax_financial' && (
-              <div className="bg-white rounded-2xl border border-[#e3e8f9] p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[#e3e8f9]">
-                  <div>
-                    <h3 className="text-sm font-bold text-[#161c27]">
-                      {isArabic ? 'إعدادات الضرائب والربط مع ZATCA' : 'Tax & ZATCA Phase 2 Cryptographic Config'}
-                    </h3>
-                    <p className="text-xs text-[#70787d]">
-                      {isArabic
-                        ? 'مفاتيح CSID المشفرة، ضريبة القيمة المضافة 15%، ورسوم السياحة والبلدية 5%.'
-                        : 'Production CSID compliance, cryptographic timestamps, and tourism fee tax engines.'}
-                    </p>
-                  </div>
-                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                    CSID Active
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div className="p-3 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
-                    <span className="text-[#70787d]">Standard VAT</span>
-                    <div className="text-base font-bold text-[#161c27] mt-1">15.0%</div>
-                    <span className="text-[10px] text-emerald-700 font-semibold">Standard KSA Rate</span>
-                  </div>
-                  <div className="p-3 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
-                    <span className="text-[#70787d]">Municipal & Tourism Tax</span>
-                    <div className="text-base font-bold text-[#004a60] mt-1">5.0%</div>
-                    <span className="text-[10px] text-[#70787d]">Applied to Accommodation Folios</span>
-                  </div>
-                  <div className="p-3 rounded-xl border border-[#e3e8f9] bg-[#f9f9ff]">
-                    <span className="text-[#70787d]">SADAD Biller Code</span>
-                    <div className="text-base font-bold text-purple-700 mt-1">204</div>
-                    <span className="text-[10px] text-emerald-700 font-semibold">Direct Debit Connected</span>
-                  </div>
-                </div>
-              </div>
+              <TaxFinancialSettingsManager
+                isArabic={isArabic}
+                onNavigateToTiers={() => {
+                  if (onNavigateToModule) {
+                    onNavigateToModule('products', 'categories');
+                  } else {
+                    setActiveTab('categories');
+                  }
+                }}
+              />
             )}
 
             {activeTab === 'numbering' && (
