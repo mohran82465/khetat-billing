@@ -24,6 +24,8 @@ import {
   INITIAL_SALES_ORDERS,
   INITIAL_INVOICES,
   INITIAL_QUOTATIONS,
+  getStoredQuotations,
+  saveStoredQuotations,
   INITIAL_CUSTOMERS,
   INITIAL_ACCOUNT_LEDGER,
   INITIAL_RECEIPTS,
@@ -76,7 +78,7 @@ export function App() {
   // Data states
   const [orders, setOrders] = useState<SalesOrder[]>(INITIAL_SALES_ORDERS);
   const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
-  const [quotations, setQuotations] = useState<Quotation[]>(INITIAL_QUOTATIONS);
+  const [quotations, setQuotations] = useState<Quotation[]>(() => getStoredQuotations());
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
   const [ledgers, setLedgers] = useState<AccountLedger[]>(INITIAL_ACCOUNT_LEDGER);
   const [receipts, setReceipts] = useState<ReceiptVoucher[]>(INITIAL_RECEIPTS);
@@ -562,7 +564,13 @@ export function App() {
         isOpen={isCreateQuotationOpen}
         onClose={() => setIsCreateQuotationOpen(false)}
         isArabic={isArabic}
-        onAdd={(q) => setQuotations((prev) => [q, ...prev])}
+        onAdd={(q) => {
+          setQuotations((prev) => {
+            const updated = [q, ...prev];
+            saveStoredQuotations(updated);
+            return updated;
+          });
+        }}
         customers={customers}
       />
 

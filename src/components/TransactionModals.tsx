@@ -1,6 +1,39 @@
-import React, { useState } from 'react';
-import { X, Plus, ShieldCheck, CheckCircle2 } from 'lucide-react';
-import { SalesOrder, Invoice, Quotation, Customer, ReceiptVoucher } from '../data/mockData';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  X,
+  Plus,
+  ShieldCheck,
+  CheckCircle2,
+  Layers,
+  Receipt,
+  Building2,
+  Calculator,
+  Sliders,
+  Check,
+  Percent,
+} from 'lucide-react';
+import {
+  SalesOrder,
+  Invoice,
+  Quotation,
+  Customer,
+  ReceiptVoucher,
+  QuotationTaxBreakdown,
+  QuotationItem,
+} from '../data/mockData';
+import {
+  PropertyPlan,
+  PlanTier,
+  getStoredPlans,
+  getStoredTiers,
+  getTiersForPlan,
+} from '../data/plansConfig';
+import {
+  TaxConfig,
+  getStoredTaxes,
+  saveStoredTaxes,
+  calculateTierTaxes,
+} from '../data/taxSettingsData';
 
 interface ModalProps {
   isOpen: boolean;
@@ -324,42 +357,247 @@ export const CreateQuotationModal: React.FC<
   ModalProps & { onAdd: (q: Quotation) => void; customers: Customer[] }
 > = ({ isOpen, onClose, isArabic, onAdd, customers }) => {
   const [customer, setCustomer] = useState(customers[0]?.name || '');
+  const [quoteMode, setQuoteMode] = useState<'plan_tier' | 'custom'>('plan_tier');
+
+  // Plans & Tiers state
+  const [plans, setPlans] = useState<PropertyPlan[]>(() => getStoredPlans());
+  const [tiers, setTiers] = useState<PlanTier[]>(() => getStoredTiers());
+  const [allTaxes, setAllTaxes] = useState<TaxConfig[]>(() => getStoredTaxes());
+
+  // Quick add tax state
+  const [isQuickTaxOpen, setIsQuickTaxOpen] = useState(false);
+  const [newTaxCode, setNewTaxCode] = useState('');
+  const [newTaxName, setNewTaxName] = useState('');
+  const [newTaxNameAr, setNewTaxNameAr] = useState('');
+  const [newTaxRate, setNewTaxRate] = useState<number>(5);
+  const [newTaxType, setNewTaxType] = useState<'percentage' | 'fixed_sar'>('percentage');
+
+  // Refresh data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setPlans(getStoredPlans());
+      setTiers(getStoredTiers());
+      setAllTaxes(getStoredTaxes());
+    }
+  }, [isOpen]);
+
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('building-plans');
+  const availableTiersForPlan = useMemo(() => {
+    return tiers.filter((t) => t.planId === selectedPlanId);
+  }, [tiers, selectedPlanId]);
+
+  const [selectedTierId, setSelectedTierId] = useState<string>('');
+  const [propertiesCount, setPropertiesCount] = useState<number>(12);
+  const [contractDurationMonths, setContractDurationMonths] = useState<number>(12);
+  const [appliedTaxIds, setAppliedTaxIds] = useState<string[]>(['tax-vat-15']);
+
+  // Custom mode state
   const [scope, setScope] = useState('Khetat Cloud Core ERP + Real-time ZATCA Clearance Integration');
   const [amountNet, setAmountNet] = useState(180000);
+
+  // Initialize tier selection when plan changes
+  useEffect(() => {
+    if (availableTiersForPlan.length > 0) {
+      const defaultTier = availableTiersForPlan[0];
+      setSelectedTierId(defaultTier.id);
+      setPropertiesCount(defaultTier.minProperties || 10);
+      setAppliedTaxIds(
+        defaultTier.appliedTaxIds && defaultTier.appliedTaxIds.length > 0
+          ? defaultTier.appliedTaxIds
+          : ['tax-vat-15']
+      );
+    }
+  }, [selectedPlanId, availableTiersForPlan]);
+
+  // When tier changes
+  const handleSelectTier = (tierId: string) => {
+    setSelectedTierId(tierId);
+    const tr = tiers.find((t) => t.id === tierId);
+    if (tr) {
+      if (tr.minProperties && propertiesCount < tr.minProperties) {
+        setPropertiesCount(tr.minProperties);
+      }
+      setAppliedTaxIds(
+        tr.appliedTaxIds && tr.appliedTaxIds.length > 0
+          ? tr.appliedTaxIds
+          : ['tax-vat-15']
+      );
+    }
+  };
+
+  const handleAddQuickTax = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaxCode || !newTaxName) return;
+    const createdTax: TaxConfig = {
+      id: `tax-${newTaxCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString().slice(-4)}`,
+      code: newTaxCode.trim().toUpperCase(),
+      name: newTaxName.trim(),
+      nameAr: newTaxNameAr.trim() || newTaxName.trim(),
+      rate: Number(newTaxRate) || 0,
+      type: newTaxType,
+      typeAr: newTaxType === 'percentage' ? 'نسبة مئوية (%)' : 'مبلغ ثابت (ر.س)',
+      taxCategory: 'Custom',
+      taxCategoryAr: 'رسوم وضرائب مخصصة',
+      status: 'active',
+      isRecoverable: false,
+      applyToAllByDefault: false,
+      description: `Custom tax created in quotation: ${newTaxCode}`,
+      descriptionAr: `ضريبة مخصصة تم إنشاؤها عبر عروض الأسعار: ${newTaxCode}`,
+      zatcaCode: 'O',
+    };
+    const updatedTaxes = [...allTaxes, createdTax];
+    setAllTaxes(updatedTaxes);
+    saveStoredTaxes(updatedTaxes);
+    setAppliedTaxIds((prev) => [...prev, createdTax.id]);
+    setIsQuickTaxOpen(false);
+    setNewTaxCode('');
+    setNewTaxName('');
+    setNewTaxNameAr('');
+    setNewTaxRate(5);
+  };
+
+  const currentPlan = plans.find((p) => p.id === selectedPlanId) || plans[0];
+  const currentTier = tiers.find((t) => t.id === selectedTierId) || availableTiersForPlan[0];
+
+  // Calculation for Plan & Tier Mode
+  const calculation = useMemo(() => {
+    if (quoteMode === 'custom') {
+      const vat = amountNet * 0.15;
+      return {
+        baseMonthly: amountNet / (contractDurationMonths || 1),
+        baseNet: amountNet,
+        taxesBreakdown: [
+          {
+            taxId: 'tax-vat-15',
+            code: 'VAT-15',
+            name: 'Value Added Tax (15%)',
+            nameAr: 'ضريبة القيمة المضافة (15%)',
+            rate: 15,
+            amount: vat,
+          },
+        ],
+        totalTax: vat,
+        grandTotal: amountNet + vat,
+        isCapped: false,
+      };
+    }
+
+    if (!currentTier) {
+      return {
+        baseMonthly: 0,
+        baseNet: 0,
+        taxesBreakdown: [],
+        totalTax: 0,
+        grandTotal: 0,
+        isCapped: false,
+      };
+    }
+
+    let monthlyRate = propertiesCount * currentTier.ratePerUnit;
+    let isCapped = false;
+    if (currentTier.cappedRate && monthlyRate > currentTier.cappedRate) {
+      monthlyRate = currentTier.cappedRate;
+      isCapped = true;
+    }
+
+    const netTotal = monthlyRate * contractDurationMonths;
+    const taxesResult = calculateTierTaxes(netTotal, appliedTaxIds, allTaxes);
+
+    return {
+      baseMonthly: monthlyRate,
+      baseNet: netTotal,
+      taxesBreakdown: taxesResult.breakdown,
+      totalTax: taxesResult.totalTaxAmount,
+      grandTotal: taxesResult.grandTotal,
+      isCapped,
+    };
+  }, [
+    quoteMode,
+    amountNet,
+    contractDurationMonths,
+    currentTier,
+    propertiesCount,
+    appliedTaxIds,
+    allTaxes,
+  ]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const vat = amountNet * 0.15;
-    const newQuote: Quotation = {
-      id: `QT-2024-${Math.floor(895 + Math.random() * 50)}`,
-      version: 'v1',
-      category: 'Master Agreement',
-      customer,
-      customerInitials: customer.split(' ').map((n) => n[0]).join('').slice(0, 2),
+
+    const selectedCust = customers.find((c) => c.name === customer) || customers[0] || {
+      name: customer || 'Customer Entity',
+      initials: 'CE',
       crNumber: '1010992384',
-      trnNumber: '310491827100003',
-      dateIssued: '24 Oct 2024',
-      validUntil: '07 Nov 2024',
-      totalNet: amountNet,
-      discount: 0,
-      vatAmount: vat,
-      grandTotal: amountNet + vat,
-      status: 'Sent',
-      statusLabel: 'Sent / Review',
-      creator: 'Eng. Tariq Mansoor',
-      contactName: 'Executive Procurement Lead',
-      contactEmail: 'procurement@client.sa',
-      items: [
+      trn: '310491827100003',
+      primaryContact: { name: 'Executive Lead', email: 'lead@client.sa' },
+    };
+
+    let items: QuotationItem[] = [];
+    if (quoteMode === 'plan_tier' && currentTier && currentPlan) {
+      items = [
+        {
+          title: `${isArabic ? currentPlan.nameAr : currentPlan.name} — ${isArabic ? currentTier.nameAr : currentTier.name}`,
+          scope: `${propertiesCount} ${isArabic ? 'عقارات / وحدات فندقية' : 'Hospitality Units'} @ ${currentTier.ratePerUnit} SAR/mo (${contractDurationMonths} ${isArabic ? 'شهور' : 'Months'})`,
+          price: calculation.baseNet,
+          planId: currentPlan.id,
+          planName: currentPlan.name,
+          planNameAr: currentPlan.nameAr,
+          tierId: currentTier.id,
+          tierName: currentTier.name,
+          tierNameAr: currentTier.nameAr,
+          tierCode: currentTier.code,
+          propertiesCount,
+          ratePerUnit: currentTier.ratePerUnit,
+          isCapped: calculation.isCapped,
+          appliedTaxes: calculation.taxesBreakdown,
+        },
+      ];
+    } else {
+      items = [
         {
           title: scope,
-          scope: 'Annual Enterprise Subscription & Dedicated Hosting',
-          price: amountNet,
+          scope: `${isArabic ? 'عقد مخصص' : 'Custom Enterprise Contract'} (${contractDurationMonths} ${isArabic ? 'شهر' : 'Months'})`,
+          price: calculation.baseNet,
+          appliedTaxes: calculation.taxesBreakdown,
         },
-      ],
+      ];
+    }
+
+    const newQuote: Quotation = {
+      id: `QT-2024-${Math.floor(896 + Math.random() * 50)}`,
+      version: 'v1',
+      category: quoteMode === 'plan_tier' ? 'Plan & Tier Agreement' : 'Master Agreement',
+      customer: selectedCust.name,
+      customerInitials: selectedCust.initials || selectedCust.name.slice(0, 2).toUpperCase(),
+      crNumber: selectedCust.crNumber || '1010992384',
+      trnNumber: selectedCust.trn || '310491827100003',
+      dateIssued: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      validUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      expiresInHours: 72,
+      isExpiringSoon: false,
+      totalNet: calculation.baseNet,
+      discount: 0,
+      vatAmount: calculation.totalTax,
+      grandTotal: calculation.grandTotal,
+      status: 'Sent',
+      statusLabel: isArabic ? 'مرسل للمراجعة' : 'Sent / Review',
+      creator: 'Eng. Tariq Mansoor',
+      contactName: selectedCust.primaryContact?.name || 'Executive Procurement Lead',
+      contactEmail: selectedCust.primaryContact?.email || 'procurement@client.sa',
+      items,
       zatcaReady: true,
-      eSignStatus: 'Sent for Nafath e-Signature',
+      eSignStatus: isArabic ? 'بانتظار التوقيع الرقمي (نفاذ)' : 'Awaiting e-Sign via Nafath',
+      planId: quoteMode === 'plan_tier' ? currentPlan?.id : undefined,
+      planName: quoteMode === 'plan_tier' ? currentPlan?.name : undefined,
+      planNameAr: quoteMode === 'plan_tier' ? currentPlan?.nameAr : undefined,
+      tierId: quoteMode === 'plan_tier' ? currentTier?.id : undefined,
+      tierName: quoteMode === 'plan_tier' ? currentTier?.name : undefined,
+      tierNameAr: quoteMode === 'plan_tier' ? currentTier?.nameAr : undefined,
+      tierCode: quoteMode === 'plan_tier' ? currentTier?.code : undefined,
+      propertiesCount: quoteMode === 'plan_tier' ? propertiesCount : undefined,
+      taxesBreakdown: calculation.taxesBreakdown,
     };
 
     onAdd(newQuote);
@@ -367,75 +605,536 @@ export const CreateQuotationModal: React.FC<
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95">
-        <div className="flex items-center justify-between pb-3 border-b border-[#e3e8f9]">
-          <h3 className="text-base font-bold text-[#161c27]">
-            {isArabic ? 'إنشاء عرض سعر جديد' : 'New Commercial Quotation'}
-          </h3>
-          <button onClick={onClose} className="text-[#70787d] hover:text-[#161c27]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto">
+      <div className="w-full max-w-2xl rounded-2xl bg-white p-5 sm:p-6 shadow-2xl animate-in zoom-in-95 my-auto max-h-[92vh] flex flex-col border border-[#e3e8f9]">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-[#e3e8f9] shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-[#004a60] text-white">
+              <Receipt className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[#161c27]">
+                {isArabic ? 'إنشاء عرض سعر جديد (Quotations Engine)' : 'New Commercial Quotation'}
+              </h3>
+              <p className="text-xs text-[#70787d]">
+                {isArabic
+                  ? 'ربط عروض الأسعار بباقات ومستويات المنظومة مع احتساب الضرائب تلقائياً'
+                  : 'Link quotations to plans, tiers, and multi-tax schedules with real-time clearance'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[#70787d] hover:text-[#161c27] p-1 rounded-lg hover:bg-gray-100 cursor-pointer"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4 text-xs">
+        {/* Modal Body */}
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4 text-xs overflow-y-auto flex-1 pr-1">
+          {/* Mode Switcher Pills */}
+          <div className="flex items-center p-1 bg-[#f1f3ff] rounded-xl border border-[#e3e8f9]">
+            <button
+              type="button"
+              onClick={() => setQuoteMode('plan_tier')}
+              className={`flex-1 py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                quoteMode === 'plan_tier'
+                  ? 'bg-white text-[#004a60] shadow-xs'
+                  : 'text-[#50585e] hover:text-[#161c27]'
+              }`}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              <span>{isArabic ? 'باقة ومستوى تسعير (Plan & Tier)' : 'Plan & Tier Subscription'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuoteMode('custom')}
+              className={`flex-1 py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                quoteMode === 'custom'
+                  ? 'bg-white text-[#004a60] shadow-xs'
+                  : 'text-[#50585e] hover:text-[#161c27]'
+              }`}
+            >
+              <Sliders className="h-3.5 w-3.5" />
+              <span>{isArabic ? 'نطاق تجاري مخصص (Custom Scope)' : 'Custom Scope'}</span>
+            </button>
+          </div>
+
+          {/* Client Selection */}
           <div>
-            <label className="block font-semibold text-[#161c27] mb-1">Target Client Entity</label>
+            <label className="block font-semibold text-[#161c27] mb-1">
+              {isArabic ? 'الجهة المستفيدة / العميل *' : 'Target Client Entity *'}
+            </label>
             <select
               value={customer}
               onChange={(e) => setCustomer(e.target.value)}
-              className="w-full rounded-lg border border-[#e3e8f9] p-2.5 focus:border-[#004a60] focus:outline-hidden"
+              className="w-full rounded-xl border border-[#c3cce6] p-2.5 bg-white font-medium focus:border-[#004a60] outline-hidden cursor-pointer"
+              required
             >
               {customers.map((c) => (
                 <option key={c.id} value={c.name}>
-                  {c.name}
+                  {c.name} {c.city ? `(${c.city})` : ''} — CR: {c.crNumber}
                 </option>
               ))}
             </select>
           </div>
 
-          <div>
-            <label className="block font-semibold text-[#161c27] mb-1">Solution Scope</label>
-            <input
-              type="text"
-              required
-              value={scope}
-              onChange={(e) => setScope(e.target.value)}
-              className="w-full rounded-lg border border-[#e3e8f9] p-2.5 focus:border-[#004a60] focus:outline-hidden"
-            />
-          </div>
+          {/* PLAN & TIER SECTION */}
+          {quoteMode === 'plan_tier' ? (
+            <div className="space-y-4 p-4 rounded-2xl bg-[#f9fbff] border border-[#bcd7f5]">
+              {/* 1. Target Plan Selection */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-bold text-[#004a60] text-xs flex items-center gap-1.5">
+                    <Layers className="h-4 w-4" />
+                    <span>{isArabic ? '١. اختيار الباقة الرئيسية (Plan):' : '1. Target Property Plan:'}</span>
+                  </label>
+                  <span className="text-[10px] text-[#70787d]">
+                    {plans.length} {isArabic ? 'باقات متاحة' : 'Plans available'}
+                  </span>
+                </div>
+                <select
+                  value={selectedPlanId}
+                  onChange={(e) => setSelectedPlanId(e.target.value)}
+                  className="w-full rounded-xl border border-[#bcd7f5] p-2.5 bg-white font-bold text-[#161c27] text-xs focus:border-[#004a60] outline-hidden cursor-pointer shadow-2xs"
+                >
+                  {plans.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {isArabic ? p.nameAr : p.name} ({p.code})
+                    </option>
+                  ))}
+                </select>
+                {currentPlan && (
+                  <p className="text-[11px] text-[#70787d] mt-1">
+                    {isArabic ? currentPlan.subtitleAr : currentPlan.subtitle}
+                  </p>
+                )}
+              </div>
 
-          <div>
-            <label className="block font-semibold text-[#161c27] mb-1">Net Proposal Value (SAR)</label>
-            <input
-              type="number"
-              required
-              value={amountNet}
-              onChange={(e) => setAmountNet(Number(e.target.value))}
-              className="w-full rounded-lg border border-[#e3e8f9] p-2.5 font-mono focus:border-[#004a60] focus:outline-hidden"
-            />
-          </div>
+              {/* 2. Target Tier Selection with interactive Cards */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-bold text-[#004a60] text-xs flex items-center gap-1.5">
+                    <Percent className="h-4 w-4" />
+                    <span>{isArabic ? '٢. اختيار مستوى التسعير التابع للباقة (Tier):' : '2. Plan Pricing Tier:'}</span>
+                  </label>
+                  <span className="text-[10px] font-mono text-[#004a60] font-bold">
+                    {availableTiersForPlan.length} {isArabic ? 'مستويات' : 'Tiers'}
+                  </span>
+                </div>
 
-          <div className="rounded-lg bg-[#f1f3ff] p-3 text-center">
-            <span className="text-[11px] text-[#70787d]">Total Proposal incl. 15% VAT:</span>
-            <div className="text-lg font-bold font-mono text-[#004a60]">
-              SAR {(amountNet * 1.15).toLocaleString()}
+                {/* Tier Cards Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {availableTiersForPlan.map((tr) => {
+                    const isSelected = tr.id === selectedTierId;
+                    return (
+                      <button
+                        key={tr.id}
+                        type="button"
+                        onClick={() => handleSelectTier(tr.id)}
+                        className={`p-3 rounded-xl border text-right transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-[#004a60] bg-white ring-2 ring-[#004a60]/20 shadow-xs'
+                            : 'border-[#bcd7f5]/80 bg-white/80 hover:bg-white hover:border-[#004a60]/40'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-1 w-full mb-1">
+                          <span className="font-bold text-xs text-[#161c27] line-clamp-1">
+                            {isArabic ? tr.nameAr : tr.name}
+                          </span>
+                          <span
+                            className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                              isSelected ? 'bg-[#004a60] text-white' : 'bg-[#e8eeff] text-[#004a60]'
+                            }`}
+                          >
+                            {tr.code}
+                          </span>
+                        </div>
+
+                        <div className="flex items-baseline gap-1 text-[#004a60] font-black text-sm font-mono mt-1">
+                          <span>{tr.ratePerUnit} SAR</span>
+                          <span className="text-[10px] font-normal text-[#70787d]">
+                            /{isArabic ? 'عقار شهرياً' : 'unit/mo'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[10px] text-[#70787d] mt-1.5 pt-1.5 border-t border-[#f0f4fd] w-full">
+                          <span>
+                            {tr.minProperties || 1}-{tr.maxProperties || '∞'} {isArabic ? 'عقارات' : 'units'}
+                          </span>
+                          {tr.cappedRate ? (
+                            <span className="text-amber-800 font-semibold font-mono text-[9px]">
+                              Cap: {tr.cappedRate} SAR
+                            </span>
+                          ) : (
+                            <span className="text-emerald-700 text-[9px] font-medium">
+                              {isArabic ? 'تسعير خطي' : 'Linear'}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3. Units / Properties Count */}
+              <div className="bg-white p-3.5 rounded-xl border border-[#bcd7f5] space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <label className="font-bold text-[#161c27] text-xs">
+                    {isArabic ? '٣. عدد العقارات / الوحدات الفندقية المشتركة:' : '3. Enrolled Properties / Units:'}
+                  </label>
+                  <span className="font-mono text-sm font-black text-[#004a60] bg-[#eef7ff] px-2.5 py-0.5 rounded-lg border border-[#bcd7f5]">
+                    {propertiesCount} {isArabic ? 'عقار / وحدة' : 'Properties'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={currentTier?.minProperties || 1}
+                    max={currentTier?.maxProperties ? currentTier.maxProperties + 15 : 60}
+                    value={propertiesCount}
+                    onChange={(e) => setPropertiesCount(parseInt(e.target.value) || 1)}
+                    className="flex-1 accent-[#004a60] cursor-pointer"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    max="500"
+                    value={propertiesCount}
+                    onChange={(e) => setPropertiesCount(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-20 p-1.5 rounded-lg border border-[#c3cce6] font-mono text-center font-bold text-xs"
+                  />
+                </div>
+                {currentTier && (
+                  <div className="flex items-center justify-between text-[10px] text-[#70787d]">
+                    <span>
+                      {isArabic ? 'النطاق الموصى به للمستوى:' : 'Tier Recommended Range:'}{' '}
+                      {currentTier.minProperties || 1} - {currentTier.maxProperties || '∞'}
+                    </span>
+                    {calculation.isCapped && (
+                      <span className="text-amber-700 font-bold">
+                        {isArabic ? 'تم تطبيق الحد الأقصى للمستوى (Capped)' : 'Tier Rate Cap Applied'}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Contract Duration & Applied Taxes Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                <div>
+                  <label className="block font-bold text-[#161c27] mb-1 text-xs">
+                    {isArabic ? '٤. مدة العرض والتعاقد:' : '4. Contract Duration:'}
+                  </label>
+                  <select
+                    value={contractDurationMonths}
+                    onChange={(e) => setContractDurationMonths(parseInt(e.target.value) || 12)}
+                    className="w-full rounded-xl border border-[#bcd7f5] p-2.5 bg-white text-xs font-semibold outline-hidden cursor-pointer"
+                  >
+                    <option value={12}>
+                      {isArabic ? '١٢ شهر (عقد سنوي كامل - Full Annual)' : '12 Months (Full Annual Agreement)'}
+                    </option>
+                    <option value={24}>
+                      {isArabic ? '٢٤ شهر (عقد سنتين - Multi-Year)' : '24 Months (2-Year Enterprise)'}
+                    </option>
+                    <option value={6}>
+                      {isArabic ? '٦ أشهر (نصف سنوي - Semi-Annual)' : '6 Months (Semi-Annual)'}
+                    </option>
+                    <option value={3}>
+                      {isArabic ? '٣ أشهر (ربع سنوي - Quarterly)' : '3 Months (Quarterly)'}
+                    </option>
+                    <option value={1}>
+                      {isArabic ? 'شهر واحد (تجربة شهرية - Single Month)' : '1 Month (Monthly Trial)'}
+                    </option>
+                  </select>
+                </div>
+
+                {/* Applied Taxes Header & Quick Add */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-[#161c27] text-xs">
+                      {isArabic ? '٥. الضرائب المطبقة على الباقة/المستوى:' : '5. Applied Taxes for Tier:'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickTaxOpen(!isQuickTaxOpen)}
+                      className="text-[10px] text-[#004a60] font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <Plus className="h-3 w-3" />
+                      <span>{isArabic ? 'ضريبة جديدة' : 'New Tax'}</span>
+                    </button>
+                  </div>
+
+                  {/* Pre-configured tier taxes hint */}
+                  {currentTier?.appliedTaxIds && currentTier.appliedTaxIds.length > 0 && (
+                    <div className="text-[10px] text-emerald-800 font-medium flex items-center gap-1 mb-1.5">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                      <span>
+                        {isArabic
+                          ? 'الضرائب المعتمدة لهذا المستوى محددة تلقائياً:'
+                          : 'Taxes configured for this tier are pre-selected:'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Taxes Checklist Pills */}
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {allTaxes.map((tx) => {
+                      const isChecked = appliedTaxIds.includes(tx.id);
+                      const isDefaultTierTax = currentTier?.appliedTaxIds?.includes(tx.id);
+                      return (
+                        <button
+                          key={tx.id}
+                          type="button"
+                          onClick={() => {
+                            if (isChecked) {
+                              setAppliedTaxIds((prev) => prev.filter((id) => id !== tx.id));
+                            } else {
+                              setAppliedTaxIds((prev) => [...prev, tx.id]);
+                            }
+                          }}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                            isChecked
+                              ? 'bg-[#004a60] text-white border-[#004a60] shadow-xs'
+                              : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          {isChecked ? (
+                            <Check className="h-3.5 w-3.5 shrink-0" />
+                          ) : (
+                            <span className="h-3 w-3 rounded-full border border-gray-300 inline-block shrink-0" />
+                          )}
+                          <span className="font-mono">[{tx.code}]</span>
+                          <span>{isArabic ? tx.nameAr : tx.name}</span>
+                          <span className="font-mono font-normal opacity-90">
+                            ({tx.type === 'percentage' ? `${tx.rate}%` : `${tx.rate} SAR`})
+                          </span>
+                          {isDefaultTierTax && (
+                            <span
+                              className={`text-[8px] px-1 py-0.2 rounded font-mono ${
+                                isChecked ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700'
+                              }`}
+                            >
+                              Tier
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Inline Quick Tax Adder */}
+                  {isQuickTaxOpen && (
+                    <div className="mt-2.5 p-3 rounded-xl bg-white border border-[#bcd7f5] shadow-xs space-y-2 animate-in fade-in">
+                      <div className="flex items-center justify-between pb-1 border-b border-gray-100">
+                        <span className="font-bold text-xs text-[#004a60]">
+                          {isArabic ? 'إضافة نوع ضريبة أو رسم جديد:' : 'Add Quick Tax / Surcharge:'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsQuickTaxOpen(false)}
+                          className="text-gray-400 hover:text-gray-700 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-gray-600 block mb-0.5">
+                            {isArabic ? 'كود الضريبة (Code):' : 'Tax Code:'}
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. TRM-05"
+                            value={newTaxCode}
+                            onChange={(e) => setNewTaxCode(e.target.value)}
+                            className="w-full p-1.5 border border-gray-300 rounded text-xs font-mono font-bold uppercase"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-600 block mb-0.5">
+                            {isArabic ? 'النسبة أو القيمة:' : 'Rate / Value:'}
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={newTaxRate}
+                              onChange={(e) => setNewTaxRate(Number(e.target.value) || 0)}
+                              className="w-full p-1.5 border border-gray-300 rounded text-xs font-mono font-bold"
+                            />
+                            <select
+                              value={newTaxType}
+                              onChange={(e) => setNewTaxType(e.target.value as any)}
+                              className="p-1 border border-gray-300 rounded text-[10px]"
+                            >
+                              <option value="percentage">%</option>
+                              <option value="fixed_sar">SAR</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-600 block mb-0.5">
+                          {isArabic ? 'اسم الضريبة بالعربية:' : 'Arabic Name:'}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. رسوم التنمية السياحية"
+                          value={newTaxNameAr}
+                          onChange={(e) => setNewTaxNameAr(e.target.value)}
+                          className="w-full p-1.5 border border-gray-300 rounded text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-600 block mb-0.5">
+                          {isArabic ? 'الاسم بالإنجليزية:' : 'English Name:'}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Tourism Development Surcharge"
+                          value={newTaxName}
+                          onChange={(e) => setNewTaxName(e.target.value)}
+                          className="w-full p-1.5 border border-gray-300 rounded text-xs"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsQuickTaxOpen(false)}
+                          className="px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded"
+                        >
+                          {isArabic ? 'إلغاء' : 'Cancel'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddQuickTax}
+                          className="px-3 py-1 bg-[#004a60] text-white text-xs font-bold rounded hover:bg-[#074e64]"
+                        >
+                          {isArabic ? 'حفظ وتطبيق الضريبة' : 'Save & Apply'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* CUSTOM MODE */
+            <div className="space-y-3 p-3.5 rounded-2xl bg-gray-50 border border-gray-200">
+              <div>
+                <label className="block font-semibold text-[#161c27] mb-1">
+                  {isArabic ? 'نطاق وتفاصيل العمل المخصص:' : 'Custom Scope of Work:'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={scope}
+                  onChange={(e) => setScope(e.target.value)}
+                  className="w-full rounded-xl border border-[#c3cce6] p-2.5 bg-white text-xs outline-hidden"
+                  placeholder="e.g. Hospitality ERP Custom Deployment"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#161c27] mb-1">
+                  {isArabic ? 'القيمة الصافية الإجمالية (ر.س):' : 'Net Total Amount (SAR):'}
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={amountNet}
+                  onChange={(e) => setAmountNet(Number(e.target.value) || 0)}
+                  className="w-full rounded-xl border border-[#c3cce6] p-2.5 bg-white font-mono font-bold text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* REAL-TIME CALCULATION BREAKDOWN STRIP */}
+          <div className="rounded-2xl bg-gradient-to-r from-[#eef7ff] via-[#f4f9ff] to-white p-4 border border-[#bcd7f5] space-y-2.5">
+            <div className="flex items-center justify-between pb-2 border-b border-[#bcd7f5]/60">
+              <span className="font-bold text-[#004a60] flex items-center gap-1.5">
+                <Calculator className="h-4 w-4" />
+                <span>{isArabic ? 'ملخص احتساب العرض المالي شامل الضرائب:' : 'Financial Quote Calculation:'}</span>
+              </span>
+              {quoteMode === 'plan_tier' && currentTier && (
+                <span className="text-[10px] font-bold text-[#004a60] bg-white px-2 py-0.5 rounded-md border border-[#bcd7f5]">
+                  {currentTier.code} • {propertiesCount} Units
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div className="flex justify-between text-[#50585e]">
+                <span>{isArabic ? 'المبلغ الصافي قبل الضريبة:' : 'Subtotal Net:'}</span>
+                <span className="font-mono font-bold text-[#161c27]">
+                  SAR {calculation.baseNet.toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-[#50585e]">
+                <span>{isArabic ? 'معدل الحساب الشهري:' : 'Monthly Rate:'}</span>
+                <span className="font-mono font-bold text-[#004a60]">
+                  SAR {calculation.baseMonthly.toLocaleString()} / mo
+                </span>
+              </div>
+            </div>
+
+            {/* Itemized Taxes Breakdown */}
+            <div className="pt-2 border-t border-[#bcd7f5]/60 space-y-1">
+              <span className="text-[11px] font-bold text-[#50585e] block">
+                {isArabic ? 'الضرائب والرسوم المطبقة:' : 'Tax Schedule:'}
+              </span>
+              {calculation.taxesBreakdown.length === 0 ? (
+                <span className="text-[10px] text-gray-400 italic">
+                  {isArabic ? 'لا توجد ضرائب مفعلة' : 'No taxes applied'}
+                </span>
+              ) : (
+                calculation.taxesBreakdown.map((tb) => (
+                  <div key={tb.taxId} className="flex justify-between text-[11px] text-[#50585e]">
+                    <span className="flex items-center gap-1">
+                      <span className="font-mono font-bold text-[#004a60]">[{tb.code}]</span>
+                      <span>{isArabic ? tb.nameAr : tb.name} ({tb.rate}%):</span>
+                    </span>
+                    <span className="font-mono font-bold text-emerald-800">
+                      +SAR {tb.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Grand Total */}
+            <div className="pt-2 border-t border-[#bcd7f5] flex items-center justify-between text-sm">
+              <span className="font-black text-[#161c27]">
+                {isArabic ? 'الإجمالي النهائي للعرض (شامل الضرائب):' : 'Grand Total (incl. All Taxes):'}
+              </span>
+              <span className="font-mono font-black text-base text-[#004a60]">
+                SAR {calculation.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#e3e8f9]">
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#e3e8f9] shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-[#e3e8f9] px-4 py-2 font-semibold text-[#40484d] hover:bg-[#f1f3ff]"
+              className="rounded-xl border border-[#c3cce6] px-4 py-2 font-semibold text-[#50585e] hover:bg-gray-50 cursor-pointer"
             >
-              Cancel
+              {isArabic ? 'إلغاء' : 'Cancel'}
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-[#004a60] px-5 py-2 font-semibold text-white hover:bg-[#074e64]"
+              className="rounded-xl bg-[#004a60] px-5 py-2 font-bold text-white hover:bg-[#074e64] shadow-xs cursor-pointer flex items-center gap-1.5"
             >
-              Issue Quotation
+              <Check className="h-4 w-4" />
+              <span>{isArabic ? 'إصدار عرض السعر' : 'Issue Quotation'}</span>
             </button>
           </div>
         </form>

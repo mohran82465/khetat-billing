@@ -63,6 +63,32 @@ export interface Invoice {
   }[];
 }
 
+export interface QuotationTaxBreakdown {
+  taxId: string;
+  code: string;
+  name: string;
+  nameAr: string;
+  rate: number;
+  amount: number;
+}
+
+export interface QuotationItem {
+  title: string;
+  scope: string;
+  price: number;
+  planId?: string;
+  planName?: string;
+  planNameAr?: string;
+  tierId?: string;
+  tierName?: string;
+  tierNameAr?: string;
+  tierCode?: string;
+  propertiesCount?: number;
+  ratePerUnit?: number;
+  isCapped?: boolean;
+  appliedTaxes?: QuotationTaxBreakdown[];
+}
+
 export interface Quotation {
   id: string;
   version: string;
@@ -85,13 +111,19 @@ export interface Quotation {
   creator: string;
   contactName: string;
   contactEmail: string;
-  items: {
-    title: string;
-    scope: string;
-    price: number;
-  }[];
+  items: QuotationItem[];
   zatcaReady: boolean;
   eSignStatus: string;
+  // Plan & Tier & Taxes Integration
+  planId?: string;
+  planName?: string;
+  planNameAr?: string;
+  tierId?: string;
+  tierName?: string;
+  tierNameAr?: string;
+  tierCode?: string;
+  propertiesCount?: number;
+  taxesBreakdown?: QuotationTaxBreakdown[];
 }
 
 export interface Customer {
@@ -578,9 +610,94 @@ export const INITIAL_INVOICES: Invoice[] = [
 
 export const INITIAL_QUOTATIONS: Quotation[] = [
   {
+    id: 'QT-2024-0895',
+    version: 'v1',
+    category: 'Plan & Tier Agreement',
+    customer: 'Dar Al-Taqwa Madinah & Suites',
+    customerInitials: 'DT',
+    crNumber: '4031098472',
+    trnNumber: '310492817200003',
+    dateIssued: '18 Oct 2024',
+    validUntil: '02 Nov 2024',
+    expiresInHours: 72,
+    isExpiringSoon: false,
+    planId: 'building-plans',
+    planName: 'Building Plans',
+    planNameAr: 'باقات المباني والأبراج',
+    tierId: 'tier-bld-growth',
+    tierName: 'Building Growth & Capped Tier (11 - 20 Units)',
+    tierNameAr: 'المستوى الثاني: الاحترافي المتدرج (11 - 20 عقار)',
+    tierCode: 'TR-BLD-02',
+    propertiesCount: 16,
+    totalNet: 28800, // 16 units * 150 SAR * 12 months = 28,800 SAR
+    discount: 0,
+    vatAmount: 4320, // 15% VAT
+    grandTotal: 34560, // Total with 15% VAT (4320) + 5% Mun Fee (1440) = 34560
+    status: 'Sent',
+    statusLabel: 'Sent / Review',
+    creator: 'Eng. Tariq Mansoor',
+    contactName: 'Sheikh Mansour Al-Harbi',
+    contactEmail: 'm.harbi@khetat.sa',
+    taxesBreakdown: [
+      {
+        taxId: 'tax-vat-15',
+        code: 'VAT-15',
+        name: 'Value Added Tax (15%)',
+        nameAr: 'ضريبة القيمة المضافة (15%)',
+        rate: 15,
+        amount: 4320,
+      },
+      {
+        taxId: 'tax-mun-05',
+        code: 'MUN-05',
+        name: 'Municipal Accommodation Fee (5%)',
+        nameAr: 'رسوم البلدية للإيواء الفندقي (5%)',
+        rate: 5,
+        amount: 1440,
+      },
+    ],
+    items: [
+      {
+        title: 'Building Plans — Growth & Capped Tier',
+        scope: '16 Serviced Hospitality Units / Towers @ 150 SAR/unit/mo (12 Months Plan)',
+        price: 28800,
+        planId: 'building-plans',
+        planName: 'Building Plans',
+        planNameAr: 'باقات المباني والأبراج',
+        tierId: 'tier-bld-growth',
+        tierName: 'Building Growth & Capped Tier (11 - 20 Units)',
+        tierNameAr: 'المستوى الثاني: الاحترافي المتدرج (11 - 20 عقار)',
+        tierCode: 'TR-BLD-02',
+        propertiesCount: 16,
+        ratePerUnit: 150,
+        isCapped: false,
+        appliedTaxes: [
+          {
+            taxId: 'tax-vat-15',
+            code: 'VAT-15',
+            name: 'Value Added Tax (15%)',
+            nameAr: 'ضريبة القيمة المضافة (15%)',
+            rate: 15,
+            amount: 4320,
+          },
+          {
+            taxId: 'tax-mun-05',
+            code: 'MUN-05',
+            name: 'Municipal Accommodation Fee (5%)',
+            nameAr: 'رسوم البلدية للإيواء الفندقي (5%)',
+            rate: 5,
+            amount: 1440,
+          },
+        ],
+      },
+    ],
+    zatcaReady: true,
+    eSignStatus: 'Awaiting e-Sign via Nafath / SMS OTP',
+  },
+  {
     id: 'QT-2024-0891',
     version: 'v2',
-    category: 'Master Agreement',
+    category: 'Plan & Tier Agreement',
     customer: 'Al-Rajhi Capital Group',
     customerInitials: 'AR',
     crNumber: '1010034920',
@@ -589,30 +706,74 @@ export const INITIAL_QUOTATIONS: Quotation[] = [
     validUntil: '26 Oct 2024',
     expiresInHours: 28,
     isExpiringSoon: true,
-    totalNet: 162000,
+    planId: 'hotels-plans',
+    planName: 'Hotel Chains & Hospitality',
+    planNameAr: 'سلاسل الفنادق والضيافة الموحدة',
+    tierId: 'tier-htl-ent',
+    tierName: 'Hotel Enterprise & Luxury (21 - 40 Units)',
+    tierNameAr: 'المستوى الفندقي الشامل (21 - 40 فندق)',
+    tierCode: 'TR-HTL-02',
+    propertiesCount: 25,
+    totalNet: 84000,
     discount: 0,
-    vatAmount: 24300,
-    grandTotal: 186300,
+    vatAmount: 12600,
+    grandTotal: 100800,
     status: 'Sent',
     statusLabel: 'Sent / Review',
     creator: 'Tariq Mansoor',
     contactName: 'Khalid Al-Ghamdi',
     contactEmail: 'khalid@alrajhi-cap.sa',
+    taxesBreakdown: [
+      {
+        taxId: 'tax-vat-15',
+        code: 'VAT-15',
+        name: 'Value Added Tax (15%)',
+        nameAr: 'ضريبة القيمة المضافة (15%)',
+        rate: 15,
+        amount: 12600,
+      },
+      {
+        taxId: 'tax-mun-05',
+        code: 'MUN-05',
+        name: 'Municipal Accommodation Fee (5%)',
+        nameAr: 'رسوم البلدية للإيواء الفندقي (5%)',
+        rate: 5,
+        amount: 4200,
+      },
+    ],
     items: [
       {
-        title: 'Khetat Cloud ERP (Annual)',
-        scope: 'Qty: 250 Enterprise Named Licenses',
-        price: 120000,
-      },
-      {
-        title: 'ZATCA Phase 2 Custom API Bridge',
-        scope: 'Qty: 80 Implementation Engineering Hrs',
-        price: 32000,
-      },
-      {
-        title: 'Dedicated Support Package',
-        scope: '24/7 Priority SLA Response',
-        price: 10000,
+        title: 'Hotel Chains & Hospitality — Enterprise Tier',
+        scope: '25 Hotels & Resort Towers @ 280 SAR/unit/mo (12 Months Plan)',
+        price: 84000,
+        planId: 'hotels-plans',
+        planName: 'Hotel Chains & Hospitality',
+        planNameAr: 'سلاسل الفنادق والضيافة الموحدة',
+        tierId: 'tier-htl-ent',
+        tierName: 'Hotel Enterprise & Luxury (21 - 40 Units)',
+        tierNameAr: 'المستوى الفندقي الشامل (21 - 40 فندق)',
+        tierCode: 'TR-HTL-02',
+        propertiesCount: 25,
+        ratePerUnit: 280,
+        isCapped: false,
+        appliedTaxes: [
+          {
+            taxId: 'tax-vat-15',
+            code: 'VAT-15',
+            name: 'Value Added Tax (15%)',
+            nameAr: 'ضريبة القيمة المضافة (15%)',
+            rate: 15,
+            amount: 12600,
+          },
+          {
+            taxId: 'tax-mun-05',
+            code: 'MUN-05',
+            name: 'Municipal Accommodation Fee (5%)',
+            nameAr: 'رسوم البلدية للإيواء الفندقي (5%)',
+            rate: 5,
+            amount: 4200,
+          },
+        ],
       },
     ],
     zatcaReady: true,
@@ -621,33 +782,82 @@ export const INITIAL_QUOTATIONS: Quotation[] = [
   {
     id: 'QT-2024-0890',
     version: 'v1',
-    category: 'Direct Sales',
+    category: 'Plan & Tier Agreement',
     customer: 'Neom Smart Infrastructure',
     customerInitials: 'NS',
     crNumber: '4030198271',
     trnNumber: '310928340192831',
     dateIssued: '10 Oct 2024',
     validUntil: '09 Nov 2024',
-    totalNet: 359000,
+    planId: 'chalets-plans',
+    planName: 'Luxury Chalets & Resorts',
+    planNameAr: 'شاليهات ومنتجعات الفاخرة',
+    tierId: 'tier-ch-02',
+    tierName: 'Chalet Growth & Private Resorts (8 - 15 Units)',
+    tierNameAr: 'المستوى الذهبي للشاليهات (8 - 15 منتجع)',
+    tierCode: 'TR-CH-02',
+    propertiesCount: 12,
+    totalNet: 27360,
     discount: 0,
-    vatAmount: 53850,
-    grandTotal: 412850,
+    vatAmount: 4104,
+    grandTotal: 32832,
     status: 'Accepted',
     statusLabel: 'Accepted',
     convertedSo: 'SO-2024-0412',
     creator: 'Eng. Reem Al-Salem',
     contactName: 'Sultan Al-Shahrani',
     contactEmail: 'sultan@neom.tech',
-    items: [
+    taxesBreakdown: [
       {
-        title: 'Enterprise Billing Gateway Cluster',
-        scope: 'Multi-region failover cluster',
-        price: 280000,
+        taxId: 'tax-vat-15',
+        code: 'VAT-15',
+        name: 'Value Added Tax (15%)',
+        nameAr: 'ضريبة القيمة المضافة (15%)',
+        rate: 15,
+        amount: 4104,
       },
       {
-        title: 'High-Volume Cryptographic HSM Integration',
-        scope: 'ZATCA Phase 2 high throughput bridge',
-        price: 79000,
+        taxId: 'tax-mun-05',
+        code: 'MUN-05',
+        name: 'Municipal Accommodation Fee (5%)',
+        nameAr: 'رسوم البلدية للإيواء الفندقي (5%)',
+        rate: 5,
+        amount: 1368,
+      },
+    ],
+    items: [
+      {
+        title: 'Luxury Chalets & Resorts — Golden Tier',
+        scope: '12 Luxury Private Compounds & Resorts @ 190 SAR/unit/mo (12 Months Plan)',
+        price: 27360,
+        planId: 'chalets-plans',
+        planName: 'Luxury Chalets & Resorts',
+        planNameAr: 'شاليهات ومنتجعات الفاخرة',
+        tierId: 'tier-ch-02',
+        tierName: 'Chalet Growth & Private Resorts (8 - 15 Units)',
+        tierNameAr: 'المستوى الذهبي للشاليهات (8 - 15 منتجع)',
+        tierCode: 'TR-CH-02',
+        propertiesCount: 12,
+        ratePerUnit: 190,
+        isCapped: false,
+        appliedTaxes: [
+          {
+            taxId: 'tax-vat-15',
+            code: 'VAT-15',
+            name: 'Value Added Tax (15%)',
+            nameAr: 'ضريبة القيمة المضافة (15%)',
+            rate: 15,
+            amount: 4104,
+          },
+          {
+            taxId: 'tax-mun-05',
+            code: 'MUN-05',
+            name: 'Municipal Accommodation Fee (5%)',
+            nameAr: 'رسوم البلدية للإيواء الفندقي (5%)',
+            rate: 5,
+            amount: 1368,
+          },
+        ],
       },
     ],
     zatcaReady: true,
@@ -742,6 +952,33 @@ export const INITIAL_QUOTATIONS: Quotation[] = [
     eSignStatus: 'Signed via Corporate Authorization',
   },
 ];
+
+const QUOTATIONS_STORAGE_KEY = 'khetat_quotations_pipeline_v1';
+
+export function getStoredQuotations(): Quotation[] {
+  try {
+    const raw = localStorage.getItem(QUOTATIONS_STORAGE_KEY);
+    if (!raw) {
+      saveStoredQuotations(INITIAL_QUOTATIONS);
+      return INITIAL_QUOTATIONS;
+    }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    return INITIAL_QUOTATIONS;
+  } catch {
+    return INITIAL_QUOTATIONS;
+  }
+}
+
+export function saveStoredQuotations(quotations: Quotation[]): void {
+  try {
+    localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(quotations));
+  } catch (err) {
+    console.error('Failed to save quotations to localStorage', err);
+  }
+}
 
 export const INITIAL_CUSTOMERS: Customer[] = [
   {
