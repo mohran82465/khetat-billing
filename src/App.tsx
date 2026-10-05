@@ -23,6 +23,8 @@ import {
 import {
   INITIAL_SALES_ORDERS,
   INITIAL_INVOICES,
+  getStoredInvoices,
+  saveStoredInvoices,
   INITIAL_QUOTATIONS,
   getStoredQuotations,
   saveStoredQuotations,
@@ -77,7 +79,7 @@ export function App() {
 
   // Data states
   const [orders, setOrders] = useState<SalesOrder[]>(INITIAL_SALES_ORDERS);
-  const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
+  const [invoices, setInvoices] = useState<Invoice[]>(() => getStoredInvoices());
   const [quotations, setQuotations] = useState<Quotation[]>(() => getStoredQuotations());
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
   const [ledgers, setLedgers] = useState<AccountLedger[]>(INITIAL_ACCOUNT_LEDGER);
@@ -244,9 +246,77 @@ export function App() {
     };
 
     setOrders((prev) => [newOrder, ...prev]);
-    setQuotations((prev) =>
-      prev.map((q) => (q.id === quote.id ? { ...q, status: 'Accepted', convertedSo: newSOId } : q))
-    );
+    setQuotations((prev) => {
+      const updated = prev.map((q) =>
+        q.id === quote.id ? { ...q, status: 'Accepted' as const, convertedSo: newSOId } : q
+      );
+      saveStoredQuotations(updated);
+      return updated;
+    });
+    setActiveView('sales_orders');
+  };
+
+  const handleConvertToInvoice = (quote: Quotation) => {
+    const newInvId = `INV-2024-${Math.floor(1080 + Math.random() * 850)}`;
+    const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const dueDateStr = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    const lineItems = quote.items && quote.items.length > 0
+      ? quote.items.map((it) => ({
+          description: it.title,
+          descriptionAr: quote.planNameAr ? `${quote.planNameAr} — ${quote.tierNameAr || ''}` : it.title,
+          subtitle: it.scope,
+          qty: it.propertiesCount || quote.propertiesCount || 1,
+          unitPrice: Math.round((it.price / (it.propertiesCount || quote.propertiesCount || 1)) * 100) / 100,
+          subtotal: it.price,
+        }))
+      : [
+          {
+            description: `${quote.planName || 'Commercial Plan'} — ${quote.tierName || 'Standard Tier'}`,
+            descriptionAr: `${quote.planNameAr || 'الباقة التجارية'} — ${quote.tierNameAr || 'المستوى'}`,
+            subtitle: `${quote.propertiesCount || 1} units subscription (${quote.id})`,
+            qty: quote.propertiesCount || 1,
+            unitPrice: Math.round((quote.totalNet / (quote.propertiesCount || 1)) * 100) / 100,
+            subtotal: quote.totalNet,
+          },
+        ];
+
+    const newInvoice: Invoice = {
+      id: newInvId,
+      codeType: '0100000',
+      type: 'Tax Invoice',
+      typeAr: 'فاتورة ضريبية',
+      buyerName: quote.customer,
+      buyerNameAr: quote.customer,
+      buyerTrn: quote.trnNumber || '310491827100003',
+      buyerAddress: 'Riyadh, Kingdom of Saudi Arabia',
+      issueDate: todayStr,
+      dueDate: dueDateStr,
+      taxableAmount: quote.totalNet,
+      vatAmount: quote.vatAmount,
+      totalAmount: quote.grandTotal,
+      zatcaStatus: 'Cleared',
+      zatcaHash: `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+      zatcaUuid: `urn:uuid:${Math.random().toString(36).substring(2, 10)}-${Date.now()}`,
+      settlementStatus: 'Unpaid',
+      settlementMethod: 'SADAD / B2B Wire',
+      lineItems,
+    };
+
+    setInvoices((prev) => {
+      const updated = [newInvoice, ...prev];
+      saveStoredInvoices(updated);
+      return updated;
+    });
+
+    setQuotations((prev) => {
+      const updated = prev.map((q) =>
+        q.id === quote.id ? { ...q, status: 'Accepted' as const, convertedSo: newInvId } : q
+      );
+      saveStoredQuotations(updated);
+      return updated;
+    });
+
     setActiveView('invoices');
   };
 
@@ -397,6 +467,7 @@ export function App() {
               isArabic={isArabic}
               onOpenCreateQuotation={() => setIsCreateQuotationOpen(true)}
               onConvertToSalesOrder={handleConvertToSalesOrder}
+              onConvertToInvoice={handleConvertToInvoice}
             />
           )}
 

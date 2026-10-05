@@ -608,6 +608,33 @@ export const INITIAL_INVOICES: Invoice[] = [
   },
 ];
 
+const INVOICES_STORAGE_KEY = 'khetat_invoices_pipeline_v1';
+
+export function getStoredInvoices(): Invoice[] {
+  try {
+    const raw = localStorage.getItem(INVOICES_STORAGE_KEY);
+    if (!raw) {
+      saveStoredInvoices(INITIAL_INVOICES);
+      return INITIAL_INVOICES;
+    }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    return INITIAL_INVOICES;
+  } catch {
+    return INITIAL_INVOICES;
+  }
+}
+
+export function saveStoredInvoices(invoices: Invoice[]): void {
+  try {
+    localStorage.setItem(INVOICES_STORAGE_KEY, JSON.stringify(invoices));
+  } catch (err) {
+    console.error('Failed to save invoices to localStorage', err);
+  }
+}
+
 export const INITIAL_QUOTATIONS: Quotation[] = [
   {
     id: 'QT-2024-0895',

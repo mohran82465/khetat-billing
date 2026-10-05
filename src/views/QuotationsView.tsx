@@ -40,6 +40,7 @@ interface QuotationsViewProps {
   isArabic: boolean;
   onOpenCreateQuotation: () => void;
   onConvertToSalesOrder: (quote: Quotation) => void;
+  onConvertToInvoice: (quote: Quotation) => void;
 }
 
 export const QuotationsView: React.FC<QuotationsViewProps> = ({
@@ -47,12 +48,13 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
   isArabic,
   onOpenCreateQuotation,
   onConvertToSalesOrder,
+  onConvertToInvoice,
 }) => {
   const [selectedQuote, setSelectedQuote] = useState<Quotation | null>(quotations[0] || null);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'All' | 'Sent' | 'Accepted' | 'Draft' | 'Expired'>('All');
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
   const [quoteForPrintModal, setQuoteForPrintModal] = useState<Quotation | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -84,6 +86,15 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
     setIsMobileDrawerOpen(true);
   };
 
+  const handleInvoiceConversion = (quote: Quotation) => {
+    onConvertToInvoice(quote);
+    showToast(
+      isArabic
+        ? `تم تحويل عرض السعر ${quote.id} بنجاح إلى فاتورة مبيعات ضريبية متوافقة مع هيئة الزكاة (ZATCA Phase 2)!`
+        : `Quotation ${quote.id} successfully converted to ZATCA Phase 2 Tax Invoice!`
+    );
+  };
+
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#f8faff]">
       {/* Toast Notification */}
@@ -98,53 +109,55 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
       <div className="p-4 lg:p-6 pb-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl lg:text-2xl font-bold text-[#161c27]">
                 {isArabic ? 'عروض الأسعار والاتفاقيات التجارية' : 'Quotations & Commercial Pipeline'}
               </h1>
-              <span className="text-[11px] font-mono font-bold bg-[#e8eeff] text-[#004a60] px-2 py-0.5 rounded-md border border-[#bcd7f5]">
-                {filteredQuotes.length} {isArabic ? 'عرض' : 'Quotes'}
+              <span className="text-[11px] font-mono font-bold bg-[#e8eeff] text-[#004a60] px-2.5 py-0.5 rounded-md border border-[#bcd7f5]">
+                {filteredQuotes.length} {isArabic ? 'عروض' : 'Proposals'}
               </span>
             </div>
             <p className="text-xs text-[#70787d] mt-1 max-w-3xl">
               {isArabic
-                ? 'إنشاء عروض أسعار مرتبطة مباشرة بباقات ومستويات المنظومة مع تفقيط الضرائب والرسوم، التوقيع الرقمي عبر نفاذ، وتحويل العروض تلقائياً لأوامر بيع.'
-                : 'Create commercial proposals linked to plans, tiers, and multi-tax schedules with Nafath digital e-sign and instant sales order conversion.'}
+                ? 'إنشاء عروض أسعار مرتبطة مباشرة بالباقات والمستويات (Plans & Tiers) مع احتساب الضرائب، التوقيع الرقمي عبر نفاذ، وتحويل العروض مباشرة إلى فواتير مبيعات ضريبية.'
+                : 'Create commercial proposals linked to plans, tiers, and multi-tax schedules, print formal PDFs, and convert proposals directly into ZATCA Phase 2 tax invoices.'}
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-white rounded-lg border border-[#e3e8f9] p-0.5 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded-md text-xs transition-colors cursor-pointer ${
-                  viewMode === 'table' ? 'bg-[#004a60] text-white' : 'text-[#70787d] hover:text-[#161c27]'
-                }`}
-                title={isArabic ? 'عرض الجدول' : 'Table View'}
-              >
-                <List className="h-4 w-4" />
-              </button>
+            <div className="flex items-center bg-white rounded-xl border border-[#e3e8f9] p-0.5 shadow-2xs">
               <button
                 type="button"
                 onClick={() => setViewMode('cards')}
-                className={`p-1.5 rounded-md text-xs transition-colors cursor-pointer ${
-                  viewMode === 'cards' ? 'bg-[#004a60] text-white' : 'text-[#70787d] hover:text-[#161c27]'
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                  viewMode === 'cards' ? 'bg-[#004a60] text-white shadow-2xs' : 'text-[#70787d] hover:text-[#161c27]'
                 }`}
                 title={isArabic ? 'عرض البطاقات' : 'Cards View'}
               >
-                <LayoutGrid className="h-4 w-4" />
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{isArabic ? 'بطاقات' : 'Cards'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                  viewMode === 'table' ? 'bg-[#004a60] text-white shadow-2xs' : 'text-[#70787d] hover:text-[#161c27]'
+                }`}
+                title={isArabic ? 'عرض الجدول' : 'Table View'}
+              >
+                <List className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{isArabic ? 'جدول' : 'Table'}</span>
               </button>
             </div>
 
             {/* Create Quotation Button */}
             <button
               onClick={onOpenCreateQuotation}
-              className="flex items-center gap-2 rounded-xl bg-[#004a60] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#074e64] transition-all cursor-pointer shrink-0"
+              className="flex items-center gap-2 rounded-xl bg-[#004a60] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#074e64] transition-all cursor-pointer shrink-0 ring-2 ring-[#004a60]/20"
             >
               <Plus className="h-4 w-4" />
-              <span>{isArabic ? '+ عرض سعر جديد' : '+ New Quotation'}</span>
+              <span>{isArabic ? '+ عرض سعر جديد (باقات ومستويات)' : '+ New Quotation (Plan & Tiers)'}</span>
             </button>
           </div>
         </div>
@@ -248,14 +261,14 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
                 {isArabic ? 'لا توجد عروض أسعار مطابقة للبحث' : 'No matching quotations found'}
               </h3>
               <p className="text-xs text-[#70787d] mt-1">
-                {isArabic ? 'جرب تغيير شروط البحث أو الفلترة أو قم بإنشاء عرض جديد' : 'Try adjusting your search criteria or create a new quotation'}
+                {isArabic ? 'جرب تغيير شروط البحث أو الفلترة أو قم بإنشاء عرض جديد بالباقات والضرائب' : 'Try adjusting your search criteria or create a new quotation with plans and taxes'}
               </p>
               <button
                 onClick={onOpenCreateQuotation}
                 className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#004a60] text-white text-xs font-semibold hover:bg-[#074e64] cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span>{isArabic ? 'إنشاء عرض سعر الآن' : 'Create Quotation Now'}</span>
+                <span>{isArabic ? 'إنشاء عرض سعر جديد الآن' : 'Create Quotation Now'}</span>
               </button>
             </div>
           ) : viewMode === 'cards' ? (
@@ -339,21 +352,21 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
                       {/* Applied Taxes Badges */}
                       <div className="mt-2.5">
                         <div className="text-[10px] font-semibold text-[#70787d] mb-1">
-                          {isArabic ? 'الضرائب المطبقة:' : 'Applied Taxes:'}
+                          {isArabic ? 'الضرائب والرسوم المطبقة:' : 'Applied Taxes & Surcharges:'}
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {q.taxesBreakdown && q.taxesBreakdown.length > 0 ? (
                             q.taxesBreakdown.map((tx) => (
                               <span
                                 key={tx.taxId}
-                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-mono font-semibold"
+                                className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-mono font-semibold"
                               >
                                 <Percent className="h-2.5 w-2.5" />
                                 <span>{tx.code} ({tx.rate}%)</span>
                               </span>
                             ))
                           ) : (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-[10px] font-mono">
+                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg bg-gray-100 text-gray-700 text-[10px] font-mono">
                               VAT (15%)
                             </span>
                           )}
@@ -366,11 +379,11 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
                       <div className="flex items-end justify-between mb-3">
                         <div>
                           <div className="text-[10px] text-[#70787d]">
-                            {isArabic ? 'الصافي:' : 'Net:'}{' '}
-                            <span className="font-mono">SAR {q.totalNet.toLocaleString()}</span>
+                            {isArabic ? 'الصافي قبل الضريبة:' : 'Subtotal Net:'}{' '}
+                            <span className="font-mono font-semibold">SAR {q.totalNet.toLocaleString()}</span>
                           </div>
                           <div className="text-[10px] text-emerald-700 font-semibold">
-                            {isArabic ? 'الضريبة:' : 'Tax:'}{' '}
+                            {isArabic ? 'إجمالي الضرائب:' : 'Total Taxes:'}{' '}
                             <span className="font-mono">SAR {q.vatAmount.toLocaleString()}</span>
                           </div>
                         </div>
@@ -384,40 +397,45 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Card Action Buttons */}
-                      <div className="grid grid-cols-3 gap-1.5 pt-1">
+                      {/* Card Action Buttons (View Details, Print PDF, Convert to Invoice, Sales Order) */}
+                      <div className="grid grid-cols-2 gap-1.5 pt-1">
+                        {/* 1. View Details */}
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleInspectQuote(q);
                           }}
-                          className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-[#f1f5fd] hover:bg-[#e2ecfd] text-[#004a60] text-[11px] font-bold transition-colors cursor-pointer"
+                          className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-[#f1f5fd] hover:bg-[#e2ecfd] text-[#004a60] text-xs font-bold transition-all cursor-pointer border border-[#bcd7f5]/60"
                         >
-                          <Eye className="h-3 w-3" />
-                          <span>{isArabic ? 'معاينة' : 'Details'}</span>
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>{isArabic ? 'معاينة التفاصيل' : 'View Details'}</span>
                         </button>
+
+                        {/* 2. Print PDF */}
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setQuoteForPrintModal(q);
                           }}
-                          className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border border-[#e3e8f9] hover:bg-[#f1f3ff] text-[#40484d] text-[11px] font-semibold transition-colors cursor-pointer"
+                          className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border border-gray-300 hover:bg-gray-100 text-[#161c27] text-xs font-bold transition-all cursor-pointer bg-white"
                         >
-                          <Printer className="h-3 w-3 text-[#70787d]" />
-                          <span>{isArabic ? 'PDF رسمي' : 'Print PDF'}</span>
+                          <Printer className="h-3.5 w-3.5 text-[#004a60]" />
+                          <span>{isArabic ? 'طباعة PDF' : 'Print PDF'}</span>
                         </button>
+
+                        {/* 3. Convert to Invoice (Highlighted) */}
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onConvertToSalesOrder(q);
+                            handleInvoiceConversion(q);
                           }}
-                          className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-[#004a60] hover:bg-[#074e64] text-white text-[11px] font-semibold transition-colors cursor-pointer"
+                          className="col-span-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all cursor-pointer shadow-2xs"
                         >
-                          <ArrowRight className="h-3 w-3" />
-                          <span>{isArabic ? 'أمر بيع' : 'Convert'}</span>
+                          <Receipt className="h-3.5 w-3.5" />
+                          <span>{isArabic ? 'تحويل إلى فاتورة مبيعات ضريبية' : 'Convert to Tax Invoice'}</span>
                         </button>
                       </div>
                     </div>
@@ -432,13 +450,13 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
                 <table className="w-full border-collapse text-left text-xs">
                   <thead className="border-b border-[#e3e8f9] bg-[#f9f9ff] text-[11px] font-semibold uppercase text-[#70787d]">
                     <tr>
-                      <th className="p-3">{isArabic ? 'رقم العرض' : 'Quotation ID'}</th>
+                      <th className="p-3">{isArabic ? 'رقم العرض والتاريخ' : 'Quotation ID & Date'}</th>
                       <th className="p-3">{isArabic ? 'الجهة المستفيدة' : 'Client Entity'}</th>
                       <th className="p-3">{isArabic ? 'الباقة والمستوى (Plan & Tier)' : 'Plan & Tier'}</th>
                       <th className="p-3">{isArabic ? 'الضرائب المطبقة' : 'Applied Taxes'}</th>
                       <th className="p-3 text-right">{isArabic ? 'الإجمالي مع الضريبة' : 'Grand Total (SAR)'}</th>
                       <th className="p-3">{isArabic ? 'الحالة' : 'Status'}</th>
-                      <th className="p-3 text-center">{isArabic ? 'الإجراءات' : 'Actions'}</th>
+                      <th className="p-3 text-center">{isArabic ? 'الإجراءات (Details, Print, Invoice)' : 'Actions'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#e3e8f9]">
@@ -455,7 +473,7 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
                           <td className="p-3">
                             <div className="flex items-center gap-1.5">
                               <span className="font-bold font-mono text-[#004a60]">{q.id}</span>
-                              <span className="text-[10px] rounded bg-[#e8eeff] px-1 py-0.2 font-mono text-[#004a60] font-bold">
+                              <span className="text-[10px] rounded bg-[#e8eeff] px-1.5 py-0.2 font-mono text-[#004a60] font-bold">
                                 {q.version}
                               </span>
                             </div>
@@ -537,25 +555,54 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
                             </span>
                             {q.convertedSo && (
                               <div className="text-[9px] font-mono text-emerald-700 font-bold mt-0.5">
-                                SO: {q.convertedSo}
+                                Ref: {q.convertedSo}
                               </div>
                             )}
                           </td>
 
                           <td className="p-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
+                            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                              {/* View Details */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleInspectQuote(q);
+                                }}
+                                title={isArabic ? 'معاينة تفاصيل العرض' : 'View Details'}
+                                className="px-2 py-1 rounded-lg bg-[#f1f5fd] hover:bg-[#e2ecfd] text-[#004a60] transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-bold border border-[#bcd7f5]/80"
+                              >
+                                <Eye className="h-3 w-3" />
+                                <span>{isArabic ? 'معاينة' : 'Details'}</span>
+                              </button>
+
+                              {/* Print PDF */}
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setQuoteForPrintModal(q);
                                 }}
-                                title={isArabic ? 'معاينة العرض الرسمي للطباعة' : 'Print Formal PDF'}
-                                className="p-1 rounded-lg hover:bg-[#e8eeff] text-[#004a60] transition-colors cursor-pointer"
+                                title={isArabic ? 'معاينة العرض للطباعة وتصدير PDF' : 'Print Formal PDF'}
+                                className="px-2 py-1 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-semibold border border-gray-300 bg-white"
                               >
-                                <Printer className="h-3.5 w-3.5" />
+                                <Printer className="h-3 w-3 text-[#004a60]" />
+                                <span>PDF</span>
                               </button>
-                              <ChevronRight className="h-4 w-4 text-[#70787d]" />
+
+                              {/* Convert to Invoice */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleInvoiceConversion(q);
+                                }}
+                                title={isArabic ? 'تحويل عرض السعر إلى فاتورة مبيعات ضريبية' : 'Convert to Invoice'}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-bold shadow-2xs"
+                              >
+                                <Receipt className="h-3 w-3" />
+                                <span>{isArabic ? 'فاتورة' : 'Invoice'}</span>
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -576,6 +623,7 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
               isArabic={isArabic}
               onClose={() => setSelectedQuote(null)}
               onConvertToSalesOrder={onConvertToSalesOrder}
+              onConvertToInvoice={handleInvoiceConversion}
               onOpenPrintModal={() => setQuoteForPrintModal(selectedQuote)}
               onShowToast={showToast}
             />
@@ -595,6 +643,10 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
                 setIsMobileDrawerOpen(false);
                 onConvertToSalesOrder(q);
               }}
+              onConvertToInvoice={(q) => {
+                setIsMobileDrawerOpen(false);
+                handleInvoiceConversion(q);
+              }}
               onOpenPrintModal={() => {
                 setIsMobileDrawerOpen(false);
                 setQuoteForPrintModal(selectedQuote);
@@ -611,6 +663,7 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({
           quote={quoteForPrintModal}
           isArabic={isArabic}
           onClose={() => setQuoteForPrintModal(null)}
+          onConvertToInvoice={handleInvoiceConversion}
           onShowToast={showToast}
         />
       )}
@@ -624,6 +677,7 @@ interface QuotationInspectorProps {
   isArabic: boolean;
   onClose: () => void;
   onConvertToSalesOrder: (quote: Quotation) => void;
+  onConvertToInvoice: (quote: Quotation) => void;
   onOpenPrintModal: () => void;
   onShowToast: (msg: string) => void;
 }
@@ -633,6 +687,7 @@ const QuotationInspectorContent: React.FC<QuotationInspectorProps> = ({
   isArabic,
   onClose,
   onConvertToSalesOrder,
+  onConvertToInvoice,
   onOpenPrintModal,
   onShowToast,
 }) => {
@@ -831,15 +886,35 @@ const QuotationInspectorContent: React.FC<QuotationInspectorProps> = ({
 
       {/* Sticky Bottom Actions */}
       <div className="p-4 border-t border-[#e3e8f9] bg-[#f9f9ff] space-y-2 shrink-0">
+        {/* Primary Action: Convert to Invoice */}
         <button
-          onClick={() => onConvertToSalesOrder(quote)}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#004a60] py-2.5 font-bold text-xs text-white hover:bg-[#074e64] transition-all cursor-pointer shadow-xs"
+          onClick={() => onConvertToInvoice(quote)}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 py-2.5 font-bold text-xs text-white transition-all cursor-pointer shadow-xs"
         >
-          <ArrowRight className="h-4 w-4" />
-          <span>{isArabic ? 'تحويل العرض إلى أمر بيع (Sales Order)' : 'Convert to Sales Order'}</span>
+          <Receipt className="h-4 w-4" />
+          <span>{isArabic ? 'تحويل العرض مباشرة إلى فاتورة ضريبية (Invoice)' : 'Convert to Tax Invoice (ZATCA)'}</span>
         </button>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
+          {/* Print PDF */}
+          <button
+            onClick={onOpenPrintModal}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-[#004a60] bg-[#eef7ff] py-2 text-xs font-bold text-[#004a60] hover:bg-[#e2ecfd] cursor-pointer"
+          >
+            <Printer className="h-3.5 w-3.5 text-[#004a60]" />
+            <span>{isArabic ? 'طباعة PDF' : 'Print PDF'}</span>
+          </button>
+
+          {/* Convert to Sales Order */}
+          <button
+            onClick={() => onConvertToSalesOrder(quote)}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-[#e3e8f9] bg-white py-2 text-xs font-semibold text-[#40484d] hover:bg-[#f1f3ff] cursor-pointer"
+          >
+            <ArrowRight className="h-3.5 w-3.5 text-[#70787d]" />
+            <span>{isArabic ? 'أمر بيع' : 'Sales Order'}</span>
+          </button>
+
+          {/* Resend Nafath */}
           <button
             onClick={() => {
               onShowToast(
@@ -851,15 +926,7 @@ const QuotationInspectorContent: React.FC<QuotationInspectorProps> = ({
             className="flex items-center justify-center gap-1.5 rounded-xl border border-[#e3e8f9] bg-white py-2 text-xs font-semibold text-[#40484d] hover:bg-[#f1f3ff] cursor-pointer"
           >
             <Send className="h-3.5 w-3.5 text-[#70787d]" />
-            <span>{isArabic ? 'إرسال نفاذ' : 'Resend e-Sign'}</span>
-          </button>
-
-          <button
-            onClick={onOpenPrintModal}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-[#004a60] bg-[#eef7ff] py-2 text-xs font-bold text-[#004a60] hover:bg-[#e2ecfd] cursor-pointer"
-          >
-            <Printer className="h-3.5 w-3.5 text-[#004a60]" />
-            <span>{isArabic ? 'معاينة PDF' : 'Formal PDF'}</span>
+            <span>{isArabic ? 'إرسال نفاذ' : 'Resend'}</span>
           </button>
         </div>
       </div>
@@ -872,6 +939,7 @@ interface FormalModalProps {
   quote: Quotation;
   isArabic: boolean;
   onClose: () => void;
+  onConvertToInvoice: (quote: Quotation) => void;
   onShowToast: (msg: string) => void;
 }
 
@@ -879,6 +947,7 @@ const FormalQuotationModal: React.FC<FormalModalProps> = ({
   quote,
   isArabic,
   onClose,
+  onConvertToInvoice,
   onShowToast,
 }) => {
   const handlePrint = () => {
@@ -889,7 +958,7 @@ const FormalQuotationModal: React.FC<FormalModalProps> = ({
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col my-auto max-h-[94vh]">
         {/* Modal Controls Toolbar (Hidden during print) */}
-        <div className="p-3.5 bg-[#f0f4fa] border-b border-[#d6e0f0] flex items-center justify-between shrink-0 print:hidden">
+        <div className="p-3.5 bg-[#f0f4fa] border-b border-[#d6e0f0] flex items-center justify-between shrink-0 print:hidden flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <span className="font-bold text-xs text-[#004a60]">
               {isArabic ? 'معاينة العرض التجاري الرسمي للطباعة أو التصدير PDF' : 'Official Commercial Quotation Document'}
@@ -900,6 +969,19 @@ const FormalQuotationModal: React.FC<FormalModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Convert to Invoice from Printable preview */}
+            <button
+              onClick={() => {
+                onClose();
+                onConvertToInvoice(quote);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800 cursor-pointer shadow-2xs"
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              <span>{isArabic ? 'تحويل لفاتورة' : 'Convert to Invoice'}</span>
+            </button>
+
+            {/* Print / Save PDF */}
             <button
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#004a60] text-white text-xs font-bold hover:bg-[#074e64] cursor-pointer shadow-2xs"
@@ -907,6 +989,7 @@ const FormalQuotationModal: React.FC<FormalModalProps> = ({
               <Printer className="h-3.5 w-3.5" />
               <span>{isArabic ? 'طباعة العرض (Print)' : 'Print / Save PDF'}</span>
             </button>
+
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-200 cursor-pointer"

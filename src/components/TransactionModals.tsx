@@ -606,7 +606,7 @@ export const CreateQuotationModal: React.FC<
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto">
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-5 sm:p-6 shadow-2xl animate-in zoom-in-95 my-auto max-h-[92vh] flex flex-col border border-[#e3e8f9]">
+      <div className="w-full max-w-3xl rounded-2xl bg-white p-5 sm:p-6 shadow-2xl animate-in zoom-in-95 my-auto max-h-[92vh] flex flex-col border border-[#e3e8f9]">
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#e3e8f9] shrink-0">
           <div className="flex items-center gap-2.5">
